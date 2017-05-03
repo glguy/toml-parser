@@ -60,7 +60,6 @@ data Token
 -- | Types of lexical errors
 data LexerError
   = UntermString
-  | Unterminated Token
   | BadEscape
   | NoMatch Char
   deriving (Read, Show)

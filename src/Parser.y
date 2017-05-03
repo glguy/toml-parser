@@ -14,6 +14,7 @@ import Tokens
 import Data.Text (Text,pack)
 import Components
 import Value
+import Errors
 
 }
 
@@ -38,7 +39,7 @@ TIMEOFDAY                       { Located _ (TimeOfDayTok $$)   }
 DAY                             { Located _ (DayTok       $$)   }
 EOF                             { Located _ EOF                 }
 
-%monad { Either (Located Token) }
+%monad { Either TOMLError }
 %error { errorP }
 
 %name components
@@ -117,17 +118,17 @@ inlinearrayR ::                 { [Value]                       }
 
 {
 
-errorP :: [Located Token] -> Either (Located Token) a
-errorP xs = Left (head xs)
+errorP :: [Located Token] -> Either TOMLError a
+errorP = Left . Unexpected . head
 
 -- | Attempt to parse a layout annotated token stream or
 -- the token that caused the parse to fail.
 parseComponents ::
-  [Located Token]                    {- ^ layout annotated token stream -} ->
-  Either (Located Token) [Component] {- ^ token at failure or result -}
+  [Located Token]              {- ^ layout annotated token stream -} ->
+  Either TOMLError [Component] {- ^ token at failure or result -}
 parseComponents = components
 
-unterminated :: Located Token -> Either (Located Token) a
-unterminated (Located p t) = Left (Located p (Error (Unterminated t)))
+unterminated :: Located Token -> Either TOMLError a
+unterminated = Left . Unterminated
 
 }

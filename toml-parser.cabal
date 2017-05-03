@@ -14,7 +14,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     TOML
-  other-modules:       Tokens LexerUtils Components Lexer Parser Value
+  other-modules:       Tokens LexerUtils Components Lexer Parser Value Errors
   build-depends:       base  >=4.9 && <4.11,
                        array >=0.5 && <0.6,
                        text  >=1.2 && <1.3,
