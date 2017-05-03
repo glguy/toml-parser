@@ -82,8 +82,8 @@ $white+                 ;
 \\ r                    { emitChar' '\r'                }
 \\ \"                   { emitChar' '"'                 }
 \\ \\                   { emitChar' '\\'                }
-\\ u $hexdigit{4}       { emitShortUnicode              }
-\\ U $hexdigit{8}       { emitLongUnicode               }
+\\ u $hexdigit{4}       { emitUnicodeChar               }
+\\ U $hexdigit{8}       { emitUnicodeChar               }
 \\ @newline $white *;
 \\                      { token_ (Error BadEscape)      }
 }
@@ -104,7 +104,7 @@ scanTokens str = go (Located startPos str) InNormal
       AlexEOF                -> eofAction (locPosition inp) st
       AlexError inp'         -> errorAction inp'
       AlexSkip  inp' _       -> go inp' st
-      AlexToken inp' len act -> case act len inp st of
+      AlexToken inp' len act -> case act (fmap (Text.take len) inp) st of
                                   (st', xs) -> xs ++ go inp' st'
 
 -- | Compute the Alex state corresponding to a particular 'LexerMode'
