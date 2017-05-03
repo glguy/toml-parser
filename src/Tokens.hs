@@ -1,6 +1,6 @@
 {-|
 Module      : Tokens
-Description : Token type and operations for TOML
+Description : Internal: Token type and operations for TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
@@ -10,56 +10,39 @@ parser and provides the extra pass to insert layout tokens.
 -}
 module Tokens
   ( Token(..)
-  , Located(..)
-  , Position(..)
   , LexerError(..)
   ) where
 
 import Data.Text (Text)
 import Data.Time
-
--- | A position in a text file
-data Position = Position
-  { posIndex, posLine, posColumn :: {-# UNPACK #-} !Int }
-  deriving (Read, Show)
-
--- | A value annotated with its text file position
-data Located a = Located
-  { locPosition :: {-# UNPACK #-} !Position
-  , locThing    :: !a
-  }
-  deriving (Read, Show)
-
-instance Functor Located where
-  fmap f (Located p x) = Located p (f x)
+import Located
 
 -- | The token type used by "Config.Lexer" and "Config.Parser"
 data Token
-  = String Text
-  | BareKey Text
-  | Integer Integer
-  | Double Double
-  | ZonedTimeTok ZonedTime
-  | LocalTimeTok LocalTime
-  | TimeOfDayTok TimeOfDay
-  | DayTok       Day
-  | Comma
-  | Period
-  | LeftBracket
-  | RightBracket
-  | LeftBrace
-  | RightBrace
-  | EqualSign
-  | TrueToken
-  | FalseToken
-  | Error LexerError
-  | EOF
-
+  = String       Text      -- ^ string literal
+  | BareKey      Text      -- ^ bare table key
+  | Integer      Integer   -- ^ integer literal
+  | Double       Double    -- ^ floating   -point literal
+  | ZonedTimeTok ZonedTime -- ^ offset data-time
+  | LocalTimeTok LocalTime -- ^ local date -time
+  | TimeOfDayTok TimeOfDay -- ^ local time
+  | DayTok       Day       -- ^ local date
+  | Comma                  -- ^ @,@
+  | Period                 -- ^ @.@
+  | LeftBracket            -- ^ @[@
+  | RightBracket           -- ^ @[@
+  | LeftBrace              -- ^ @{@
+  | RightBrace             -- ^ @}@
+  | EqualSign              -- ^ @=@
+  | TrueToken              -- ^ @true@
+  | FalseToken             -- ^ @false@
+  | Error LexerError       -- ^ lexical error
+  | EOF                    -- ^ end        -of-file
   deriving (Read, Show)
 
--- | Types of lexical errors
+-- | Errors possible in the course of lexing
 data LexerError
-  = UntermString
-  | BadEscape
-  | NoMatch Char
+  = UntermString -- ^ unterminated string literal
+  | BadEscape    -- ^ invalid escape sequence
+  | NoMatch Char -- ^ no matching lexer rule
   deriving (Read, Show)

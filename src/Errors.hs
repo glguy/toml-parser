@@ -1,6 +1,6 @@
 {-|
 Module      : Errors
-Description : Errors that can occur while processing TOML
+Description : /Internal:/ Errors that can occur while processing TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
@@ -13,13 +13,16 @@ import           Data.Text (Text)
 import qualified Data.Text as Text
 
 import           Tokens
+import           Located
 
+-- | Errors that can occur while loading a TOML file.
 data TOMLError
   = Unexpected   (Located Token) -- ^ unexpected token while parser
   | Unterminated (Located Token) -- ^ unterminated token while parser
   | OverlappingKey [Text]        -- ^ ambiguous table entry
   deriving (Read, Show)
 
+-- | 'displayException' provides human-readable error message
 instance Exception TOMLError where
   displayException (Unexpected (Located pos token)) =
     show (posLine pos) ++ ":" ++ show (posColumn pos) ++
@@ -31,6 +34,7 @@ instance Exception TOMLError where
     "multiple definitions of: " ++
     intercalate "." (map Text.unpack path)
 
+-- | Generates a human-readable description of a token.
 showToken :: Token -> String
 showToken t =
   case t of
@@ -54,10 +58,10 @@ showToken t =
     Error e      -> "lexical error: " ++ showLexerError e
     EOF          -> "end-of-file"
 
+-- | Generates a human-readable description of a lexical error.
 showLexerError :: LexerError -> String
 showLexerError e =
   case e of
     UntermString -> "unterminated string literal"
     BadEscape    -> "bad escape sequence"
     NoMatch c    -> "unexpected ‘" ++ [c] ++ "’"
-

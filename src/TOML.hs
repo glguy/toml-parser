@@ -1,29 +1,41 @@
+{-# Language Safe #-}
 {-|
 Module      : TOML
 Description : Parser for the TOML configuration language
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
+
+Parser for the TOML file format: <https://github.com/toml-lang/toml>
 -}
 module TOML
-  ( Located(..)
-  , Token(..)
+  (
+  -- * Parsing
+    parseTOML
+
+  -- * Values
+  , Value(..)
+
+  -- * Error information
   , TOMLError(..)
   , LexerError(..)
-  , Value(..)
-  , parseTOML
+  , Located(..)
+  , Position(..)
+  , Token(..)
   ) where
 
 import Components
+import Errors
 import Lexer
+import Located
 import Parser
 import Tokens
 import Value
-import Errors
 
 import Control.Monad
 import Data.Text (Text)
 
+-- | Parse the given TOML file. Returns the top-level table or an error.
 parseTOML :: Text -> Either TOMLError [(Text,Value)]
 parseTOML = mapLeft OverlappingKey . componentsToTable
         <=< parseComponents . scanTokens

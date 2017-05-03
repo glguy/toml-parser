@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-|
 Module      : LexerUtils
-Description : Lexer support operations for TOML
+Description : /Internal:/ Lexer support operations for TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
@@ -11,7 +11,37 @@ to segregate the automatically generated code from the
 hand written code. The automatically generated code
 causes lots of warnings which mask the interesting warnings.
 -}
-module LexerUtils where
+module LexerUtils
+  (
+  -- * Alex required definitions
+    AlexInput
+  , alexGetByte
+
+  -- * Lexer modes
+  , LexerMode(..)
+  , Action
+  , errorAction
+  , eofAction
+
+  -- * Token helpers
+  , token
+  , token_
+  , integer
+  , double
+
+  -- * String literal processing
+  , startString
+  , emitChar
+  , emitChar'
+  , emitUnicodeChar
+  , endString
+
+  -- * Date/time parsers
+  , localtime
+  , zonedtime
+  , day
+  , timeofday
+  ) where
 
 import Data.Char            (isSpace, isControl, isAscii, ord, chr)
 import Data.Foldable        (asum)
@@ -22,6 +52,7 @@ import qualified Data.Text as Text
 import qualified Data.Text.Read as Text
 
 import Tokens
+import Located
 
 ------------------------------------------------------------------------
 -- Custom Alex wrapper - these functions are used by generated code
@@ -39,10 +70,6 @@ alexGetByte (Located p cs)
        return (b, inp)
 
 ------------------------------------------------------------------------
-
--- | The initial 'Position' for the start of a file
-startPos :: Position
-startPos = Position { posIndex = 0, posLine = 1, posColumn = 1 }
 
 -- | Advance the position according to the kind of character lexed.
 move :: Position -> Char -> Position
@@ -67,11 +94,11 @@ errorAction inp = [fmap (Error . NoMatch . Text.head) inp]
 -- Lexer Modes
 ------------------------------------------------------------------------
 
--- | The lexer can be in any of four modes which determine which rules
--- are active.
+-- | The lexer can be in a normal mode or can be lexing a string literal.
 data LexerMode
   = InNormal
   | InString !Int !Position String
+    -- ^ alex-mode, starting-position, reversed accumulated characters
   deriving Show
 
 -- | Type of actions used by lexer upon matching a rule
@@ -81,7 +108,7 @@ type Action =
   (LexerMode, [Located Token]) {- ^ updated lexer mode, emitted tokens -}
 
 -- | Helper function for building an 'Action' using the lexeme
-token :: (Text -> Token) -> Action
+token :: (Text -> Token) {- ^ lexeme -> token -} -> Action
 token f match st = (st, [fmap f match])
 
 -- | Helper function for building an 'Action' where the lexeme is unused.
@@ -96,17 +123,23 @@ token_ = token . const
 startString :: Int -> Action
 startString mode lexeme _ = (InString mode (locPosition lexeme) [], [])
 
+
+-- | Add current lexeme to the current string literal.
 emitChar :: Action
 emitChar _ InNormal = error "PANIC: emitChar used in normal mode"
 emitChar lexeme (InString mode pos acc) = (InString mode pos acc', [])
   where
     acc' = reverse (Text.unpack (locThing lexeme)) ++ acc
 
+
+-- | Add literal character to the current string literal.
 emitChar' :: Char -> Action
 emitChar' c _ (InString mode pos acc) = (InString mode pos (c : acc), [])
 emitChar' _ _ _ = error "PANIC: emitChar' used in normal mode"
 
 
+-- | Interpret the current lexeme as a unicode escape sequence and add
+-- the resulting character to the current string literal.
 emitUnicodeChar :: Action
 emitUnicodeChar lexeme mode =
   case Text.hexadecimal (Text.drop 2 (locThing lexeme)) of
@@ -122,7 +155,8 @@ endString _ mode =
   case mode of
     InNormal -> error "PANIC: error in string literal lexer"
     InString _ p input ->
-      (InNormal, [Located p (String (Text.pack (reverse input)))])
+      let !str = Text.pack (reverse input)
+      in (InNormal, [Located p (String str)])
 
 ------------------------------------------------------------------------
 -- Token builders
@@ -133,6 +167,7 @@ integer :: Text {- ^ lexeme -} -> Token
 integer str = Integer n
   where
   Right (n,_) = Text.signed Text.decimal (Text.filter (/= '_') str)
+
 
 -- | Construct a 'Double' token from a lexeme.
 double :: Text {- ^ lexeme -} -> Token
@@ -166,10 +201,13 @@ timeParser ::
 timeParser con fmt txt =
   con (parseTimeOrError False defaultTimeLocale fmt (Text.unpack txt))
 
+
 -- | Format string for parsing time of day: @hours:minutes:seconds.fractional@
 timeFormat :: String
 timeFormat = "%T%Q"
 
+
+-- | Date and time lexeme parsers
 zonedtime, localtime, day, timeofday :: Text -> Token
 zonedtime = timeParser ZonedTimeTok (iso8601DateFormat (Just timeFormat)++"%Z")
 localtime = timeParser LocalTimeTok (iso8601DateFormat (Just timeFormat))
