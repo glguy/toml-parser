@@ -1,6 +1,13 @@
 {
 {-# OPTIONS_GHC -Wnot #-}
 {-# LANGUAGE Trustworthy #-}
+{-|
+Module      : Lexer
+Description : Lexer for TOML
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
+-}
 module Lexer where
 
 import LexerUtils

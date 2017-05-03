@@ -1,10 +1,18 @@
--- | This module provides the token type used in the lexer and
--- parser and provides the extra pass to insert layout tokens.
+{-|
+Module      : Tokens
+Description : Token type and operations for TOML
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module provides the token type used in the lexer and
+parser and provides the extra pass to insert layout tokens.
+-}
 module Tokens
   ( Token(..)
   , Located(..)
   , Position(..)
-  , Error(..)
+  , LexerError(..)
   ) where
 
 import Data.Text (Text)
@@ -44,14 +52,15 @@ data Token
   | EqualSign
   | TrueToken
   | FalseToken
-  | Error Error
+  | Error LexerError
   | EOF
 
   deriving (Read, Show)
 
 -- | Types of lexical errors
-data Error
+data LexerError
   = UntermString
+  | Unterminated Token
   | BadEscape
   | NoMatch Char
   deriving (Read, Show)

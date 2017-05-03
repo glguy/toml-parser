@@ -1,6 +1,13 @@
 {
 {-# LANGUAGE Trustworthy #-}
+{-|
+Module      : Parser
+Description : Parser for TOML
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
 
+-}
 module Parser (parseComponents) where
 
 import Tokens
@@ -18,9 +25,9 @@ INTEGER                         { Located _ (Integer $$)        }
 DOUBLE                          { Located _ (Double $$)         }
 'true'                          { Located _ TrueToken           }
 'false'                         { Located _ FalseToken          }
-'['                             { Located _ LeftBracket         }
+'['                             { $$@(Located _ LeftBracket)    }
 ']'                             { Located _ RightBracket        }
-'{'                             { Located _ LeftBrace           }
+'{'                             { $$@(Located _ LeftBrace)      }
 '}'                             { Located _ RightBrace          }
 ','                             { Located _ Comma               }
 '.'                             { Located _ Period              }
@@ -42,13 +49,23 @@ components ::                   { [Component]                   }
   : componentsR EOF             { reverse $1                    }
 
 componentsR ::                  { [Component]                   }
-  :                             { []                            }
-  | componentsR component       { $2 : $1                       }
+  : keyvalues                   { [InitialEntry $1]             }
+  | componentsR component keyvalues { $2 $3 : $1                }
 
-component ::                    { Component                     }
+component ::                    { [(Text,Value)] -> Component   }
   : '['     keys     ']'        { TableEntry $2                 }
   | '[' '[' keys ']' ']'        { ArrayEntry $3                 }
-  | key '=' value               { KeyValue $1 $3                }
+
+  | '['     keys     error      {% unterminated $1              }
+  | '[' '[' keys     error      {% unterminated $2              }
+  | '[' '[' keys ']' error      {% unterminated $1              }
+
+keyvalues ::                    { [(Text,Value)]                }
+  : keyvaluesR                  { reverse $1                    }
+
+keyvaluesR ::                   { [(Text,Value)]                }
+  :                             { []                            }
+  | keyvaluesR key '=' value    { ($2,$4):$1                    }
 
 keys ::                         { [Text]                        }
   : keysR                       { reverse $1                    }
@@ -76,6 +93,9 @@ value ::                        { Value                         }
   | 'false'                     { BoolV False                   }
   | '{' inlinetable '}'         { TableV    $2                  }
   | '[' inlinearray ']'         { ListV     $2                  }
+
+  | '{' inlinetable error       {% unterminated $1              }
+  | '[' inlinearray error       {% unterminated $1              }
 
 inlinetable ::                  { [(Text,Value)]                }
   :                             { []                            }
@@ -106,5 +126,8 @@ parseComponents ::
   [Located Token]                    {- ^ layout annotated token stream -} ->
   Either (Located Token) [Component] {- ^ token at failure or result -}
 parseComponents = components
+
+unterminated :: Located Token -> Either (Located Token) a
+unterminated (Located p t) = Left (Located p (Error (Unterminated t)))
 
 }

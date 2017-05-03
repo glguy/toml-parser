@@ -1,3 +1,11 @@
+{-|
+Module      : Components
+Description : Type and operations for raw top-level TOML elements
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+-}
 module Components where
 
 import Control.Monad
@@ -10,43 +18,36 @@ import Data.List
 import Value
 
 data Component
-  = TableEntry Path
-  | ArrayEntry Path
-  | KeyValue Text Value
+  = InitialEntry [(Text,Value)]
+  | TableEntry Path [(Text,Value)]
+  | ArrayEntry Path [(Text,Value)]
   deriving (Read, Show)
 
-type Path = [Text]
+type Path = [Text] -- nonempty
 
 
+-- | Merge a list of top-level components into a single
+-- table, or throw an error with an ambiguous path.
 componentsToTable :: [Component] -> Either Path [(Text,Value)]
 componentsToTable = flattenTableList . collapseComponents
 
 
 collapseComponents :: [Component] -> [(Path,Value)]
 collapseComponents [] = []
-collapseComponents (KeyValue k v : xs) = ([k],v) : collapseComponents xs
-collapseComponents (TableEntry k : xs) =
-  case splitKeyValues xs of
-    (kvs, xs') -> (k, TableV kvs) : collapseComponents xs'
-collapseComponents xs@(ArrayEntry k : _) =
+collapseComponents (InitialEntry kvs : xs) =
+  [ ([k],v) | (k,v) <- kvs ] ++ collapseComponents xs
+collapseComponents (TableEntry k kvs : xs) =
+  (k, TableV kvs) : collapseComponents xs
+collapseComponents xs@(ArrayEntry k _ : _) =
   case splitArrays k xs of
     (kvss, xs') -> (k, ListV (map TableV kvss)) : collapseComponents xs'
 
 
-splitKeyValues :: [Component] -> ([(Text,Value)], [Component])
-splitKeyValues (KeyValue k v : xs) =
-  case splitKeyValues xs of
-    (kvs, xs') -> ((k,v):kvs, xs')
-splitKeyValues xs = ([],xs)
-
-
 splitArrays :: Path -> [Component] -> ([[(Text,Value)]], [Component])
-splitArrays k1 (ArrayEntry k2 : xs)
+splitArrays k1 (ArrayEntry k2 kvs : xs)
   | k1 == k2 =
-      case splitKeyValues xs of
-        (kvs, xs1) ->
-          case splitArrays k1 xs1 of
-            (kvss, xs2) -> (kvs:kvss, xs2)
+     case splitArrays k1 xs of
+       (kvss, xs2) -> (kvs:kvss, xs2)
 splitArrays _ xs = ([],xs)
 
 
@@ -62,33 +63,39 @@ factorHeads xs = [ (head (fst (head g)),
 flattenTableList :: [(Path, Value)] -> Either Path [(Text, Value)]
 flattenTableList = go [] . order
   where
-    order = sortBy (comparing fst)
-
     go path xs = sequenceA [ flattenGroup path x ys | (x,ys) <- factorHeads xs ]
 
     flattenGroup :: Path -> Text -> [(Path,Value)] -> Either Path (Text,Value)
-    flattenGroup path k xs | isAmbiguous xs = Left (reverse (k:path))
-    flattenGroup path k [([],v)] = (k,v) <$ validateInlineTables (k:path) v
-    flattenGroup path k (([],TableV t):kvs) = flattenGroup path k (mergeInlineTable t kvs)
+    flattenGroup path k (([],TableV t):kvs) =
+      flattenGroup path k (mergeInlineTable t kvs)
+    flattenGroup path k (([],v):rest)
+      | null rest = (k,v) <$ validateInlineTables (k:path) v
+      | otherwise = Left (reverse (k:path))
     flattenGroup path k kvs =
       do kvs' <- go (k:path) kvs
          return (k, TableV kvs')
 
-    mergeInlineTable t kvs = order ([([i],j) | (i,j) <- t] ++ kvs)
+
+mergeInlineTable :: [(Text,value)] -> [(Path,value)] -> [(Path,value)]
+mergeInlineTable t kvs = order ([([i],j) | (i,j) <- t] ++ kvs)
 
 
-    isAmbiguous = not . null . drop 1 . takeWhile (null . fst)
+order :: [(Path,value)] -> [(Path,value)]
+order = sortBy (comparing fst)
 
 
+-- | Throw an error with the problematic path if a duplicate is found.
 validateInlineTables :: Path -> Value -> Either Path ()
 validateInlineTables path (TableV t) =
   case findDuplicate (map fst t) of
-    Just k -> Left (reverse (k:path))
+    Just k  -> Left (reverse (k:path))
     Nothing -> traverse_ (\(k,v) -> validateInlineTables (k:path) v) t
 validateInlineTables path (ListV xs) =
-  zipWithM_ (\i x -> validateInlineTables (Text.pack (show i):path) x) [0::Int ..] xs
+  zipWithM_ (\i x -> validateInlineTables (Text.pack (show i):path) x)
+        [0::Int ..] xs
 validateInlineTables _ _ = Right ()
 
 
+-- | Find an entry that appears in the given list more than once.
 findDuplicate :: Ord a => [a] -> Maybe a
 findDuplicate = listToMaybe . map head . filter (not . null . tail) . group . sort

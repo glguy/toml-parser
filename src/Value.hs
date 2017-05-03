@@ -1,3 +1,11 @@
+{-|
+Module      : Value
+Description : Value type for TOML
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
+-}
+
 module Value where
 
 import Data.Text (Text)

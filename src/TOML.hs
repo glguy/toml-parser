@@ -1,7 +1,15 @@
+{-|
+Module      : TOML
+Description : Parser for the TOML configuration language
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
+-}
 module TOML
   ( Located(..)
   , Token(..)
-  , Error(..)
+  , TOMLError(..)
+  , LexerError(..)
   , Value(..)
   , parseTOML
   ) where
@@ -51,13 +59,14 @@ showToken t =
     EqualSign    -> "‘=’"
     TrueToken    -> "‘true’"
     FalseToken   -> "‘false’"
-    Error e      -> "lexical error: " ++ showError e
+    Error e      -> "lexical error: " ++ showLexerError e
     EOF          -> "end-of-file"
 
-showError :: Error -> String
-showError e =
+showLexerError :: LexerError -> String
+showLexerError e =
   case e of
     UntermString -> "unterminated string literal"
+    Unterminated t -> "unterminated " ++ showToken t
     BadEscape    -> "bad escape sequence"
     NoMatch c    -> "unexpected ‘" ++ [c] ++ "’"
 

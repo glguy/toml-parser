@@ -1,8 +1,16 @@
 {-# LANGUAGE BangPatterns #-}
--- | This module is separate from the Lexer.x input to Alex
--- to segregate the automatically generated code from the
--- hand written code. The automatically generated code
--- causes lots of warnings which mask the interesting warnings.
+{-|
+Module      : LexerUtils
+Description : Lexer support operations for TOML
+Copyright   : (c) Eric Mertens, 2017
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module is separate from the Lexer.x input to Alex
+to segregate the automatically generated code from the
+hand written code. The automatically generated code
+causes lots of warnings which mask the interesting warnings.
+-}
 module LexerUtils where
 
 import Data.Char            (isSpace, isControl, isAscii, ord, chr)
