@@ -26,6 +26,7 @@ $hexdigit       = [0-9a-fA-F]
 
 @barekey        = ($asciialpha | $digit | \_ | \-)+
 
+@newline        = \r? \n
 
 @fractpart      = $digit+ (\_ $digit+)*
 @integer        = [\-\+]? (0 | [1-9] $digit* (\_ $digit+)*)
@@ -61,40 +62,30 @@ $white+                 ;
 @day                    { token day                     }
 @barekey                { token BareKey                 }
 
-\' \' \' \n ?           { startString MLSQ              }
-\" \" \" \n ?           { startString MLDQ              }
-\'                      { startString SLSQ              }
-\"                      { startString SLDQ              }
+'''      @newline ?     { startString mlsq              }
+\" \" \" @newline ?     { startString mldq              }
+'                       { startString slsq              }
+\"                      { startString sldq              }
 }
 
-<mlsq> {
-\' \' \'                { endString                     }
-\n                      { emitChar' '\n'                }
-}
+<mlsq> '''              { endString                     }
+<mldq> \" \" \"         { endString                     }
+<slsq> '                { endString                     }
+<sldq> \"               { endString                     }
 
-<mldq> {
-\" \" \"                { endString                     }
-\n                      { emitChar' '\n'                }
-}
-
-<slsq> \'               { endString                     }
-
-<sldq> {
-\"                      { endString                     }
-}
-
+<mlsq,mldq> @newline    { emitChar                      }
 <sldq,mldq> {
-\\ b         { emitChar' '\b' }
-\\ t         { emitChar' '\t' }
-\\ n         { emitChar' '\n' }
-\\ f         { emitChar' '\f' }
-\\ r         { emitChar' '\r' }
-\\ \"        { emitChar' '"'  }
-\\ \\        { emitChar' '\\' }
-\\ u $hexdigit{4} { emitShortUnicode }
-\\ U $hexdigit{8} { emitLongUnicode }
-\\ \n $white *;
-\\           { token_ (Error BadEscape) }
+\\ b                    { emitChar' '\b'                }
+\\ t                    { emitChar' '\t'                }
+\\ n                    { emitChar' '\n'                }
+\\ f                    { emitChar' '\f'                }
+\\ r                    { emitChar' '\r'                }
+\\ \"                   { emitChar' '"'                 }
+\\ \\                   { emitChar' '\\'                }
+\\ u $hexdigit{4}       { emitShortUnicode              }
+\\ U $hexdigit{8}       { emitLongUnicode               }
+\\ @newline $white *;
+\\                      { token_ (Error BadEscape)      }
 }
 
 <sldq,slsq,mldq,mlsq> . { emitChar                      }
@@ -119,9 +110,6 @@ scanTokens str = go (Located startPos str) InNormal
 -- | Compute the Alex state corresponding to a particular 'LexerMode'
 stateToInt :: LexerMode -> Int
 stateToInt InNormal{}           = 0
-stateToInt (InString MLSQ _ _)  = mlsq
-stateToInt (InString MLDQ _ _)  = mldq
-stateToInt (InString SLSQ _ _)  = slsq
-stateToInt (InString SLDQ _ _)  = sldq
+stateToInt (InString mode _ _)  = mode
 
 }

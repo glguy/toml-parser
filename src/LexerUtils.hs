@@ -71,10 +71,7 @@ errorAction inp = [fmap (Error . NoMatch . Text.head) inp]
 -- are active.
 data LexerMode
   = InNormal
-  | InString !StringMode !Position String
-  deriving Show
-
-data StringMode = SLDQ | SLSQ | MLDQ | MLSQ
+  | InString !Int !Position String
   deriving Show
 
 -- | Type of actions used by lexer upon matching a rule
@@ -97,7 +94,7 @@ token_ = token . const
 ------------------------------------------------------------------------
 
 -- | Enter the string literal lexer
-startString :: StringMode -> Action
+startString :: Int -> Action
 startString mode _ input _ = (InString mode (locPosition input) [], [])
 
 emitChar :: Action
@@ -123,7 +120,7 @@ emitLongUnicode len input =
 endString :: Action
 endString _ _ mode =
   case mode of
-    InNormal -> error "PANIC: error in toml lexer"
+    InNormal -> error "PANIC: error in string literal lexer"
     InString _ p input ->
       (InNormal, [Located p (String (Text.pack (reverse input)))])
 
@@ -151,27 +148,19 @@ double str = Double n
 byteForChar :: Char -> Word8
 byteForChar c
   | isControl c && not (isSpace c) = 0
-  | isAscii c   = fromIntegral (ord c)
-  | otherwise   = 0
+  | isAscii c = fromIntegral (ord c)
+  | otherwise = 0
 
-timeParser :: ParseTime t => [String] -> Text -> t
-timeParser fmts txt = t
+timeParser :: ParseTime t => (t -> Token) -> String -> Text -> Token
+timeParser con fmt txt = con t
   where
-    Just t = asum [parseTimeM False defaultTimeLocale fmt (Text.unpack txt) | fmt <- fmts]
+    Just t = parseTimeM False defaultTimeLocale fmt (Text.unpack txt)
 
-zonedtime :: Text -> Token
-zonedtime = ZonedTimeTok . timeParser
-  [ iso8601DateFormat (Just "%H:%M:%S") ++ extra ++ "%Z"
-  | extra  <- ["%Q",""] ]
+timeFormat :: String
+timeFormat = "%T%Q" -- "hours:minutes:sections.fractional"
 
-localtime :: Text -> Token
-localtime = LocalTimeTok . timeParser
-  [ iso8601DateFormat (Just "%H:%M:%S") ++ extra
-  | extra <- ["%Q",""]]
-
-day :: Text -> Token
-day = DayTok . timeParser [ iso8601DateFormat Nothing ]
-
-timeofday :: Text -> Token
-timeofday = TimeOfDayTok . timeParser
-  [ "%H:%M:%S" ++ extra | extra <- ["%Q",""]]
+zonedtime, localtime, day, timeofday :: Text -> Token
+zonedtime = timeParser ZonedTimeTok (iso8601DateFormat (Just (timeFormat++"%Z")))
+localtime = timeParser LocalTimeTok (iso8601DateFormat (Just timeFormat))
+day       = timeParser DayTok       (iso8601DateFormat Nothing)
+timeofday = timeParser TimeOfDayTok timeFormat
