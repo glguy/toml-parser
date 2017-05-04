@@ -19,6 +19,7 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 homepage:            https://github.com/glguy/toml-parser
 bug-reports:         https://github.com/glguy/toml-parser/issues
+tested-with:         GHC==7.10.3, GHC==8.0.2, GHC==8.2.1
 
 source-repository head
   type: git
@@ -28,10 +29,10 @@ library
   exposed-modules:     TOML
   other-modules:       TOML.Tokens TOML.LexerUtils TOML.Lexer TOML.Errors
                        TOML.Parser TOML.Components TOML.Value TOML.Located
-  build-depends:       base  >=4.9 && <4.11,
+  build-depends:       base  >=4.8 && <4.11,
                        array >=0.5 && <0.6,
                        text  >=1.2 && <1.3,
-                       time  >=1.6 && <1.9
+                       time  >=1.5 && <1.9
   hs-source-dirs:      src
   build-tools:         alex, happy
   default-language:    Haskell2010
