@@ -23,6 +23,7 @@ cabal-dev
 *~
 .*.swo
 .*.swp
+.swp
 .DS_Store
 .hpc
 .hsenv

@@ -12,6 +12,11 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
+flag build-validator-harness
+  default: False
+  manual: True
+  description: Enable building of a test harness executable
+
 library
   exposed-modules:     TOML
   other-modules:       Tokens LexerUtils Components Lexer
@@ -23,3 +28,10 @@ library
   hs-source-dirs:      src
   build-tools:         alex, happy
   default-language:    Haskell2010
+
+executable toml-parser-validator
+  main-is:             Main.hs
+  hs-source-dirs:      validator
+  build-depends:       base, toml-parser, aeson, text, time, bytestring, containers
+  default-language:    Haskell2010
+  buildable:           False
