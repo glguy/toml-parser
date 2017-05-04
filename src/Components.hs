@@ -13,13 +13,14 @@ tables.
 -}
 module Components where
 
-import Control.Monad
-import Data.Maybe
-import Data.Text (Text)
-import Data.Foldable
+import           Control.Monad
+import           Data.Foldable
+import           Data.List
+import           Data.Maybe
+import           Data.Ord
+import           Data.Text (Text)
 import qualified Data.Text as Text
-import Data.Ord
-import Data.List
+
 import Value
 
 -- | Various top-level elements that can be returned by the TOML parser.
@@ -47,10 +48,10 @@ collapseComponents [] = []
 collapseComponents (InitialEntry kvs : xs) =
   [ ([k],v) | (k,v) <- kvs ] ++ collapseComponents xs
 collapseComponents (TableEntry k kvs : xs) =
-  (k, TableV kvs) : collapseComponents xs
+  (k, Table kvs) : collapseComponents xs
 collapseComponents xs@(ArrayEntry k _ : _) =
   case splitArrays k xs of
-    (kvss, xs') -> (k, ListV (map TableV kvss)) : collapseComponents xs'
+    (kvss, xs') -> (k, List (map Table kvss)) : collapseComponents xs'
 
 
 -- | Extract all of the leading 'ArrayEntry' components that match
@@ -82,14 +83,14 @@ flattenTableList = go [] . order
     go path xs = sequenceA [ flattenGroup path x ys | (x,ys) <- factorHeads xs ]
 
     flattenGroup :: Path -> Text -> [(Path,Value)] -> Either Path (Text,Value)
-    flattenGroup path k (([],TableV t):kvs) =
+    flattenGroup path k (([],Table t):kvs) =
       flattenGroup path k (mergeInlineTable t kvs)
     flattenGroup path k (([],v):rest)
       | null rest = (k,v) <$ validateInlineTables (k:path) v
       | otherwise = Left (reverse (k:path))
     flattenGroup path k kvs =
       do kvs' <- go (k:path) kvs
-         return (k, TableV kvs')
+         return (k, Table kvs')
 
 
 -- | Merge a table into the current list of path-value pairs. The
@@ -106,11 +107,11 @@ order = sortBy (comparing fst)
 
 -- | Throw an error with the problematic path if a duplicate is found.
 validateInlineTables :: Path -> Value -> Either Path ()
-validateInlineTables path (TableV t) =
+validateInlineTables path (Table t) =
   case findDuplicate (map fst t) of
     Just k  -> Left (reverse (k:path))
     Nothing -> traverse_ (\(k,v) -> validateInlineTables (k:path) v) t
-validateInlineTables path (ListV xs) =
+validateInlineTables path (List xs) =
   zipWithM_ (\i x -> validateInlineTables (Text.pack (show i):path) x)
         [0::Int ..] xs
 validateInlineTables _ _ = Right ()

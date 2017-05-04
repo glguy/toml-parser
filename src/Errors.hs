@@ -38,25 +38,25 @@ instance Exception TOMLError where
 showToken :: Token -> String
 showToken t =
   case t of
-    String{}     -> "string literal"
-    BareKey k    -> "table key ‘" ++ Text.unpack k ++ "’"
-    Integer i    -> "integer " ++ show i
-    Double d     -> "float " ++ show d
-    ZonedTimeTok dt -> "offset date-time " ++ show dt
-    LocalTimeTok dt -> "local data-time " ++ show dt
-    DayTok       dt -> "local date " ++ show dt
-    TimeOfDayTok dt -> "local time " ++ show dt
-    Comma        -> "‘,’"
-    Period       -> "‘.’"
-    LeftBracket  -> "‘[’"
-    RightBracket -> "‘]’"
-    LeftBrace    -> "‘{’"
-    RightBrace   -> "‘}’"
-    EqualSign    -> "‘=’"
-    TrueToken    -> "‘true’"
-    FalseToken   -> "‘false’"
-    Error e      -> "lexical error: " ++ showLexerError e
-    EOF          -> "end-of-file"
+    StringToken{}     -> "string literal"
+    BareKeyToken k    -> "table key ‘" ++ Text.unpack k ++ "’"
+    IntegerToken i    -> "integer " ++ show i
+    DoubleToken d     -> "float " ++ show d
+    ZonedTimeToken dt -> "offset date-time " ++ show dt
+    LocalTimeToken dt -> "local data-time " ++ show dt
+    DayToken       dt -> "local date " ++ show dt
+    TimeOfDayToken dt -> "local time " ++ show dt
+    CommaToken        -> "‘,’"
+    PeriodToken       -> "‘.’"
+    LeftBracketToken  -> "‘[’"
+    RightBracketToken -> "‘]’"
+    LeftBraceToken    -> "‘{’"
+    RightBraceToken   -> "‘}’"
+    EqualToken        -> "‘=’"
+    TrueToken         -> "‘true’"
+    FalseToken        -> "‘false’"
+    ErrorToken e      -> "lexical error: " ++ showLexerError e
+    EofToken          -> "end-of-file"
 
 -- | Generates a human-readable description of a lexical error.
 showLexerError :: LexerError -> String

@@ -10,16 +10,16 @@ Maintainer  : emertens@gmail.com
 module Value where
 
 import Data.Text (Text)
-import Data.Time
+import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 
 -- | Values possible in a TOML file
 data Value
-  = TableV     [(Text,Value)] -- ^ table
-  | ListV      [Value]        -- ^ array
-  | DoubleV    !Double        -- ^ floating-point literal
-  | IntegerV   !Integer       -- ^ integer literal
-  | StringV    !Text          -- ^ string literal
-  | BoolV      Bool           -- ^ boolean literal
+  = Table      [(Text,Value)] -- ^ table, key-value pairs
+  | List       [Value]        -- ^ array
+  | Double     !Double        -- ^ floating-point literal
+  | Integer    !Integer       -- ^ integer literal
+  | String     !Text          -- ^ string literal
+  | Bool       Bool           -- ^ boolean literal
   | ZonedTimeV !ZonedTime     -- ^ offset date-time
   | LocalTimeV !LocalTime     -- ^ local date-time
   | DayV       !Day           -- ^ local date

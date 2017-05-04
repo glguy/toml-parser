@@ -15,30 +15,31 @@ module Tokens
 
 import Data.Text (Text)
 import Data.Time
-import Located
+
 
 -- | The token type used by "Config.Lexer" and "Config.Parser"
 data Token
-  = String       Text      -- ^ string literal
-  | BareKey      Text      -- ^ bare table key
-  | Integer      Integer   -- ^ integer literal
-  | Double       Double    -- ^ floating   -point literal
-  | ZonedTimeTok ZonedTime -- ^ offset data-time
-  | LocalTimeTok LocalTime -- ^ local date -time
-  | TimeOfDayTok TimeOfDay -- ^ local time
-  | DayTok       Day       -- ^ local date
-  | Comma                  -- ^ @,@
-  | Period                 -- ^ @.@
-  | LeftBracket            -- ^ @[@
-  | RightBracket           -- ^ @[@
-  | LeftBrace              -- ^ @{@
-  | RightBrace             -- ^ @}@
-  | EqualSign              -- ^ @=@
-  | TrueToken              -- ^ @true@
-  | FalseToken             -- ^ @false@
-  | Error LexerError       -- ^ lexical error
-  | EOF                    -- ^ end        -of-file
+  = StringToken  Text        -- ^ string literal
+  | BareKeyToken Text        -- ^ bare table key
+  | IntegerToken Integer     -- ^ integer literal
+  | DoubleToken  Double      -- ^ floating   -point literal
+  | ZonedTimeToken ZonedTime -- ^ offset date-time
+  | LocalTimeToken LocalTime -- ^ local date-time
+  | TimeOfDayToken TimeOfDay -- ^ local time
+  | DayToken     Day         -- ^ local date
+  | CommaToken               -- ^ @,@
+  | PeriodToken              -- ^ @.@
+  | LeftBracketToken         -- ^ @[@
+  | RightBracketToken        -- ^ @[@
+  | LeftBraceToken           -- ^ @{@
+  | RightBraceToken          -- ^ @}@
+  | EqualToken               -- ^ @=@
+  | TrueToken                -- ^ @true@
+  | FalseToken               -- ^ @false@
+  | ErrorToken LexerError    -- ^ lexical error
+  | EofToken                 -- ^ end-of-file
   deriving (Read, Show)
+
 
 -- | Errors possible in the course of lexing
 data LexerError

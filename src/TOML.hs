@@ -24,6 +24,9 @@ module TOML
   , Token(..)
   ) where
 
+import Control.Monad
+import Data.Text (Text)
+
 import Components
 import Errors
 import Lexer
@@ -31,9 +34,6 @@ import Located
 import Parser
 import Tokens
 import Value
-
-import Control.Monad
-import Data.Text (Text)
 
 -- | Parse the given TOML file. Returns the top-level table or an error.
 parseTOML :: Text -> Either TOMLError [(Text,Value)]

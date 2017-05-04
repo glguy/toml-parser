@@ -19,37 +19,40 @@ module LexerUtils
 
   -- * Lexer modes
   , LexerMode(..)
+  , lexerModeInt
+
+  -- * Lexer actions
   , Action
+  , token
+  , token_
   , errorAction
   , eofAction
 
-  -- * Token helpers
-  , token
-  , token_
+  -- * Token parsers
   , integer
   , double
+  , bareKeyToken
 
-  -- * String literal processing
+  -- * String literal actions
   , startString
   , emitChar
   , emitChar'
   , emitUnicodeChar
   , endString
 
-  -- * Date/time parsers
+  -- * Date/time token parsers
   , localtime
   , zonedtime
   , day
   , timeofday
   ) where
 
-import Data.Char            (isSpace, isControl, isAscii, ord, chr)
-import Data.Foldable        (asum)
-import Data.Text            (Text)
-import Data.Time
-import Data.Word            (Word8)
+import           Data.Char (isSpace, isControl, isAscii, ord, chr)
+import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Read as Text
+import           Data.Time (ParseTime, parseTimeOrError, defaultTimeLocale, iso8601DateFormat)
+import           Data.Word (Word8)
 
 import Tokens
 import Located
@@ -65,9 +68,18 @@ type AlexInput = Located Text
 alexGetByte :: AlexInput -> Maybe (Word8,AlexInput)
 alexGetByte (Located p cs)
   = do (c,cs') <- Text.uncons cs
-       let !b = byteForChar c
+       let !b   = byteForChar c
            !inp = Located (move p c) cs'
        return (b, inp)
+
+-- | The TOML format doesn't distinguish between any of the non-ASCII
+-- characters. This function extracts the printable and whitespace
+-- subset of Unicode and maps it to the ASCII value as used by Alex.
+byteForChar :: Char -> Word8
+byteForChar c
+  | isControl c && not (isSpace c) = 0
+  | isAscii c = fromIntegral (ord c)
+  | otherwise = 0
 
 ------------------------------------------------------------------------
 
@@ -78,17 +90,6 @@ move (Position ix line column) c =
     '\t' -> Position (ix + 1) line (((column + 7) `div` 8) * 8 + 1)
     '\n' -> Position (ix + 1) (line + 1) 1
     _    -> Position (ix + 1) line (column + 1)
-
--- | Action to perform upon end of file. Produce errors if EOF was unexpected.
-eofAction :: Position -> LexerMode -> [Located Token]
-eofAction eofPosn st =
-  case st of
-    InString _ posn _ -> [Located posn (Error UntermString)]
-    InNormal          -> [Located eofPosn EOF]
-
--- | Action to perform when lexer gets stuck. Emits an error.
-errorAction :: AlexInput -> [Located Token]
-errorAction inp = [fmap (Error . NoMatch . Text.head) inp]
 
 ------------------------------------------------------------------------
 -- Lexer Modes
@@ -101,11 +102,23 @@ data LexerMode
     -- ^ alex-mode, starting-position, reversed accumulated characters
   deriving Show
 
+
+-- | Compute the Alex state corresponding to a particular 'LexerMode'
+lexerModeInt :: LexerMode -> Int
+lexerModeInt InNormal{}           = 0
+lexerModeInt (InString mode _ _)  = mode
+
+
+------------------------------------------------------------------------
+-- Lexer actions
+------------------------------------------------------------------------
+
 -- | Type of actions used by lexer upon matching a rule
 type Action =
   Located Text                 {- ^ located lexeme                     -} ->
   LexerMode                    {- ^ lexer mode                         -} ->
   (LexerMode, [Located Token]) {- ^ updated lexer mode, emitted tokens -}
+
 
 -- | Helper function for building an 'Action' using the lexeme
 token :: (Text -> Token) {- ^ lexeme -> token -} -> Action
@@ -115,8 +128,19 @@ token f match st = (st, [fmap f match])
 token_ :: Token -> Action
 token_ = token . const
 
+-- | Action to perform upon end of file. Produce errors if EOF was unexpected.
+eofAction :: Position -> LexerMode -> [Located Token]
+eofAction eofPosn st =
+  case st of
+    InString _ posn _ -> [Located posn (ErrorToken UntermString)]
+    InNormal          -> [Located eofPosn EofToken]
+
+-- | Action to perform when lexer gets stuck. Emits an error.
+errorAction :: AlexInput -> [Located Token]
+errorAction inp = [fmap (ErrorToken . NoMatch . Text.head) inp]
+
 ------------------------------------------------------------------------
--- Alternative modes
+-- String literal mode actions
 ------------------------------------------------------------------------
 
 -- | Enter the string literal lexer
@@ -145,7 +169,7 @@ emitUnicodeChar lexeme mode =
   case Text.hexadecimal (Text.drop 2 (locThing lexeme)) of
     Right (n, _)
       | n < 0x110000 -> emitChar' (chr n) lexeme mode
-      | otherwise    -> (InNormal, [Located (locPosition lexeme) (Error BadEscape)])
+      | otherwise    -> (InNormal, [Located (locPosition lexeme) (ErrorToken BadEscape)])
     _ -> error "PANIC: bad unicode unescape implementation"
 
 
@@ -156,7 +180,7 @@ endString _ mode =
     InNormal -> error "PANIC: error in string literal lexer"
     InString _ p input ->
       let !str = Text.pack (reverse input)
-      in (InNormal, [Located p (String str)])
+      in (InNormal, [Located p (StringToken str)])
 
 ------------------------------------------------------------------------
 -- Token builders
@@ -164,26 +188,23 @@ endString _ mode =
 
 -- | Construct a 'Integer' token from a lexeme.
 integer :: Text {- ^ lexeme -} -> Token
-integer str = Integer n
+integer str = IntegerToken n
   where
   Right (n,_) = Text.signed Text.decimal (Text.filter (/= '_') str)
 
 
 -- | Construct a 'Double' token from a lexeme.
 double :: Text {- ^ lexeme -} -> Token
-double str = Double n
+double str = DoubleToken n
   where
   Right (n,_) = Text.signed Text.double (Text.filter (/= '_') str)
 
 
--- | The TOML format doesn't distinguish between any of the non-ASCII
--- characters. This function extracts the printable and whitespace
--- subset of Unicode and maps it to the ASCII value as used by Alex.
-byteForChar :: Char -> Word8
-byteForChar c
-  | isControl c && not (isSpace c) = 0
-  | isAscii c = fromIntegral (ord c)
-  | otherwise = 0
+-- | Construct a 'BareKeyToken' for the given lexeme. This operation
+-- copies the lexeme into a fresh 'Text' value to ensure that a slice
+-- of the original source file is kept.
+bareKeyToken :: Text {- ^ lexeme -} -> Token
+bareKeyToken txt = BareKeyToken $! Text.copy txt
 
 ------------------------------------------------------------------------
 -- Date and time token parsers
@@ -209,7 +230,7 @@ timeFormat = "%T%Q"
 
 -- | Date and time lexeme parsers
 zonedtime, localtime, day, timeofday :: Text -> Token
-zonedtime = timeParser ZonedTimeTok (iso8601DateFormat (Just timeFormat)++"%Z")
-localtime = timeParser LocalTimeTok (iso8601DateFormat (Just timeFormat))
-day       = timeParser DayTok       (iso8601DateFormat Nothing)
-timeofday = timeParser TimeOfDayTok timeFormat
+zonedtime = timeParser ZonedTimeToken (iso8601DateFormat (Just timeFormat)++"%Z")
+localtime = timeParser LocalTimeToken (iso8601DateFormat (Just timeFormat))
+day       = timeParser DayToken       (iso8601DateFormat Nothing)
+timeofday = timeParser TimeOfDayToken timeFormat
