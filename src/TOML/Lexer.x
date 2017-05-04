@@ -22,14 +22,13 @@ import           TOML.Located
 
 }
 
-$asciialpha     = [A-Z a-z]
+$alpha          = [A-Z a-z]
 $digit          = [0-9]
-$octdigit       = [0-7]
-$hexdigit       = [0-9a-fA-F]
+$hexdigit       = [0-9 a-f A-F]
 
 @decimal        = $digit+
 
-@barekey        = ($asciialpha | $digit | \_ | \-)+
+@barekey        = ($alpha | $digit | \_ | \-)+
 
 @newline        = \r? \n
 
@@ -38,10 +37,10 @@ $hexdigit       = [0-9a-fA-F]
 @double         = @integer (\. @fractpart)? ([eE] @integer)?
 
 
-@day            = @decimal \- $digit{2} \- $digit{2}
-@timeofday      = @decimal \: @decimal \: @decimal (\. @decimal)?
+@day            = $digit+   \- $digit{2} \- $digit{2}
+@timeofday      = $digit{2} \: $digit{2} \: $digit{2} (\. $digit*)?
 @localtime      = @day T @timeofday
-@zonedtime      = @localtime ( [a-zA-Z] | [\+\-] $digit{2} \:? $digit{2} )
+@zonedtime      = @localtime ( $alpha | [\+\-] $digit{2} \:? $digit{2} )
 
 
 toml :-
