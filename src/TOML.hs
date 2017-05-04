@@ -35,7 +35,8 @@ import TOML.Parser
 import TOML.Tokens
 import TOML.Value
 
--- | Parse the given TOML file. Returns the top-level table or an error.
+-- | Parse the given TOML file. Returns the top-level table as a list of
+-- key-value pairs or returns an error.
 parseTOML :: Text -> Either TOMLError [(Text,Value)]
 parseTOML = mapLeft OverlappingKey . componentsToTable
         <=< parseComponents . scanTokens
