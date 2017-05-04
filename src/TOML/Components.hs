@@ -1,5 +1,5 @@
 {-|
-Module      : Components
+Module      : TOML.Components
 Description : /Internal:/ Type and operations for raw top-level TOML elements
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
@@ -11,7 +11,7 @@ module gathers those together in the form of tables and lists of
 tables.
 
 -}
-module Components where
+module TOML.Components where
 
 import           Control.Monad
 import           Data.Foldable
@@ -21,7 +21,7 @@ import           Data.Ord
 import           Data.Text (Text)
 import qualified Data.Text as Text
 
-import Value
+import           TOML.Value
 
 -- | Various top-level elements that can be returned by the TOML parser.
 data Component

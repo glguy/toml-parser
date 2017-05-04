@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-|
-Module      : LexerUtils
+Module      : TOML.LexerUtils
 Description : /Internal:/ Lexer support operations for TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
@@ -11,7 +11,7 @@ to segregate the automatically generated code from the
 hand written code. The automatically generated code
 causes lots of warnings which mask the interesting warnings.
 -}
-module LexerUtils
+module TOML.LexerUtils
   (
   -- * Alex required definitions
     AlexInput
@@ -54,8 +54,8 @@ import qualified Data.Text.Read as Text
 import           Data.Time (ParseTime, parseTimeOrError, defaultTimeLocale, iso8601DateFormat)
 import           Data.Word (Word8)
 
-import Tokens
-import Located
+import           TOML.Tokens
+import           TOML.Located
 
 ------------------------------------------------------------------------
 -- Custom Alex wrapper - these functions are used by generated code

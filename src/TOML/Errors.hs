@@ -1,19 +1,19 @@
 {-|
-Module      : Errors
+Module      : TOML.Errors
 Description : /Internal:/ Errors that can occur while processing TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
 -}
-module Errors where
+module TOML.Errors where
 
 import           Control.Exception
 import           Data.List
 import           Data.Text (Text)
 import qualified Data.Text as Text
 
-import           Tokens
-import           Located
+import           TOML.Tokens
+import           TOML.Located
 
 -- | Errors that can occur while loading a TOML file.
 data TOMLError

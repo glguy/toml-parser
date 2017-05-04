@@ -1,12 +1,12 @@
 {-# Language DeriveTraversable #-}
 {-|
-Module      : Located
+Module      : TOML.Located
 Description : /Internal:/ Wrapper for tracking text-file location of things
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
 -}
-module Located where
+module TOML.Located where
 
 -- | A position in a text file
 data Position = Position

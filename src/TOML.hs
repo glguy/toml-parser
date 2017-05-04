@@ -27,13 +27,13 @@ module TOML
 import Control.Monad
 import Data.Text (Text)
 
-import Components
-import Errors
-import Lexer
-import Located
-import Parser
-import Tokens
-import Value
+import TOML.Components
+import TOML.Errors
+import TOML.Lexer
+import TOML.Located
+import TOML.Parser
+import TOML.Tokens
+import TOML.Value
 
 -- | Parse the given TOML file. Returns the top-level table or an error.
 parseTOML :: Text -> Either TOMLError [(Text,Value)]

@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 {-|
-Module      : Value
+Module      : TOML.Value
 Description : /Internal:/ Value type for TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
 Maintainer  : emertens@gmail.com
 -}
 
-module Value where
+module TOML.Value where
 
 import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)

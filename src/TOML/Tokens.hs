@@ -1,5 +1,5 @@
 {-|
-Module      : Tokens
+Module      : TOML.Tokens
 Description : Internal: Token type and operations for TOML
 Copyright   : (c) Eric Mertens, 2017
 License     : ISC
@@ -8,7 +8,7 @@ Maintainer  : emertens@gmail.com
 This module provides the token type used in the lexer and
 parser and provides the extra pass to insert layout tokens.
 -}
-module Tokens
+module TOML.Tokens
   ( Token(..)
   , LexerError(..)
   ) where
