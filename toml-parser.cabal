@@ -15,7 +15,7 @@ maintainer:          emertens@gmail.com
 copyright:           2017 Eric Mertens
 category:            Language
 build-type:          Simple
-extra-source-files:  ChangeLog.md
+extra-source-files:  ChangeLog.md README.md
 cabal-version:       >=1.10
 homepage:            https://github.com/glguy/toml-parser
 bug-reports:         https://github.com/glguy/toml-parser/issues
