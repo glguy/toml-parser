@@ -13,7 +13,7 @@ import           Data.Time
 import           TOML
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as B
-import qualified Data.Map as Map
+import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text.IO as Text
 
 main =
