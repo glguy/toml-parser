@@ -11,11 +11,6 @@ This implementation uses Alex and Happy to generate an efficient lexer
 and parser. The code is fully commented and should be useful as an example
 of how to use these tools to parse other languages.
 
-Currently the package provides a consistent view of the reified declaration
-information about datatypes, newtypes, data families, and newtype families.
-These interfaces abstract away the differences in the normal and GADT syntax
-used to define these types.
-
 Example
 -------
 
