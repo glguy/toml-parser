@@ -29,10 +29,10 @@ library
   exposed-modules:     TOML
   other-modules:       TOML.Tokens TOML.LexerUtils TOML.Lexer TOML.Errors
                        TOML.Parser TOML.Components TOML.Value TOML.Located
-  build-depends:       base  >=4.8 && <4.14,
+  build-depends:       base  >=4.8 && <4.15,
                        array >=0.5 && <0.6,
                        text  >=1.2 && <1.3,
-                       time  >=1.5 && <1.10
+                       time  >=1.5 && <1.11
   hs-source-dirs:      src
   build-tools:         alex, happy
   default-language:    Haskell2010
