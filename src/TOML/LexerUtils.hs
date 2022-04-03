@@ -51,7 +51,13 @@ import           Data.Char (isSpace, isControl, isAscii, ord, chr)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Read as Text
-import           Data.Time (ParseTime, parseTimeOrError, defaultTimeLocale, iso8601DateFormat)
+import           Data.Time ( LocalTime (..)
+                           , ParseTime
+                           , ZonedTime (..)
+                           , parseTimeOrError
+                           , defaultTimeLocale
+                           , iso8601DateFormat
+                           )
 import           Data.Word (Word8)
 
 import           TOML.Tokens
@@ -228,9 +234,13 @@ timeFormat :: String
 timeFormat = "%T%Q"
 
 
+normalizeDateTime :: Text -> Text
+normalizeDateTime = Text.map (\c -> if c `elem` "Tt " then 'T' else c)
+
+
 -- | Date and time lexeme parsers
 zonedtime, localtime, day, timeofday :: Text -> Token
-zonedtime = timeParser ZonedTimeToken (iso8601DateFormat (Just timeFormat)++"%Z")
-localtime = timeParser LocalTimeToken (iso8601DateFormat (Just timeFormat))
+zonedtime = timeParser ZonedTimeToken (iso8601DateFormat (Just timeFormat)++"%Z") . normalizeDateTime
+localtime = timeParser LocalTimeToken (iso8601DateFormat (Just timeFormat)) . normalizeDateTime
 day       = timeParser DayToken       (iso8601DateFormat Nothing)
 timeofday = timeParser TimeOfDayToken timeFormat
