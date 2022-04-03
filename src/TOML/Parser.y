@@ -17,6 +17,7 @@ import Data.Text (Text,pack)
 import TOML.Components
 import TOML.Errors
 import TOML.Located
+import TOML.ParserUtils
 import TOML.Tokens
 import TOML.Value
 
@@ -124,20 +125,11 @@ inlinearrayR ::                 { [Value]                       }
 
 {
 
--- | This operation is called by happy when no production matches the
--- current token list.
-errorP :: [Located Token] {- ^ nonempty remainig tokens -} -> Either TOMLError a
-errorP = Left . Unexpected . head
-
 -- | Attempt to parse a layout annotated token stream or
 -- the token that caused the parse to fail.
 parseComponents ::
   [Located Token]              {- ^ layout annotated token stream -} ->
   Either TOMLError [Component] {- ^ token at failure or result -}
 parseComponents = components
-
--- | Abort the parse with an error indicating that the given token was unmatched.
-unterminated :: Located Token -> Either TOMLError a
-unterminated = Left . Unterminated
 
 }
