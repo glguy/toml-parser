@@ -1,0 +1,41 @@
+on: push
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # TODO: add GHC 9.0 + 9.2 support
+        ghc: ['8.8', '8.10']
+
+    name: Validate toml-parser on GHC ${{ matrix.ghc }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: haskell/actions/setup@v1
+        with:
+          ghc-version: ${{ matrix.ghc }}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+          key: ${{ runner.os }}-cabal-cache
+
+      - name: Build
+        run: cabal v2-update && cabal v2-install validator
+
+      - name: Install toml-test
+        run: |
+          FILE=toml-test-v1.1.0-linux-amd64
+          curl -sSLO "https://github.com/BurntSushi/toml-test/releases/download/v1.1.0/${FILE}.gz"
+          gunzip "${FILE}.gz"
+          chmod +x "${FILE}"
+          mv "${FILE}" /usr/local/bin/toml-test
+
+      - name: Validate
+        run: |
+          PATH=~/.cabal/bin:$PATH
+          toml-test toml-parser-validator
