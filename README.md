@@ -4,7 +4,9 @@ toml-parser
 [![Hackage](https://img.shields.io/hackage/v/toml-parser.svg)](https://hackage.haskell.org/package/toml-parser) [![Build Status](https://secure.travis-ci.org/glguy/toml-parser.png?branch=master)](http://travis-ci.org/glguy/toml-parser)
 
 This package provides a complete and light-weight parser for the TOML
-configuration language. TOML is specified by <https://github.com/toml-lang/toml>.
+configuration language. This package adheres to the v1.0.0 spec, as validated
+by [`toml-test`](https://github.com/BurntSushi/toml-test).
+TOML is specified by <https://github.com/toml-lang/toml>.
 This language is designed to be easy to understand and unambiguous.
 
 This implementation uses Alex and Happy to generate an efficient lexer
