@@ -195,9 +195,9 @@ integer str = IntegerToken n
 
 -- | Construct a 'Double' token from a lexeme.
 double :: Text {- ^ lexeme -} -> Token
-double str = DoubleToken n
+double str = DoubleToken $ fromRational n
   where
-  Right (n,_) = Text.signed Text.double (Text.filter (/= '_') str)
+  Right (n,_) = Text.rational (Text.filter (/= '_') str)
 
 
 -- | Construct a 'BareKeyToken' for the given lexeme. This operation
