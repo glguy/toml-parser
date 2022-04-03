@@ -39,7 +39,7 @@ $hexdigit       = [0-9 a-f A-F]
 
 @day            = $digit+   \- $digit{2} \- $digit{2}
 @timeofday      = $digit{2} \: $digit{2} \: $digit{2} (\. $digit*)?
-@localtime      = @day T @timeofday
+@localtime      = @day (T | t | $white) @timeofday
 @zonedtime      = @localtime ( $alpha | [\+\-] $digit{2} \:? $digit{2} )
 
 
