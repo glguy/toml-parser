@@ -1,0 +1,30 @@
+on: push
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cabal/packages
+            ~/.cabal/store
+          key: ${{ runner.os }}-cabal-cache
+
+      - name: Build
+        run: cabal v2-update && cabal v2-install validator
+
+      - name: Install toml-test
+        run: |
+          FILE=toml-test-v1.1.0-linux-amd64
+          curl -sSLO "https://github.com/BurntSushi/toml-test/releases/download/v1.1.0/${FILE}.gz"
+          gunzip "${FILE}.gz"
+          chmod +x "${FILE}"
+          mv "${FILE}" /usr/local/bin/toml-test
+
+      - name: Validate
+        run: |
+          PATH=~/.cabal/bin:$PATH
+          toml-test toml-parser-validator
