@@ -24,6 +24,8 @@ import           TOML.Located
 
 $alpha          = [A-Z a-z]
 $digit          = [0-9]
+$bindigit       = [0-1]
+$octdigit       = [0-7]
 $hexdigit       = [0-9 a-f A-F]
 
 @decimal        = $digit+
@@ -34,6 +36,9 @@ $hexdigit       = [0-9 a-f A-F]
 
 @fractpart      = $digit+ (\_ $digit+)*
 @integer        = [\-\+]? (0 | [1-9] $digit* (\_ $digit+)*)
+@bin_int        = 0 b $bindigit+ (\_ $bindigit+)*
+@oct_int        = 0 o $octdigit+ (\_ $octdigit+)*
+@hex_int        = 0 x $hexdigit+ (\_ $hexdigit+)*
 @double         = @integer (\. @fractpart)? ([eE] [\-\+]? $digit+ (\_ $digit+)*)?
 @inf            = [\-\+]? "inf"
 @nan            = [\-\+]? "nan"
@@ -59,6 +64,9 @@ $white+                 ;
 "."                     { token_ PeriodToken            }
 "="                     { token_ EqualToken             }
 @integer                { token integer                 }
+@bin_int                { token prefixedInt             }
+@oct_int                { token prefixedInt             }
+@hex_int                { token prefixedInt             }
 @double                 { token double                  }
 @inf                    { token InfToken                }
 @nan                    { token NanToken                }

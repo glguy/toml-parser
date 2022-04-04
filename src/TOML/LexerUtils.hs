@@ -30,6 +30,7 @@ module TOML.LexerUtils
 
   -- * Token parsers
   , integer
+  , prefixedInt
   , double
   , bareKeyToken
 
@@ -48,6 +49,7 @@ module TOML.LexerUtils
   ) where
 
 import           Data.Char (isSpace, isControl, isAscii, ord, chr)
+import           Data.List (foldl')
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Read as Text
@@ -59,6 +61,7 @@ import           Data.Time ( LocalTime (..)
                            , iso8601DateFormat
                            )
 import           Data.Word (Word8)
+import           Text.Read (readMaybe)
 
 import           TOML.Tokens
 import           TOML.Located
@@ -197,6 +200,21 @@ integer :: Text {- ^ lexeme -} -> Token
 integer str = IntegerToken n
   where
   Right (n,_) = Text.signed Text.decimal (Text.filter (/= '_') str)
+
+
+prefixedInt :: Text -> Token
+prefixedInt str =
+  IntegerToken $
+    case Text.unpack $ Text.filter (/= '_') str of
+      '0':'b':s | Just x <- fromBinary s -> x
+      s@('0':'o':_) | Just x <- readMaybe s -> x
+      s@('0':'x':_) | Just x <- readMaybe s -> x
+      s -> error $ "Could not parse prefixed integer: " ++ s
+  where
+    fromBinary = fmap (foldl' (\acc x -> 2 * acc + x) 0) . mapM fromBinaryChar
+    fromBinaryChar '0' = Just 0
+    fromBinaryChar '1' = Just 1
+    fromBinaryChar _ = Nothing
 
 
 -- | Construct a 'Double' token from a lexeme.
