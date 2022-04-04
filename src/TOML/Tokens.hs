@@ -34,6 +34,8 @@ data Token
   | LeftBraceToken           -- ^ @{@
   | RightBraceToken          -- ^ @}@
   | EqualToken               -- ^ @=@
+  | InfToken Text            -- ^ @inf@, @-inf@, @+inf@
+  | NanToken Text            -- ^ @nan@, @-nan@, @+nan@
   | TrueToken                -- ^ @true@
   | FalseToken               -- ^ @false@
   | ErrorToken LexerError    -- ^ lexical error

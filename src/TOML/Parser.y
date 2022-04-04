@@ -29,6 +29,8 @@ STRING                          { Located _ (StringToken $$)    }
 BAREKEY                         { Located _ (BareKeyToken $$)   }
 INTEGER                         { Located _ (IntegerToken $$)   }
 DOUBLE                          { Located _ (DoubleToken $$)    }
+INF                             { Located _ InfToken{}          }
+NAN                             { Located _ NanToken{}          }
 'true'                          { Located _ TrueToken           }
 'false'                         { Located _ FalseToken          }
 '['                             { $$@(Located _ LeftBracketToken)}
@@ -86,12 +88,16 @@ key ::                          { Text                          }
   : BAREKEY                     { $1                            }
   | STRING                      { $1                            }
   | INTEGER                     { pack (show $1)                }
+  | INF                         {% getInfKey $1                 }
+  | NAN                         {% getNanKey $1                 }
   | 'true'                      { pack "true"                   }
   | 'false'                     { pack "false"                  }
 
 value ::                        { Value                         }
   : INTEGER                     { Integer    $1                 }
   | DOUBLE                      { Double     $1                 }
+  | INF                         { getInfValue $1                }
+  | NAN                         { getNanValue $1                }
   | STRING                      { String     $1                 }
   | ZONEDTIME                   { ZonedTimeV $1                 }
   | TIMEOFDAY                   { TimeOfDayV $1                 }

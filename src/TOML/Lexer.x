@@ -35,6 +35,8 @@ $hexdigit       = [0-9 a-f A-F]
 @fractpart      = $digit+ (\_ $digit+)*
 @integer        = [\-\+]? (0 | [1-9] $digit* (\_ $digit+)*)
 @double         = @integer (\. @fractpart)? ([eE] @integer)?
+@inf            = [\-\+]? "inf"
+@nan            = [\-\+]? "nan"
 
 
 @day            = $digit+   \- $digit{2} \- $digit{2}
@@ -58,6 +60,8 @@ $white+                 ;
 "="                     { token_ EqualToken             }
 @integer                { token integer                 }
 @double                 { token double                  }
+@inf                    { token InfToken                }
+@nan                    { token NanToken                }
 "true"                  { token_ TrueToken              }
 "false"                 { token_ FalseToken             }
 @localtime              { token localtime               }

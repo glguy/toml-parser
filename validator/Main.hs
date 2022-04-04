@@ -31,7 +31,7 @@ convertValue v =
   case v of
     List       x -> A.toJSON (map convertValue x)
     Table      x -> convertTable x
-    Double     x -> convertLeaf "float" (show x)
+    Double     x -> convertLeaf "float" (showFloat x)
     Integer    x -> convertLeaf "integer" (show x)
     String     x -> convertLeaf "string" x
     Bool       x -> convertLeaf "bool" (if x then "true" else "false")
@@ -39,6 +39,12 @@ convertValue v =
     LocalTimeV x -> convertLeaf "datetime-local" (iso8601Show x)
     DayV       x -> convertLeaf "date-local" (iso8601Show x)
     TimeOfDayV x -> convertLeaf "time-local" (iso8601Show x)
+
+showFloat :: Double -> String
+showFloat x
+  | isNaN x = "nan"
+  | isInfinite x = if x < 0 then "-inf" else "inf"
+  | otherwise = show x
 
 convertLeaf :: A.ToJSON a => String -> a -> A.Value
 convertLeaf tyname val =
