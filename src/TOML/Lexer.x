@@ -34,7 +34,7 @@ $hexdigit       = [0-9 a-f A-F]
 
 @fractpart      = $digit+ (\_ $digit+)*
 @integer        = [\-\+]? (0 | [1-9] $digit* (\_ $digit+)*)
-@double         = @integer (\. @fractpart)? ([eE] @integer)?
+@double         = @integer (\. @fractpart)? ([eE] [\-\+]? $digit+ (\_ $digit+)*)?
 @inf            = [\-\+]? "inf"
 @nan            = [\-\+]? "nan"
 
