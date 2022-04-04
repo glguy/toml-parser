@@ -17,6 +17,7 @@ import Data.Text (Text,pack)
 import TOML.Components
 import TOML.Errors
 import TOML.Located
+import TOML.ParserUtils
 import TOML.Tokens
 import TOML.Value
 
@@ -28,6 +29,8 @@ STRING                          { Located _ (StringToken $$)    }
 BAREKEY                         { Located _ (BareKeyToken $$)   }
 INTEGER                         { Located _ (IntegerToken $$)   }
 DOUBLE                          { Located _ (DoubleToken $$)    }
+INF                             { Located _ InfToken{}          }
+NAN                             { Located _ NanToken{}          }
 'true'                          { Located _ TrueToken           }
 'false'                         { Located _ FalseToken          }
 '['                             { $$@(Located _ LeftBracketToken)}
@@ -85,12 +88,16 @@ key ::                          { Text                          }
   : BAREKEY                     { $1                            }
   | STRING                      { $1                            }
   | INTEGER                     { pack (show $1)                }
+  | INF                         {% getInfKey $1                 }
+  | NAN                         {% getNanKey $1                 }
   | 'true'                      { pack "true"                   }
   | 'false'                     { pack "false"                  }
 
 value ::                        { Value                         }
   : INTEGER                     { Integer    $1                 }
   | DOUBLE                      { Double     $1                 }
+  | INF                         { getInfValue $1                }
+  | NAN                         { getNanValue $1                }
   | STRING                      { String     $1                 }
   | ZONEDTIME                   { ZonedTimeV $1                 }
   | TIMEOFDAY                   { TimeOfDayV $1                 }
@@ -124,20 +131,11 @@ inlinearrayR ::                 { [Value]                       }
 
 {
 
--- | This operation is called by happy when no production matches the
--- current token list.
-errorP :: [Located Token] {- ^ nonempty remainig tokens -} -> Either TOMLError a
-errorP = Left . Unexpected . head
-
 -- | Attempt to parse a layout annotated token stream or
 -- the token that caused the parse to fail.
 parseComponents ::
   [Located Token]              {- ^ layout annotated token stream -} ->
   Either TOMLError [Component] {- ^ token at failure or result -}
 parseComponents = components
-
--- | Abort the parse with an error indicating that the given token was unmatched.
-unterminated :: Located Token -> Either TOMLError a
-unterminated = Left . Unterminated
 
 }

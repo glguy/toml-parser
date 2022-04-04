@@ -30,6 +30,7 @@ module TOML.LexerUtils
 
   -- * Token parsers
   , integer
+  , prefixedInt
   , double
   , bareKeyToken
 
@@ -48,11 +49,19 @@ module TOML.LexerUtils
   ) where
 
 import           Data.Char (isSpace, isControl, isAscii, ord, chr)
+import           Data.List (foldl')
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Read as Text
-import           Data.Time (ParseTime, parseTimeOrError, defaultTimeLocale, iso8601DateFormat)
+import           Data.Time ( LocalTime (..)
+                           , ParseTime
+                           , ZonedTime (..)
+                           , parseTimeOrError
+                           , defaultTimeLocale
+                           , iso8601DateFormat
+                           )
 import           Data.Word (Word8)
+import           Text.Read (readMaybe)
 
 import           TOML.Tokens
 import           TOML.Located
@@ -193,11 +202,26 @@ integer str = IntegerToken n
   Right (n,_) = Text.signed Text.decimal (Text.filter (/= '_') str)
 
 
+prefixedInt :: Text -> Token
+prefixedInt str =
+  IntegerToken $
+    case Text.unpack $ Text.filter (/= '_') str of
+      '0':'b':s | Just x <- fromBinary s -> x
+      s@('0':'o':_) | Just x <- readMaybe s -> x
+      s@('0':'x':_) | Just x <- readMaybe s -> x
+      s -> error $ "Could not parse prefixed integer: " ++ s
+  where
+    fromBinary = fmap (foldl' (\acc x -> 2 * acc + x) 0) . mapM fromBinaryChar
+    fromBinaryChar '0' = Just 0
+    fromBinaryChar '1' = Just 1
+    fromBinaryChar _ = Nothing
+
+
 -- | Construct a 'Double' token from a lexeme.
 double :: Text {- ^ lexeme -} -> Token
-double str = DoubleToken n
+double str = DoubleToken $ fromRational n
   where
-  Right (n,_) = Text.signed Text.double (Text.filter (/= '_') str)
+  Right (n,_) = Text.rational (Text.filter (/= '_') str)
 
 
 -- | Construct a 'BareKeyToken' for the given lexeme. This operation
@@ -228,9 +252,13 @@ timeFormat :: String
 timeFormat = "%T%Q"
 
 
+normalizeDateTime :: Text -> Text
+normalizeDateTime = Text.map (\c -> if c `elem` "Tt " then 'T' else c)
+
+
 -- | Date and time lexeme parsers
 zonedtime, localtime, day, timeofday :: Text -> Token
-zonedtime = timeParser ZonedTimeToken (iso8601DateFormat (Just timeFormat)++"%Z")
-localtime = timeParser LocalTimeToken (iso8601DateFormat (Just timeFormat))
+zonedtime = timeParser ZonedTimeToken (iso8601DateFormat (Just timeFormat)++"%Z") . normalizeDateTime
+localtime = timeParser LocalTimeToken (iso8601DateFormat (Just timeFormat)) . normalizeDateTime
 day       = timeParser DayToken       (iso8601DateFormat Nothing)
 timeofday = timeParser TimeOfDayToken timeFormat
