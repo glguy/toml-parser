@@ -41,12 +41,8 @@ EOF             { Located _ TokEOF                  }
 
 %%
 
-toml ::             { [Expr]                  }
-  : toml_ EOF       { reverse $1              }
-
-toml_ ::                { [Expr]              }
-  : toml_ NEWLINE line  { $3 ++ $1            }
-  |               line  { $1                  }
+toml ::                       { [Expr]        }
+  : sepBy1(line, NEWLINE) EOF { concat $1     }
 
 line ::                 { [Expr]              }
   :                     { []                  }
@@ -63,11 +59,7 @@ keyval ::           { ([String], Val)         }
   : key '=' val     { ($1,$3)                 }
 
 key ::              { [String]                }
-  : key_            { reverse $1              }
-
-key_ ::                 { [String]            }
-  : key_ '.' simplekey  { $3 : $1             }
-  |          simplekey  { [$1]                }
+  : sepBy1(simplekey, '.') { $1 }
 
 simplekey ::        { String                  }
   : BAREKEY         { $1                      }
@@ -87,27 +79,33 @@ val ::              { Val                     }
   | array           { ValArray      $1        }
   | inlinetable     { ValTable      $1        }
 
-array :: { [Val] }
-  : '[' commentnewline                                ']' { []         }
-  | '[' commentnewline arrayvalues                    ']' { reverse $3 }
-  | '[' commentnewline arrayvalues ',' commentnewline ']' { reverse $3 }
+array ::                                                  { [Val]       }
+  : '[' commentnewline                                ']' { []          }
+  | '[' commentnewline arrayvalues                    ']' { reverse $3  }
+  | '[' commentnewline arrayvalues ',' commentnewline ']' { reverse $3  }
 
 commentnewline ::                  { }
   : commentnewline COMMENT NEWLINE { }
   | commentnewline         NEWLINE { }
   |                                { }
 
-arrayvalues :: { [Val] }
+arrayvalues ::                                        { [Val]       }
   :                                val commentnewline { [$1]        }
   | arrayvalues ',' commentnewline val commentnewline { $4 : $1     }
 
-inlinetable ::                    { [([String], Val)] }
-  : '{' inlinetablekeyvals '}'    { reverse $2        }
-  | '{'                    '}'    { []                }
+inlinetable ::                  { [([String], Val)] }
+  : '{' sepBy(keyval, ',') '}'  { $2                }
 
-inlinetablekeyvals ::             { [([String], Val)] }
-  :                        keyval { [$1]              }
-  | inlinetablekeyvals ',' keyval { $3 : $1           }
+sepBy(p,q) ::         { [p]                   }
+  :                   { []                    }
+  | sepBy1(p,q)       { $1                    }
+
+sepBy1(p,q) ::        { [p]                   }
+  : sepBy1_(p,q)      { reverse $1            }
+
+sepBy1_(p,q) ::       { [p]                   }
+  : p                 { [$1]                  }
+  | sepBy1_(p,q) q p  { $3 : $1               }
 
 {
 
