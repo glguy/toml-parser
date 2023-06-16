@@ -63,17 +63,7 @@ valToValue v =
 -- | Construct a simple table defined with inline table syntax.
 -- This kind of table supports no fancy array-table extension.
 constructTable :: [([String], Value)] -> Either String (Map String Value)
-constructTable entries =
-    case findBadKey (map fst entries) of
-        Just bad -> Left ("Overlapping key: " ++ show bad)
-        Nothing -> Right (Map.unionsWith merge [singleValue ks v | (ks, v) <- entries])
-    where
-        merge (Table x) (Table y) = Table (Map.unionWith merge x y)
-        merge _ _ = error "constructTable:merge: panic"
-
-        singleValue [k]    v = Map.singleton k v
-        singleValue (k:ks) v = Map.singleton k (Table (singleValue ks v))
-        singleValue []     _ = error "singleValue: bad empty key"
+constructTable entries = fmap frameToValue <$> constructFrame entries
 
 data Frame
     = FrameTable (Map String Frame)
