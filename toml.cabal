@@ -25,6 +25,7 @@ library
         Located,
         Parser,
         Position,
+        Pretty,
         Raw,
         Semantics,
         Token,
