@@ -1,5 +1,5 @@
 {
-module Parser where
+module Parser (toml) where
 
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Located (Located(Located))

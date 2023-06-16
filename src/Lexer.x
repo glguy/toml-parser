@@ -92,8 +92,8 @@ toml :-
 $wschar+;
 @comment        { token TokComment                      }
 @newline        { token_ TokNewline                     }
-@basic_string   { value (TokString . processBasic  )    }
-@literal_string { value (TokString . processLiteral)    }
+@basic_string   { value mkBasicString                   }
+@literal_string { value mkLiteralString                 }
 
 "}"             { exitTable                             }
 "]"             { exitList                              }
@@ -116,15 +116,15 @@ $wschar+;
 
 "["                 { enterList                         }
 "{"                 { enterTable                        }
-@dec_int            { value (TokInteger . processDec)   }
-@hex_int            { value (TokInteger . processHex)   }
-@oct_int            { value (TokInteger . processOct)   }
-@bin_int            { value (TokInteger . processBin)   }
-@float              { value (TokFloat . processFloat)   }
+@dec_int            { value mkDecInteger                }
+@hex_int            { value mkHexInteger                }
+@oct_int            { value mkOctInteger                }
+@bin_int            { value mkBinInteger                }
+@float              { value mkFloat                     }
 "true"              { value_ TokTrue                    }
 "false"             { value_ TokFalse                   }
-@ml_literal_string  { value (TokMlString . processMlLiteral) }
-@ml_basic_string    { value (TokMlString . processMlBasic) }
+@ml_literal_string  { value mkMlLiteralString           }
+@ml_basic_string    { value mkMlBasicString             }
 
 @offset_date_time   { timeValue "offset date-time" offsetDateTimePatterns TokOffsetDateTime }
 @local_date         { timeValue "local date"       localDatePatterns      TokLocalDate }

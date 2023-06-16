@@ -1,7 +1,7 @@
 module Value where
 
 import Data.Map (Map)
-import Data.Time ( Day, LocalTime, TimeOfDay, ZonedTime )
+import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 
 data Value
   = Integer Integer
