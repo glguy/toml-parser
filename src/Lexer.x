@@ -1,16 +1,14 @@
 {
 module Lexer (scanTokens) where
 
-import Data.Char (ord, isAscii, isSpace)
-import Control.Monad.Trans.State
-import Data.Foldable (asum)
-import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
+import Data.Char (isSpace)
 import Data.Functor ((<&>))
+import Control.Monad.Trans.State (runState)
 
-import Token
-import Position
-import Located
 import LexerUtils
+import Located
+import Position
+import Token
 
 }
 $non_ascii        = \x1
@@ -136,92 +134,6 @@ $wschar+;
 }
 
 {
-
-type M a = State [Context] a
-
-data Context
-  = ListContext
-  | TableContext
-  | ValueContext
-  deriving Show
-
-pushContext :: Context -> M ()
-pushContext cxt = modify \st ->
-  case st of
-    ValueContext : st' -> cxt : st'
-    _                  -> cxt : st
-
-popContext :: M ()
-popContext = modify (drop 1)
-
-equals :: Action
-equals _ = TokEquals <$ pushContext ValueContext
-
-enterList :: Action
-enterList _ = TokSquareO <$ pushContext ListContext
-
-enterTable :: Action
-enterTable _ = TokCurlyO <$ pushContext TableContext
-
-exitTable :: Action
-exitTable _ = TokCurlyC <$ popContext
-
-exitList :: Action
-exitList _ = TokSquareC <$ popContext
-
-token_ :: Token -> Action
-token_ t _ = pure t
-
-token :: (String -> Token) -> Action
-token f x = pure (f x)
-
-value_ :: Token -> Action
-value_ t _ = emitValue t
-
-value :: (String -> Token) -> Action
-value f x = emitValue (f x)
-
-emitValue :: a -> M a
-emitValue v = state \st ->
-  case st of
-    ValueContext:st' -> (v, st')
-    _                -> (v, st )
-
-stateInt :: [Context] -> Int
-stateInt (ValueContext : _) = val
-stateInt (ListContext  : _) = val
-stateInt _ = 0
-
-localDatePatterns = ["%Y-%m-%d"]
-localTimePatterns = ["%H:%M:%S%Q"]
-localDateTimePatterns =
-  ["%Y-%m-%dT%H:%M:%S%Q",
-   "%Y-%m-%d %H:%M:%S%Q"]
-offsetDateTimePatterns =
-  ["%Y-%m-%dT%H:%M:%S%Q%Ez","%Y-%m-%dT%H:%M:%S%QZ",
-   "%Y-%m-%d %H:%M:%S%Q%Ez","%Y-%m-%d %H:%M:%S%QZ"]
-
-timeValue :: ParseTime a => String -> [String] -> (a -> Token) -> Action
-timeValue description patterns constructor = value \str ->
-  case asum [parseTimeM False defaultTimeLocale pattern str | pattern <- patterns] of
-    Nothing -> TokError ("Malformed " ++ description)
-    Just t  -> constructor t
-
-type AlexInput = Located String
-
-alexGetByte :: AlexInput -> Maybe (Int, AlexInput)
-alexGetByte Located { locPosition = p, locThing = str } =
-  case str of
-    "" -> Nothing
-    x:xs
-      | x == '\1' -> Just (0,     rest)
-      | isAscii x -> Just (ord x, rest)
-      | otherwise -> Just (1,     rest)
-      where
-        rest = Located { locPosition = move x p, locThing = xs }
-
-type Action = String -> M Token
-
 scanTokens :: String -> [Located Token]
 scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str }
 
@@ -234,4 +146,10 @@ scanTokens' st str =
     AlexToken str' n action ->
       case runState (traverse action (take n <$> str)) st of
         (t, st') -> t : scanTokens' st' str'
+
+stateInt :: [Context] -> Int
+stateInt (ValueContext : _) = val
+stateInt (ListContext  : _) = val
+stateInt _                  = 0
+
 }

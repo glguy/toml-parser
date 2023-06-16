@@ -33,13 +33,15 @@ exprSections = go Section { sectionPath = [], sectionEntries = [], sectionCard =
 combineSections :: [Section] -> Either String (Map String Frame)
 combineSections [] = error "combineSections expects 1 section"
 combineSections (x:xs) =
- do top <- constructFrame (sectionEntries x)
+ do entries <- (traverse . traverse) valToValue (sectionEntries x)
+    top <- constructFrame entries
     foldM addSection top xs
 
 addSection :: Map String Frame -> Section -> Either String (Map String Frame)
 addSection m s =
- do tab <- constructFrame (sectionEntries s)
-    case tryInsert (sectionCard s) (sectionPath s) (FrameTable tab) m of
+ do entries <- (traverse . traverse) valToValue (sectionEntries s)
+    tab <- constructFrame entries
+    case tryInsert (sectionCard s) (sectionPath s) tab m of
         Nothing -> Left ("Duplicate table: " ++ show (sectionPath s))
         Just m' -> Right m'
 
@@ -85,14 +87,18 @@ frameToValue = \case
     FrameArray a -> Array (reverse (Table . fmap frameToValue <$> NonEmpty.toList a))
     FrameValue v -> v
 
-constructFrame :: [([String], Val)] -> Either String (Map String Frame)
-constructFrame = foldM f Map.empty
+constructFrame :: [([String], Value)] -> Either String (Map String Frame)
+constructFrame entries =
+    case findBadKey (map fst entries) of
+        Just bad -> Left ("Overlapping key: " ++ show bad)
+        Nothing -> Right (Map.unionsWith merge [singleValue ks (FrameValue v) | (ks, v) <- entries])
     where
-        f acc (ks, val) =
-         do value <- valToValue val
-            case tryInsert Single ks (FrameValue value) acc of
-                Nothing   -> Left ("Duplicate key: " ++ show ks)
-                Just acc' -> Right acc'
+        merge (FrameTable x) (FrameTable y) = FrameTable (Map.unionWith merge x y)
+        merge _ _ = error "constructFrame:merge: panic"
+
+        singleValue [k]    v = Map.singleton k v
+        singleValue (k:ks) v = Map.singleton k (FrameTable (singleValue ks v))
+        singleValue []     _ = error "singleValue: bad empty key"
 
 findBadKey :: [[String]] -> Maybe [String]
 findBadKey keys = check (sort keys)
@@ -102,25 +108,23 @@ findBadKey keys = check (sort keys)
         check (_:xs) = check xs
         check [] = Nothing
 
-tryInsert :: Cardinality -> [String] -> Frame -> Map String Frame -> Maybe (Map String Frame)
+tryInsert :: Cardinality -> [String] -> Map String Frame -> Map String Frame -> Maybe (Map String Frame)
 tryInsert _ [] _ _ = error "tryInsert: empty key"
 
 -- single value insertion, do not overwrite an existing value
 tryInsert Single [key] val m =
     Map.alterF f key m
     where
-        f Nothing = Just (Just val)
+        f Nothing = Just (Just (FrameTable val))
         f Just{}  = Nothing
 
 -- multiple value insertion, create a new singleton array or extend the existing one
-tryInsert Multiple [key] (FrameTable val) m =
+tryInsert Multiple [key] val m =
     Map.alterF f key m
     where
         f Nothing                 = Just (Just (FrameArray (pure val)))
         f (Just (FrameArray old)) = Just (Just (FrameArray (NonEmpty.cons val old))) -- FrameArray is reversed!
         f _                       = Nothing
-
-tryInsert Multiple [_] _ _ = error "tryInsert: multiple insert only works with a table"
 
 tryInsert array (key:keys) val m =
     Map.alterF f key m
