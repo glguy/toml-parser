@@ -1,0 +1,237 @@
+{
+module Lexer (scanTokens) where
+
+import Data.Char (ord, isAscii, isSpace)
+import Control.Monad.Trans.State
+import Data.Foldable (asum)
+import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
+import Data.Functor ((<&>))
+
+import Token
+import Position
+import Located
+import LexerUtils
+
+}
+$non_ascii        = \x1
+$wschar           = [\ \t]
+
+@ws               = $wschar*
+@newline          = \r? \n
+
+$bindig           = [0-1]
+$octdig           = [0-7]
+$digit            = [0-9]
+$hexdig           = [ $digit A-F ]
+$basic_unescaped  = [ $wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii ]
+$comment_start_symbol = \#
+
+@barekey = [0-9 A-Z a-z \- _]+
+
+@escape_seq_char  = [\x22 \x5C \x62 \x66 \x6E \x72 \x74] | "u" $hexdig{4} | "U" $hexdig{8}
+@escaped          = \\ @escape_seq_char
+@basic_char       = $basic_unescaped | @escaped
+
+@unsigned_dec_int = $digit | [1-9] ($digit | _ $digit)+
+@dec_int = [\-\+]? @unsigned_dec_int
+@zero_prefixable_int = $digit ($digit | _ $digit)*
+@hex_int = "0x" $hexdig ($hexdig | _ $hexdig)*
+@oct_int = "0o" $octdig ($octdig | _ $octdig)*
+@bin_int = "0b" $bindig ($bindig | _ $bindig)*
+
+@frac = "." @zero_prefixable_int
+@float_exp_part = [\+\-]? @zero_prefixable_int
+@special_float = [\+\-]? ("inf" | "nan")
+@exp = "e" @float_exp_part
+@float_int_part = @dec_int
+@float = @float_int_part ( @exp | @frac @exp? ) | @special_float
+
+$non_eol = [\x09 \x20-\x7F $non_ascii]
+@comment = $comment_start_symbol $non_eol*
+
+$literal_char = [ \x09 \x20-\x26 \x28-\x7E $non_ascii ]
+@basic_string = \" @basic_char* \"
+@literal_string = "'" $literal_char* "'"
+
+@ml_literal_string_delim = "'''"
+$mll_char = [\x09 \x20-\x26 \x28-\x7E]
+@mll_quotes = "'" "'"?
+@mll_content = $mll_char | @newline
+@ml_literal_body = @mll_content* (@mll_quotes @mll_content+)* @mll_quotes?
+@ml_literal_string = @ml_literal_string_delim @newline? @ml_literal_body @ml_literal_string_delim
+
+@ml_basic_string_delim = \" \" \"
+@mlb_quotes = \" \"?
+@mlb_escaped_nl = \\ @ws @newline ($wschar | @newline)*
+$mlb_unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
+@mlb_char = $mlb_unescaped | @escaped
+@mlb_content = @mlb_char | @newline | @mlb_escaped_nl
+@ml_basic_body = @mlb_content* (@mlb_quotes @mlb_content+)* @mlb_quotes?
+@ml_basic_string = @ml_basic_string_delim @newline? @ml_basic_body @ml_basic_string_delim
+
+@date_fullyear = $digit {4}
+@date_month = $digit {2}
+@date_mday = $digit {2}
+$time_delim = [T\ ]
+@time_hour = $digit {2}
+@time_minute = $digit {2}
+@time_second = $digit {2}
+@time_secfrac = "." $digit+
+@time_numoffset = [\+\-] @time_hour ":" @time_minute
+@time_offset = "Z" | @time_numoffset
+
+@partial_time = @time_hour ":" @time_minute ":" @time_second @time_secfrac?
+@full_date = @date_fullyear "-" @date_month "-" @date_mday
+@full_time = @partial_time @time_offset
+
+@offset_date_time = @full_date $time_delim @full_time
+@local_date_time = @full_date $time_delim @partial_time
+@local_date = @full_date
+@local_time = @partial_time
+
+toml :-
+
+$wschar+;
+@comment        { token TokComment                      }
+@newline        { token_ TokNewline                     }
+@basic_string   { value (TokString . processBasic  )    }
+@literal_string { value (TokString . processLiteral)    }
+
+"}"             { exitTable                             }
+"]"             { exitList                              }
+"="             { equals                                }
+"."             { token_ TokPeriod                      }
+","             { token_ TokComma                       } 
+
+<0> {
+
+"["             { token_ TokSquareO                     }
+"]"             { token_ TokSquareC                     }
+"{"             { token_ TokCurlyO                      }
+"[["            { token_ Tok2SquareO                    }
+"]]"            { token_ Tok2SquareC                    }
+@barekey        { token  TokBareKey                     }
+
+}
+
+<val> {
+
+"["                 { enterList                         }
+"{"                 { enterTable                        }
+@dec_int            { value (TokInteger . processDec)   }
+@hex_int            { value (TokInteger . processHex)   }
+@oct_int            { value (TokInteger . processOct)   }
+@bin_int            { value (TokInteger . processBin)   }
+@float              { value (TokFloat . processFloat)   }
+"true"              { value_ TokTrue                    }
+"false"             { value_ TokFalse                   }
+@ml_literal_string  { value (TokMlString . processMlLiteral) }
+@ml_basic_string    { value (TokMlString . processMlBasic) }
+
+@offset_date_time   { timeValue "offset date-time" offsetDateTimePatterns TokOffsetDateTime }
+@local_date         { timeValue "local date"       localDatePatterns      TokLocalDate }
+@local_date_time    { timeValue "local date-time"  localDateTimePatterns  TokLocalDateTime }
+@local_time         { timeValue "local time"       localTimePatterns      TokLocalTime }
+
+}
+
+{
+
+type M a = State [Context] a
+
+data Context
+  = ListContext
+  | TableContext
+  | ValueContext
+  deriving Show
+
+pushContext :: Context -> M ()
+pushContext cxt = modify \st ->
+  case st of
+    ValueContext : st' -> cxt : st'
+    _                  -> cxt : st
+
+popContext :: M ()
+popContext = modify (drop 1)
+
+equals :: Action
+equals _ = TokEquals <$ pushContext ValueContext
+
+enterList :: Action
+enterList _ = TokSquareO <$ pushContext ListContext
+
+enterTable :: Action
+enterTable _ = TokCurlyO <$ pushContext TableContext
+
+exitTable :: Action
+exitTable _ = TokCurlyC <$ popContext
+
+exitList :: Action
+exitList _ = TokSquareC <$ popContext
+
+token_ :: Token -> Action
+token_ t _ = pure t
+
+token :: (String -> Token) -> Action
+token f x = pure (f x)
+
+value_ :: Token -> Action
+value_ t _ = emitValue t
+
+value :: (String -> Token) -> Action
+value f x = emitValue (f x)
+
+emitValue :: a -> M a
+emitValue v = state \st ->
+  case st of
+    ValueContext:st' -> (v, st')
+    _                -> (v, st )
+
+stateInt :: [Context] -> Int
+stateInt (ValueContext : _) = val
+stateInt (ListContext  : _) = val
+stateInt _ = 0
+
+localDatePatterns = ["%Y-%m-%d"]
+localTimePatterns = ["%H:%M:%S%Q"]
+localDateTimePatterns =
+  ["%Y-%m-%dT%H:%M:%S%Q",
+   "%Y-%m-%d %H:%M:%S%Q"]
+offsetDateTimePatterns =
+  ["%Y-%m-%dT%H:%M:%S%Q%Ez","%Y-%m-%dT%H:%M:%S%QZ",
+   "%Y-%m-%d %H:%M:%S%Q%Ez","%Y-%m-%d %H:%M:%S%QZ"]
+
+timeValue :: ParseTime a => String -> [String] -> (a -> Token) -> Action
+timeValue description patterns constructor = value \str ->
+  case asum [parseTimeM False defaultTimeLocale pattern str | pattern <- patterns] of
+    Nothing -> TokError ("Malformed " ++ description)
+    Just t  -> constructor t
+
+type AlexInput = Located String
+
+alexGetByte :: AlexInput -> Maybe (Int, AlexInput)
+alexGetByte Located { locPosition = p, locThing = str } =
+  case str of
+    "" -> Nothing
+    x:xs
+      | x == '\1' -> Just (0,     rest)
+      | isAscii x -> Just (ord x, rest)
+      | otherwise -> Just (1,     rest)
+      where
+        rest = Located { locPosition = move x p, locThing = xs }
+
+type Action = String -> M Token
+
+scanTokens :: String -> [Located Token]
+scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str }
+
+scanTokens' :: [Context] -> AlexInput -> [Located Token]
+scanTokens' st str =
+  case alexScan str (stateInt st) of
+    AlexEOF -> [TokEOF <$ str]
+    AlexError str' -> [str' <&> \txt -> TokError ("Bad lexeme at: " ++ takeWhile (not . isSpace) txt)]
+    AlexSkip  str' _ -> scanTokens' st str'
+    AlexToken str' n action ->
+      case runState (traverse action (take n <$> str)) st of
+        (t, st') -> t : scanTokens' st' str'
+}
