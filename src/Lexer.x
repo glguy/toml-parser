@@ -141,7 +141,7 @@ scanTokens' :: [Context] -> AlexInput -> [Located Token]
 scanTokens' st str =
   case alexScan str (stateInt st) of
     AlexEOF -> [TokEOF <$ str]
-    AlexError str' -> [str' <&> \txt -> TokError ("Bad lexeme at: " ++ takeWhile (not . isSpace) txt)]
+    AlexError str' -> [str' <&> \txt -> TokError ("Bad lexeme: " ++ show (takeWhile (not . isSpace) txt))]
     AlexSkip  str' _ -> scanTokens' st str'
     AlexToken str' n action ->
       case runState (traverse action (take n <$> str)) st of
