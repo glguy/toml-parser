@@ -20,7 +20,7 @@ $wschar           = [\ \t]
 $bindig           = [0-1]
 $octdig           = [0-7]
 $digit            = [0-9]
-$hexdig           = [ $digit A-F ]
+$hexdig           = [ $digit A-F a-f ]
 $basic_unescaped  = [ $wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii ]
 $comment_start_symbol = \#
 
@@ -40,7 +40,7 @@ $comment_start_symbol = \#
 @frac = "." @zero_prefixable_int
 @float_exp_part = [\+\-]? @zero_prefixable_int
 @special_float = [\+\-]? ("inf" | "nan")
-@exp = "e" @float_exp_part
+@exp = [Ee] @float_exp_part
 @float_int_part = @dec_int
 @float = @float_int_part ( @exp | @frac @exp? ) | @special_float
 

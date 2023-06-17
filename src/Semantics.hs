@@ -1,6 +1,5 @@
 module Semantics (compileExprs) where
 
-import Control.Monad (foldM)
 import Data.List (isPrefixOf, sort)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -10,44 +9,10 @@ import Pretty (prettyKey)
 import Raw (Val(..), Expr(..))
 import Value (Value(..))
 
-data Section = Section {
-    sectionPath :: [String],
-    sectionEntries :: [([String], Val)],
-    sectionKind :: SectionKind}
-
 data SectionKind = TableKind | ArrayTableKind
 
 compileExprs :: [Expr] -> Either String (Map String Value)
-compileExprs exprs = fmap frameToValue <$> combineSections (exprSections exprs)
-
-exprSections :: [Expr] -> [Section]
-exprSections = go Section { sectionPath = [], sectionEntries = [], sectionKind = TableKind }
-    where
-        go s = \case
-            [] -> [s]
-            KeyValExpr k v : rest ->
-                go s { sectionEntries = (k, v) : sectionEntries s } rest
-            TableExpr path' : rest ->
-                s : go Section { sectionPath = path', sectionEntries = [], sectionKind = TableKind } rest
-            ArrayTableExpr path' : rest ->
-                s : go Section { sectionPath = path', sectionEntries = [], sectionKind = ArrayTableKind } rest
-
-combineSections :: [Section] -> Either String (Map String Frame)
-combineSections [] = error "combineSections expects 1 section"
-combineSections (root:xs) =
- do entries <- (traverse . traverse) valToValue (sectionEntries root)
-    top <- constructFrame entries
-    foldM addSection top xs
-
-addSection :: Map String Frame -> Section -> Either String (Map String Frame)
-addSection m s =
-    case (traverse . traverse) valToValue (sectionEntries s) of
-        Left e -> Left (e ++ " in " ++ prettyKey (sectionPath s))
-        Right entries ->
-         do tab <- constructFrame entries
-            case tryInsert (sectionKind s) (sectionPath s) tab m of
-                Left e   -> Left (e ++ " " ++ prettyKey (sectionPath s))
-                Right m' -> Right m'
+compileExprs exprs = fmap frameToValue <$> build [] Map.empty exprs
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
@@ -66,37 +31,35 @@ valToValue v =
       ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
                               Table <$> constructTable entries
 
--- | Construct a simple table defined with inline table syntax.
--- This kind of table supports no fancy array-table extension.
-constructTable :: [([String], Value)] -> Either String (Map String Value)
-constructTable entries = fmap frameToValue <$> constructFrame entries
-
 -- | Frames help distinguish tables and arrays written in block and inline
 -- syntax. This allows us to enforce that inline tables and arrays can not
 -- be extended by block syntax.
 data Frame
-    = FrameTable (Map String Frame)
+    = FrameTable FrameKind (Map String Frame)
     | FrameArray (NonEmpty (Map String Frame)) -- stored in reverse order for easy "append"
     | FrameValue Value
     deriving Show
 
+data FrameKind = Implicit | Defined
+    deriving Show
+
 frameToValue :: Frame -> Value
 frameToValue = \case
-    FrameTable t -> Table (frameToValue <$> t)
-    FrameArray a -> Array (reverse (Table . fmap frameToValue <$> NonEmpty.toList a))
-    FrameValue v -> v
+    FrameTable _ t -> Table (frameToValue <$> t)
+    FrameArray a   -> Array (reverse (Table . fmap frameToValue <$> NonEmpty.toList a))
+    FrameValue v   -> v
 
-constructFrame :: [([String], Value)] -> Either String (Map String Frame)
-constructFrame entries =
+constructTable :: [([String], Value)] -> Either String (Map String Value)
+constructTable entries =
     case findBadKey (map fst entries) of
         Just bad -> Left ("Overlapping key: " ++ prettyKey bad)
-        Nothing -> Right (Map.unionsWith merge [singleValue ks (FrameValue v) | (ks, v) <- entries])
+        Nothing -> Right (Map.unionsWith merge [singleValue ks v | (ks, v) <- entries])
     where
-        merge (FrameTable x) (FrameTable y) = FrameTable (Map.unionWith merge x y)
+        merge (Table x) (Table y) = Table (Map.unionWith merge x y)
         merge _ _ = error "constructFrame:merge: panic"
 
         singleValue [k]    v = Map.singleton k v
-        singleValue (k:ks) v = Map.singleton k (FrameTable (singleValue ks v))
+        singleValue (k:ks) v = Map.singleton k (Table (singleValue ks v))
         singleValue []     _ = error "singleValue: bad empty key"
 
 findBadKey :: [[String]] -> Maybe [String]
@@ -107,31 +70,81 @@ findBadKey keys = check (sort keys)
         check (_:xs) = check xs
         check [] = Nothing
 
-tryInsert :: SectionKind -> [String] -> Map String Frame -> Map String Frame -> Either String (Map String Frame)
-tryInsert _ [] _ _ = error "tryInsert: empty key"
+build :: [String] -> Map String Frame -> [Expr] -> Either String (Map String Frame)
 
--- single value insertion, do not overwrite an existing value
-tryInsert TableKind [key] val m =
-    Map.alterF f key m
-    where
-        f Nothing = Right (Just (FrameTable val))
-        f Just{}  = Left "Duplicate assignment"
+build _ acc [] = Right acc
 
--- multiple value insertion, create a new singleton array or extend the existing one
-tryInsert ArrayTableKind [key] val m =
-    Map.alterF f key m
-    where
-        f Nothing                 = Right (Just (FrameArray (pure val)))
-        f (Just (FrameArray old)) = Right (Just (FrameArray (NonEmpty.cons val old))) -- FrameArray is reversed!
-        f _                       = Left "Table/Array-table mismatch"
+build _ acc (TableExpr key : exprs) =
+ do acc' <- addTop key TableKind acc
+    build key acc' exprs
 
-tryInsert array (key:keys) val m =
-    Map.alterF f key m
+build _ acc (ArrayTableExpr key : exprs) =
+ do acc' <- addTop key ArrayTableKind acc
+    build key acc' exprs
+
+build prefix acc (KeyValExpr key val : exprs) =
+ do value <- valToValue val
+    acc' <- assign prefix key value acc
+    build prefix acc' exprs
+
+addTop :: [String] -> SectionKind -> Map String Frame -> Either String (Map String Frame)
+
+addTop [] _ _ = error "addTop: empty key"
+
+addTop [key] kind acc = Map.alterF f key acc
     where
-        f Nothing                 = Just . FrameTable <$> tryInsert array keys val Map.empty
-        f (Just (FrameTable old)) = Just . FrameTable <$> tryInsert array keys val old
-        f (Just (FrameArray (t:|xs))) =
-            Just . FrameArray . (:|xs) <$> tryInsert array keys val t
-        f (Just (FrameValue (Table{}))) = Left "Insert into inline table"
-        f (Just (FrameValue (Array{}))) = Left "Insert into inline array"
-        f (Just (FrameValue _        )) = Left "Insert into simple value"
+        f Nothing =
+            case kind of
+                TableKind -> Right (Just (FrameTable Defined Map.empty))
+                ArrayTableKind -> Right (Just (FrameArray (Map.empty :| [])))
+        f (Just (FrameTable Implicit t)) =
+            case kind of
+                TableKind -> Right (Just (FrameTable Defined t))
+                ArrayTableKind -> Left "attempt to redefine table as array table"
+        f (Just (FrameTable Defined _)) =
+            Left "attempt to redefine table"
+        f (Just (FrameValue {})) = Left "attempt to defined table over value"
+        f (Just (FrameArray a)) =
+            case kind of
+                TableKind -> Left "attempt to open array table as table"
+                ArrayTableKind -> Right (Just (FrameArray (NonEmpty.cons Map.empty a)))
+
+addTop (key:keys) kind acc = Map.alterF f key acc
+    where
+        f Nothing = Just . FrameTable Implicit <$> addTop keys kind acc
+        f (Just (FrameTable k t)) = Just . FrameTable k <$> addTop keys kind t
+        f (Just (FrameValue{})) = Left "attempt to traverse value as table"
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> addTop keys kind t
+
+assign :: [String] -> [String] -> Value -> Map String Frame -> Either String (Map String Frame)
+
+assign _ [] _ _ = error "assign: empty key"
+
+assign (p:prefix) key val acc = Map.alterF f p acc
+    where
+        f Nothing = error "underdefined prefix indicates logic error"
+
+        -- when a dotted key mentions an existing table, it just gets traversed
+        f (Just (FrameTable k t)) = Just . FrameTable k <$> assign prefix key val t
+
+        -- when an existing frame array is mentioned, traverse the last element
+        f (Just (FrameArray (t:|ts))) = Just . FrameArray . (:|ts) <$> assign prefix key val t
+
+        f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
+
+assign [] [key] val acc = Map.alterF f key acc
+    where
+        f Nothing = Right (Just (FrameValue val))
+        f Just{} = Left "key already assigned"
+
+assign [] (key:keys) val acc = Map.alterF f key acc
+    where
+        -- when a dotted key introduces a table, that defines it
+        f Nothing = Just . FrameTable Defined <$> assign [] keys val Map.empty
+
+        -- ??? does this define an implicit table ???
+        f (Just (FrameTable _ t)) = Just . FrameTable Defined <$> assign [] keys val t
+        
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> assign [] keys val t
+
+        f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
