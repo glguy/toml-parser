@@ -1,7 +1,7 @@
 module Value where
 
 import Data.Map (Map)
-import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
+import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 
 data Value
   = Integer Integer
@@ -15,3 +15,20 @@ data Value
   | LocalTime LocalTime
   | Day Day
   deriving (Show, Read)
+
+instance Eq Value where
+  Integer   x == Integer   y = x == y
+  Float     x == Float     y = x == y
+  Array     x == Array     y = x == y
+  Table     x == Table     y = x == y
+  Bool      x == Bool      y = x == y
+  String    x == String    y = x == y
+  TimeOfDay x == TimeOfDay y = x == y
+  LocalTime x == LocalTime y = x == y
+  Day       x == Day       y = x == y
+  ZonedTime x == ZonedTime y = projectZT x == projectZT y
+  _           == _           = False
+
+-- Extract the relevant parts to build an Eq instance
+projectZT :: ZonedTime -> (LocalTime, Int)
+projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))

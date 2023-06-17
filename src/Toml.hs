@@ -1,4 +1,4 @@
-module Toml where
+module Toml (parse, Value(..)) where
 
 import Data.Map (Map)
 import Lexer (scanTokens)
@@ -7,7 +7,7 @@ import Position (prettyPosition)
 import Parser (toml)
 import Semantics (compileExprs)
 import Token (prettyToken)
-import Value (Value)
+import Value (Value(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse :: String -> Either String (Map String Value)
