@@ -1,12 +1,12 @@
 module Semantics (compileExprs) where
 
-import Data.List (isPrefixOf, sort)
+import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Pretty (prettyKey)
-import Raw (Val(..), Expr(..))
+import Raw (Key, Val(..), Expr(..))
 import Value (Value(..))
 
 data SectionKind = TableKind | ArrayTableKind
@@ -49,24 +49,24 @@ frameToValue = \case
     FrameArray a   -> Array (reverse (Table . fmap frameToValue <$> NonEmpty.toList a))
     FrameValue v   -> v
 
-constructTable :: [([String], Value)] -> Either String (Map String Value)
+constructTable :: [(Key, Value)] -> Either String (Map String Value)
 constructTable entries =
     case findBadKey (map fst entries) of
         Just bad -> Left ("Overlapping key: " ++ prettyKey bad)
-        Nothing -> Right (Map.unionsWith merge [singleValue ks v | (ks, v) <- entries])
+        Nothing -> Right (Map.unionsWith merge [singleValue k ks v | (k:|ks, v) <- entries])
     where
         merge (Table x) (Table y) = Table (Map.unionWith merge x y)
         merge _ _ = error "constructFrame:merge: panic"
 
-        singleValue [k]    v = Map.singleton k v
-        singleValue (k:ks) v = Map.singleton k (Table (singleValue ks v))
-        singleValue []     _ = error "singleValue: bad empty key"
+        singleValue k []      v = Map.singleton k v
+        singleValue k (k1:ks) v = Map.singleton k (Table (singleValue k1 ks v))
 
-findBadKey :: [[String]] -> Maybe [String]
+findBadKey :: [Key] -> Maybe Key
 findBadKey keys = check (sort keys)
     where
+        check :: [Key] -> Maybe Key
         check (x:y:_)
-          | x `isPrefixOf` y = Just y
+          | NonEmpty.toList x `NonEmpty.isPrefixOf` y = Just y
         check (_:xs) = check xs
         check [] = Nothing
 
@@ -76,22 +76,20 @@ build _ acc [] = Right acc
 
 build _ acc (TableExpr key : exprs) =
  do acc' <- addTop key TableKind acc
-    build key acc' exprs
+    build (NonEmpty.toList key) acc' exprs
 
 build _ acc (ArrayTableExpr key : exprs) =
  do acc' <- addTop key ArrayTableKind acc
-    build key acc' exprs
+    build (NonEmpty.toList key) acc' exprs
 
 build prefix acc (KeyValExpr key val : exprs) =
  do value <- valToValue val
     acc' <- assign prefix key value acc
     build prefix acc' exprs
 
-addTop :: [String] -> SectionKind -> Map String Frame -> Either String (Map String Frame)
+addTop :: Key -> SectionKind -> Map String Frame -> Either String (Map String Frame)
 
-addTop [] _ _ = error "addTop: empty key"
-
-addTop [key] kind acc = Map.alterF f key acc
+addTop (key :| []) kind acc = Map.alterF f key acc
     where
         f Nothing =
             case kind of
@@ -109,16 +107,15 @@ addTop [key] kind acc = Map.alterF f key acc
                 TableKind -> Left "attempt to open array table as table"
                 ArrayTableKind -> Right (Just (FrameArray (NonEmpty.cons Map.empty a)))
 
-addTop (key:keys) kind acc = Map.alterF f key acc
+addTop (key :| k1:keys) kind acc = Map.alterF f key acc
     where
-        f Nothing = Just . FrameTable Implicit <$> addTop keys kind acc
-        f (Just (FrameTable k t)) = Just . FrameTable k <$> addTop keys kind t
+        keys' = k1 :| keys
+        f Nothing = Just . FrameTable Implicit <$> addTop keys' kind acc
+        f (Just (FrameTable k t)) = Just . FrameTable k <$> addTop keys' kind t
         f (Just (FrameValue{})) = Left "attempt to traverse value as table"
-        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> addTop keys kind t
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> addTop keys' kind t
 
-assign :: [String] -> [String] -> Value -> Map String Frame -> Either String (Map String Frame)
-
-assign _ [] _ _ = error "assign: empty key"
+assign :: [String] -> Key -> Value -> Map String Frame -> Either String (Map String Frame)
 
 assign (p:prefix) key val acc = Map.alterF f p acc
     where
@@ -132,19 +129,20 @@ assign (p:prefix) key val acc = Map.alterF f p acc
 
         f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
 
-assign [] [key] val acc = Map.alterF f key acc
+assign [] (key :| []) val acc = Map.alterF f key acc
     where
         f Nothing = Right (Just (FrameValue val))
         f Just{} = Left "key already assigned"
 
-assign [] (key:keys) val acc = Map.alterF f key acc
+assign [] (key:| k1:keys) val acc = Map.alterF f key acc
     where
+        keys' = k1:|keys
         -- when a dotted key introduces a table, that defines it
-        f Nothing = Just . FrameTable Defined <$> assign [] keys val Map.empty
+        f Nothing = Just . FrameTable Defined <$> assign [] keys' val Map.empty
 
         -- ??? does this define an implicit table ???
-        f (Just (FrameTable _ t)) = Just . FrameTable Defined <$> assign [] keys val t
+        f (Just (FrameTable _ t)) = Just . FrameTable Defined <$> assign [] keys' val t
         
-        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> assign [] keys val t
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> assign [] keys' val t
 
         f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"

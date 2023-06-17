@@ -1,11 +1,12 @@
 module Pretty (prettyKey) where
 
+import Raw
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
-import Data.List (intercalate)
 import Text.Printf (printf)
+import Data.List.NonEmpty qualified as NonEmpty
 
-prettyKey :: [String] -> String
-prettyKey = intercalate "." . map prettySimpleKey
+prettyKey :: Key -> String
+prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey
 
 prettySimpleKey :: String -> String
 prettySimpleKey str

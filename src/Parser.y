@@ -1,6 +1,8 @@
 {
 module Parser (toml) where
 
+import Data.List.NonEmpty qualified as NonEmpty
+import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Located (Located(Located))
 import Raw
@@ -55,10 +57,10 @@ expression ::       { Expr                    }
   | '['  key ']'    { TableExpr      $2       }
   | '[[' key ']]'   { ArrayTableExpr $2       }
 
-keyval ::           { ([String], Val)         }
+keyval ::           { (Key, Val)         }
   : key '=' val     { ($1,$3)                 }
 
-key ::              { [String]                }
+key ::              { Key                     }
   : sepBy1(simplekey, '.') { $1 }
 
 simplekey ::        { String                  }
@@ -93,19 +95,19 @@ arrayvalues ::                                        { [Val]       }
   :                                val commentnewline { [$1]        }
   | arrayvalues ',' commentnewline val commentnewline { $4 : $1     }
 
-inlinetable ::                  { [([String], Val)] }
+inlinetable ::                  { [(Key, Val)]      }
   : '{' sepBy(keyval, ',') '}'  { $2                }
 
 sepBy(p,q) ::         { [p]                   }
   :                   { []                    }
-  | sepBy1(p,q)       { $1                    }
+  | sepBy1(p,q)       { NonEmpty.toList $1    }
 
-sepBy1(p,q) ::        { [p]                   }
-  : sepBy1_(p,q)      { reverse $1            }
+sepBy1(p,q) ::        { NonEmpty p            }
+  : sepBy1_(p,q)      { NonEmpty.reverse $1   }
 
-sepBy1_(p,q) ::       { [p]                   }
-  : p                 { [$1]                  }
-  | sepBy1_(p,q) q p  { $3 : $1               }
+sepBy1_(p,q) ::       { NonEmpty p            }
+  : p                 { NonEmpty.singleton $1 }
+  | sepBy1_(p,q) q p  { NonEmpty.cons $3 $1   }
 
 {
 

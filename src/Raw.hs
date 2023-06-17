@@ -1,18 +1,21 @@
 module Raw where
 
+import Data.List.NonEmpty (NonEmpty)
 import Data.Time ( Day, LocalTime, TimeOfDay, ZonedTime )
 
+type Key = NonEmpty String
+
 data Expr
-  = KeyValExpr [String] Val
-  | TableExpr [String]
-  | ArrayTableExpr [String]
+  = KeyValExpr     Key Val
+  | TableExpr      Key
+  | ArrayTableExpr Key
   deriving Show
 
 data Val
   = ValInteger Integer
   | ValFloat Double
   | ValArray [Val]
-  | ValTable [([String], Val)]
+  | ValTable [(Key, Val)]
   | ValBool Bool
   | ValString String
   | ValTimeOfDay TimeOfDay
