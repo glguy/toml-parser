@@ -59,20 +59,23 @@ prettyToken t =
     TokError e -> "lexical error: " ++ e
     TokEOF -> "end-of-input"
 
+scrub :: String -> String
+scrub = filter ('_' /=)
+
 mkDecInteger :: String -> Token
-mkDecInteger ('+':xs) = TokInteger (read xs)
-mkDecInteger xs = TokInteger (read xs)
+mkDecInteger ('+':xs) = TokInteger (read (scrub xs))
+mkDecInteger xs = TokInteger (read (scrub xs))
 
 mkHexInteger :: String -> Token
-mkHexInteger ('0':'x':xs) = TokInteger (fst (head (readHex xs)))
+mkHexInteger ('0':'x':xs) = TokInteger (fst (head (readHex (scrub xs))))
 mkHexInteger _ = error "processHex: bad input"
 
 mkOctInteger :: String -> Token
-mkOctInteger ('0':'o':xs) = TokInteger (fst (head (readOct xs)))
+mkOctInteger ('0':'o':xs) = TokInteger (fst (head (readOct (scrub xs))))
 mkOctInteger _ = error "processHex: bad input"
 
 mkBinInteger :: String -> Token
-mkBinInteger ('0':'b':xs) = TokInteger (fst (head (readBin xs)))
+mkBinInteger ('0':'b':xs) = TokInteger (fst (head (readBin (scrub xs))))
 mkBinInteger _ = error "processHex: bad input"
 
 mkFloat :: String -> Token
@@ -82,8 +85,8 @@ mkFloat "-nan"  = TokFloat (0/0)
 mkFloat "inf"   = TokFloat (1/0)
 mkFloat "+inf"  = TokFloat (1/0)
 mkFloat "-inf"  = TokFloat (-1/0)
-mkFloat ('+':x) = TokFloat (read x)
-mkFloat x       = TokFloat (read x)
+mkFloat ('+':x) = TokFloat (read (scrub x))
+mkFloat x       = TokFloat (read (scrub x))
 
 mkLiteralString :: String -> Token
 mkLiteralString = TokString . tail . init
