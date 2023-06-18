@@ -1,13 +1,12 @@
 {-# Language QuasiQuotes #-}
 module Main (main) where
 
-import Data.Map qualified as Map
-import Data.Map (Map)
-import Toml (Value(..), parse)
-
-import Test.Hspec
-import Str
 import Data.Either (isLeft)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Str (quoteStr)
+import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
+import Toml (Value(..), parse)
 
 main :: IO ()
 main = hspec $
