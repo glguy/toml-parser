@@ -55,5 +55,9 @@ test-suite unittests
     build-depends:
         base,
         containers,
+        hspec,
+        template-haskell,
         time,
         toml,
+    other-modules:
+        Str

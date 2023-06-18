@@ -6,9 +6,9 @@ import Data.Time ( Day, LocalTime, TimeOfDay, ZonedTime )
 type Key = NonEmpty String
 
 data Expr
-  = KeyValExpr     Key Val
-  | TableExpr      Key
-  | ArrayTableExpr Key
+  = KeyValExpr     Int Key Val
+  | TableExpr      Int Key
+  | ArrayTableExpr Int Key
   deriving Show
 
 data Val

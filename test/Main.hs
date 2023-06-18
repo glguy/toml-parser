@@ -1,13 +1,17 @@
+{-# Language QuasiQuotes #-}
 module Main (main) where
 
 import Data.Map qualified as Map
 import Data.Map (Map)
-import System.Exit (exitFailure)
-import Toml
-import Control.Monad (unless)
+import Toml (Value(..), parse)
+
+import Test.Hspec
+import Str
+import Data.Either (isLeft)
 
 main :: IO ()
-main =
+main = hspec $
+ describe "parse"
  do testCase01
     testCase02
     testCase03
@@ -15,104 +19,447 @@ main =
     testCaseDoc01
     testCaseDoc02
     testCaseDoc03
-    testCaseDoc04
-    testCaseDoc05
-    testCaseDoc06
-    testCaseDoc07
     testCaseDoc08
     testCaseDoc09
-    testCaseDoc10
-    testCaseDoc11
     testCaseDoc12
+    testCaseDoc13
+    
+    describe "keys"
+     do it "allows bare keys" $
+          parse [quoteStr|
+            key = "value"
+            bare_key = "value"
+            bare-key = "value"
+            1234 = "value"|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("1234",String "value"),
+            ("bare-key",String "value"),
+            ("bare_key",String "value"),
+            ("key",String "value")])
 
-goodTestCase :: String -> Map String Value -> IO ()
+        it "allows quoted keys" $
+          parse [quoteStr|
+            "127.0.0.1" = "value"
+            "character encoding" = "value"
+            "ʎǝʞ" = "value"
+            'key2' = "value"
+            'quoted "value"' = "value"|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("127.0.0.1",String "value"),
+            ("character encoding",String "value"),
+            ("key2",String "value"),
+            ("quoted \"value\"",String "value"),
+            ("ʎǝʞ",String "value")])
+
+        it "allows dotted keys" $
+          parse [quoteStr|
+            name = "Orange"
+            physical.color = "orange"
+            physical.shape = "round"
+            site."google.com" = true|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("name",String "Orange"),
+            ("physical", table [("color",String "orange"),("shape",String "round")]),
+            ("site",table [("google.com",Bool True)])])
+        
+        it "prevents duplicate keys" $
+          parse [quoteStr|
+            name = "Tom"
+            name = "Pradyun"|]
+          `shouldSatisfy` isLeft
+        
+        it "prevents duplicate keys even between bare and quoted" $
+          parse [quoteStr|
+            spelling = "favorite"
+            "spelling" = "favourite"|]
+          `shouldSatisfy` isLeft
+        
+        it "allows out of order definitions" $
+          parse [quoteStr|
+            apple.type = "fruit"
+            orange.type = "fruit"
+
+            apple.skin = "thin"
+            orange.skin = "thick"
+
+            apple.color = "red"
+            orange.color = "orange"|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("apple", table [
+                ("color",String "red"),
+                ("skin",String "thin"),
+                ("type",String "fruit")]),
+            ("orange", table [
+                ("color",String "orange"),
+                ("skin",String "thick"),
+                ("type",String "fruit")])])
+
+        it "allows numeric bare keys" $
+          parse "3.14159 = 'pi'" `shouldBe` Right (Map.singleton "3" (table [("14159", String "pi")]))
+
+    describe "string" 
+     do it "parses escapes" $
+          parse [quoteStr|
+            str = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."|]
+          `shouldBe`
+          Right (Map.singleton "str" (String "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."))
+
+        it "strips the initial newline from multiline strings" $
+          parse [quoteStr|
+            str1 = """
+            Roses are red
+            Violets are blue"""|]
+          `shouldBe` Right (Map.singleton "str1" (String "Roses are red\nViolets are blue"))
+        
+        it "strips whitespace with a trailing escape" $
+          parse [quoteStr|
+            # The following strings are byte-for-byte equivalent:
+            str1 = "The quick brown fox jumps over the lazy dog."
+
+            str2 = """
+            The quick brown \
+
+
+            fox jumps over \
+                the lazy dog."""
+
+            str3 = """\
+                The quick brown \
+                fox jumps over \
+                the lazy dog.\
+                """|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("str1",String "The quick brown fox jumps over the lazy dog."),
+            ("str2",String "The quick brown fox jumps over the lazy dog."),
+            ("str3",String "The quick brown fox jumps over the lazy dog.")])
+        
+        it "allows quotes inside multiline quoted strings" $
+          parse [quoteStr|
+            str4 = """Here are two quotation marks: "". Simple enough."""
+            str5 = """Here are three quotation marks: ""\"."""
+            str6 = """Here are fifteen quotation marks: ""\"""\"""\"""\"""\"."""
+
+            # "This," she said, "is just a pointless statement."
+            str7 = """"This," she said, "is just a pointless statement.""""|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("str4",String "Here are two quotation marks: \"\". Simple enough."),
+            ("str5",String "Here are three quotation marks: \"\"\"."),
+            ("str6",String "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"."),
+            ("str7",String "\"This,\" she said, \"is just a pointless statement.\"")])
+        
+        it "disallows triple quotes inside a multiline string" $
+          parse [quoteStr|
+            str5 = """Here are three quotation marks: """."""  # INVALID|]
+          `shouldSatisfy` isLeft
+        
+        it "ignores escapes in literal strings" $
+          parse [quoteStr|
+            # What you see is what you get.
+            winpath  = 'C:\Users\nodejs\templates'
+            winpath2 = '\\ServerX\admin$\system32\'
+            quoted   = 'Tom "Dubs" Preston-Werner'
+            regex    = '<\i\c*\s*>'|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("quoted",String "Tom \"Dubs\" Preston-Werner"),
+            ("regex",String "<\\i\\c*\\s*>"),
+            ("winpath",String "C:\\Users\\nodejs\\templates"),
+            ("winpath2",String "\\\\ServerX\\admin$\\system32\\")])
+
+        it "handles multiline literal strings" $
+          parse [quoteStr|
+            regex2 = '''I [dw]on't need \d{2} apples'''
+            lines  = '''
+            The first newline is
+            trimmed in raw strings.
+            All other whitespace
+            is preserved.
+            '''|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("lines",String "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n"),
+            ("regex2",String "I [dw]on't need \\d{2} apples")])
+
+    parsesLiterals
+
+    describe "array"
+     do it "parses array examples" $
+          parse [quoteStr|
+            integers = [ 1, 2, 3 ]
+            colors = [ "red", "yellow", "green" ]
+            nested_arrays_of_ints = [ [ 1, 2 ], [3, 4, 5] ]
+            nested_mixed_array = [ [ 1, 2 ], ["a", "b", "c"] ]
+            string_array = [ "all", 'strings', """are the same""", '''type''' ]
+
+            # Mixed-type arrays are allowed
+            numbers = [ 0.1, 0.2, 0.5, 1, 2, 5 ]
+            contributors = [
+            "Foo Bar <foo@example.com>",
+            { name = "Baz Qux", email = "bazqux@example.com", url = "https://example.com/bazqux" }
+            ]|]
+            `shouldBe`
+            Right (Map.fromList [
+                ("colors",Array [String "red",String "yellow",String "green"]),
+                ("contributors",Array [
+                    String "Foo Bar <foo@example.com>",
+                    table [
+                        ("email",String "bazqux@example.com"),
+                        ("name",String "Baz Qux"),
+                        ("url",String "https://example.com/bazqux")]]),
+                ("integers", Array [Integer 1,Integer 2,Integer 3]),
+                ("nested_arrays_of_ints",Array [Array [Integer 1,Integer 2],Array [Integer 3,Integer 4,Integer 5]]),
+                ("nested_mixed_array",Array [Array [Integer 1,Integer 2],Array [String "a",String "b",String "c"]]),
+                ("numbers",Array [Float 0.1,Float 0.2,Float 0.5,Integer 1,Integer 2,Integer 5]),
+                ("string_array",Array [String "all",String "strings",String "are the same",String "type"])])
+
+        it "handles newlines and comments" $
+          parse [quoteStr|
+            integers2 = [
+            1, 2, 3
+            ]
+
+            integers3 = [
+            1,
+            2, # this is ok
+            ]|]
+            `shouldBe`
+            Right (Map.fromList [
+                ("integers2",Array [Integer 1,Integer 2,Integer 3]),
+                ("integers3",Array [Integer 1,Integer 2])])
+
+    describe "table"
+     do it "allows empty tables" $
+          parse "[table]" `shouldBe` Right (Map.singleton "table" (table []))
+        
+        it "parses simple tables" $
+          parse [quoteStr|
+            [table-1]
+            key1 = "some string"
+            key2 = 123
+
+            [table-2]
+            key1 = "another string"
+            key2 = 456|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("table-1", table [
+                ("key1",String "some string"),
+                ("key2",Integer 123)]),
+            ("table-2", table [
+                ("key1",String "another string"),
+                ("key2",Integer 456)])])
+
+        it "allows quoted keys" $
+          parse [quoteStr|
+            [dog."tater.man"]
+            type.name = "pug"|]
+          `shouldBe`
+          Right (Map.fromList [("dog", table [("tater.man", table [("type", table [("name",String "pug")])])])])
+        
+        it "allows whitespace around keys" $
+          parse [quoteStr|
+            [a.b.c]            # this is best practice
+            [ d.e.f ]          # same as [d.e.f]
+            [ g .  h  . i ]    # same as [g.h.i]
+            [ j . "ʞ" . 'l' ]  # same as [j."ʞ".'l']|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("a", table [("b", table [("c", table [])])]),
+            ("d", table [("e", table [("f", table [])])]),
+            ("g", table [("h", table [("i", table [])])]),
+            ("j", table [("ʞ", table [("l", table [])])])])
+
+        it "allows supertables to be defined after subtables" $
+          parse [quoteStr|
+            # [x] you
+            # [x.y] don't
+            # [x.y.z] need these
+            [x.y.z.w] # for this to work
+
+            [x] # defining a super-table afterward is ok
+            q=1|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("x",table [
+                ("q",Integer 1),
+                ("y",table [
+                    ("z",table [
+                        ("w",table [])])])])])
+
+        it "prevents using a [table] to open a table defined with dotted keys" $
+          parse [quoteStr|
+            [fruit]
+            apple.color = 'red'
+            apple.taste.sweet = true
+            [fruit.apple]|]
+          `shouldSatisfy` isLeft
+
+    describe "inline table"
+     do it "parses inline tables" $
+          parse [quoteStr|
+            name = { first = "Tom", last = "Preston-Werner" }
+            point = { x = 1, y = 2 }
+            animal = { type.name = "pug" }|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("animal",table [("type",table [("name",String "pug")])]),
+            ("name",table [("first",String "Tom"),("last",String "Preston-Werner")]),
+            ("point",table [("x",Integer 1),("y",Integer 2)])])
+        
+        it "prevents altering inline tables with dotted keys" $
+          parse [quoteStr|
+            [product]
+            type = { name = "Nail" }
+            type.edible = false  # INVALID|]
+          `shouldSatisfy` isLeft
+        
+        it "prevents using inline tables to add keys to existing tables" $
+          parse [quoteStr|
+            [product]
+            type.name = "Nail"
+            type = { edible = false }  # INVALID|]
+          `shouldSatisfy` isLeft
+
+    describe "array of tables"
+     do it "supports array of tables syntax" $
+          parse [quoteStr|
+            [[products]]
+            name = "Hammer"
+            sku = 738594937
+
+            [[products]]  # empty table within the array
+
+            [[products]]
+            name = "Nail"
+            sku = 284758393
+
+            color = "gray"|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("products",Array [
+                table [
+                    ("name",String "Hammer"),
+                    ("sku",Integer 738594937)],
+                table [],
+                table [
+                    ("color",String "gray"),
+                    ("name",String "Nail"),
+                    ("sku",Integer 284758393)]])])
+        
+        it "handles subtables under array of tables" $
+          parse [quoteStr|
+            [[fruits]]
+            name = "apple"
+
+            [fruits.physical]  # subtable
+            color = "red"
+            shape = "round"
+
+            [[fruits.varieties]]  # nested array of tables
+            name = "red delicious"
+
+            [[fruits.varieties]]
+            name = "granny smith"
+
+
+            [[fruits]]
+            name = "banana"
+
+            [[fruits.varieties]]
+            name = "plantain"|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("fruits",Array [
+                table [
+                    ("name",String "apple"),
+                    ("physical",table [
+                        ("color",String "red"),
+                        ("shape",String "round")]),
+                    ("varieties",Array [
+                        table [("name",String "red delicious")],
+                        table [("name",String "granny smith")]])],
+                table [
+                    ("name",String "banana"),
+                    ("varieties",Array [
+                        table [("name",String "plantain")]])]])])
+
+        it "prevents redefining a supertable with an array of tables" $
+          parse [quoteStr|
+            # INVALID TOML DOC
+            [fruit.physical]  # subtable, but to which parent element should it belong?
+            color = "red"
+            shape = "round"
+
+            [[fruit]]  # parser must throw an error upon discovering that "fruit" is
+                    # an array rather than a table
+            name = "apple"|]
+            `shouldSatisfy` isLeft
+        
+        it "prevents redefining an inline array" $
+          parse [quoteStr|
+            # INVALID TOML DOC
+            fruits = []
+
+            [[fruits]] # Not allowed|]
+          `shouldSatisfy` isLeft
+
+goodTestCase :: String -> Map String Value -> Spec
 goodTestCase src expect =
-    case parse src of
-        Right t
-            | t == expect -> pure ()
-            | otherwise   ->
-             do putStrLn ("Parsed:   " ++ src        )
-                putStrLn ("Got:      " ++ show t     )
-                putStrLn ("Expected: " ++ show expect)
-                exitFailure
-        Left e ->
-             do putStrLn ("Parsed:   " ++ src        )
-                putStrLn ("Error:    " ++ e          )
-                exitFailure
+    it "starts" $
+    parse src `shouldBe` Right expect
 
-badTestCase :: String -> IO ()
+badTestCase :: String -> Spec
 badTestCase src =
-    case parse src of
-        Right t ->
-             do putStrLn ("Parsed:   " ++ src        )
-                putStrLn ("Got:      " ++ show t     )
-                putStrLn "Expected failure"
-        Left{} -> pure ()
+    it "fails" $
+    parse src `shouldSatisfy` isLeft
 
-testCase01 :: IO ()
+testCase01 :: Spec
 testCase01 = goodTestCase
     "x = 123_456_789"
     (Map.fromList [("x", Integer 123456789)])
 
-testCase02 :: IO ()
+testCase02 :: Spec
 testCase02 = goodTestCase
     "x.y = 0x10\n\
     \x.z = 0o21"
     (Map.fromList [("x", table [("y", Integer 16), ("z", Integer 17)])])
 
-testCase03 :: IO ()
+testCase03 :: Spec
 testCase03 = goodTestCase
     "[['ok']]\n\
     \[[ok.ko]]\n\
     \m = false"
     (Map.fromList [("ok",Array [table [("ko",Array [table [("m",Bool False)]])]])])
 
-testCase04 :: IO ()
+testCase04 :: Spec
 testCase04 = badTestCase
     "x.y=1\n\
     \[x]"
 
-testCaseDoc01 :: IO ()
+testCaseDoc01 :: Spec
 testCaseDoc01 = goodTestCase
     "# This is a full-line comment\n\
     \key = \"value\"  # This is a comment at the end of a line\n\
     \another = \"# This is not a comment\""
     (Map.fromList [("another",String "# This is not a comment"),("key",String "value")])
 
-testCaseDoc02 :: IO ()
+testCaseDoc02 :: Spec
 testCaseDoc02 = badTestCase
     "key = # INVALID"
 
-testCaseDoc03 :: IO ()
+testCaseDoc03 :: Spec
 testCaseDoc03 = badTestCase "first = \"Tom\" last = \"Preston-Werner\" # INVALID"
 
-testCaseDoc04 :: IO ()
-testCaseDoc04 = goodTestCase
-    "key = \"value\"\n\
-    \bare_key = \"value\"\n\
-    \bare-key = \"value\"\n\
-    \1234 = \"value\""
-    (Map.fromList [("1234",String "value"),("bare-key",String "value"),("bare_key",String "value"),("key",String "value")])
-
-testCaseDoc05 :: IO ()
-testCaseDoc05 = goodTestCase
-    "\"127.0.0.1\" = \"value\"\n\
-    \\"character encoding\" = \"value\"\n\
-    \\"ʎǝʞ\" = \"value\"\n\
-    \'key2' = \"value\"\n\
-    \'quoted \"value\"' = \"value\""
-    (Map.fromList [("127.0.0.1",String "value"),("character encoding",String "value"),("key2",String "value"),("quoted \"value\"",String "value"),("ʎǝʞ",String "value")])
-
-testCaseDoc06 :: IO ()
-testCaseDoc06 = goodTestCase
-    "name = \"Orange\"\n\
-    \physical.color = \"orange\"\n\
-    \physical.shape = \"round\"\n\
-    \site.\"google.com\" = true\n"
-    (Map.fromList [("name",String "Orange"),("physical", table [("color",String "orange"),("shape",String "round")]),("site",table [("google.com",Bool True)])])
-
-testCaseDoc07 :: IO ()
-testCaseDoc07 = goodTestCase
+parsesLiterals :: Spec
+parsesLiterals =
+    it "parses literals correctly" $
+    parse
     "int1 = +99\n\
     \int2 = 42\n\
     \int3 = 0\n\
@@ -164,19 +511,12 @@ testCaseDoc07 = goodTestCase
     \ld1 = 1979-05-27\n\
     \\n\
     \lt1 = 07:32:00\n\
-    \lt2 = 00:32:00.999999\n\
-    \# arrays\n\
-    \integers = [ 1, 2, 3 ]\n\
-    \colors = [ \"red\", \"yellow\", \"green\" ]\n\
-    \nested_arrays_of_ints = [ [ 1, 2 ], [3, 4, 5] ]\n\
-    \nested_mixed_array = [ [ 1, 2 ], [\"a\", \"b\", \"c\"] ]\n\
-    \string_array = [ \"all\", 'strings', \"\"\"are the same\"\"\", '''type''' ]\n"
-
+    \lt2 = 00:32:00.999999\n"
+    `shouldBe` Right
     (Map.fromList [
         ("bin1",Integer 214),
         ("bool1",Bool True),
         ("bool2",Bool False),
-        ("colors",Array [String "red",String "yellow",String "green"]),
         ("flt1",Float 1.0),
         ("flt2",Float 3.1415),
         ("flt3",Float (-1.0e-2)),
@@ -196,15 +536,11 @@ testCaseDoc07 = goodTestCase
         ("int6",Integer 5349221),
         ("int7",Integer 5349221),
         ("int8",Integer 12345),
-        ("integers",Array [Integer 1,Integer 2,Integer 3]),
         ("ld1",Day (read "1979-05-27")),
         ("ldt1",LocalTime (read "1979-05-27 07:32:00")),
         ("ldt2",LocalTime (read "1979-05-27 00:32:00.999999")),
         ("lt1",TimeOfDay (read "07:32:00")),
         ("lt2",TimeOfDay (read "00:32:00.999999")),
-        ("nested_arrays_of_ints",
-        Array [Array [Integer 1,Integer 2],Array [Integer 3,Integer 4,Integer 5]]),
-        ("nested_mixed_array",Array [Array [Integer 1,Integer 2],Array [String "a",String "b",String "c"]]),
         ("oct1",Integer 342391),
         ("oct2",Integer 493),
         ("odt1",ZonedTime (read "1979-05-27 07:32:00 +0000")),
@@ -213,30 +549,28 @@ testCaseDoc07 = goodTestCase
         ("odt4",ZonedTime (read "1979-05-27 07:32:00 +0000")),
         ("sf1",Float (1/0)),
         ("sf2",Float (1/0)),
-        ("sf3",Float (-1/0)),
-        ("string_array",Array [String "all",String "strings",String "are the same",String "type"])])
+        ("sf3",Float (-1/0))])
 
-testCaseDoc08 :: IO ()
+testCaseDoc08 :: Spec
 testCaseDoc08 =
-    case parse txt of
-        Left{} -> putStrLn "nan case failed" >> exitFailure
-        Right t -> unless (all nanCheck t) (putStrLn "nan case failed" >> exitFailure)
-    where
-        nanCheck (Float n) = isNaN n
-        nanCheck _ = False
-
-        txt =
+    it "parses nan correctly"
+    do parse
             "# not a number\n\
             \sf4 = nan  # actual sNaN/qNaN encoding is implementation-specific\n\
             \sf5 = +nan # same as `nan`\n\
             \sf6 = -nan # valid, actual encoding is implementation-specific\n"
+        `shouldSatisfy` \case
+          Left{} -> False
+          Right x -> all checkNaN x
+    where
+        checkNaN (Float x) = isNaN x
+        checkNaN _         = False
 
-testCaseDoc09 :: IO ()
+testCaseDoc09 :: Spec
 testCaseDoc09 = goodTestCase
     "[fruit]\n\
     \apple.color = 'red'\n\
     \apple.taste.sweet = true\n\
-    \\n\
     \[fruit.apple.texture]  # you can add sub-tables\n\
     \smooth = true\n"
     (Map.fromList [
@@ -248,35 +582,18 @@ testCaseDoc09 = goodTestCase
                 ("texture",table [
                     ("smooth",Bool True)])])])])
 
-testCaseDoc10 :: IO ()
-testCaseDoc10 = goodTestCase
-    "[x.y.z.w] # for this to work\n\
-    \[x] # defining a super-table afterward is ok\n\
-    \q=1"
-    (Map.fromList [
-        ("x",table [
-            ("q",Integer 1),
-            ("y",table [
-                ("z",table [
-                    ("w",table [])])])])])
-
-testCaseDoc11 :: IO ()
-testCaseDoc11 = badTestCase
-    "[fruit]\n\
-    \apple.color = 'red'\n\
-    \apple.taste.sweet = true\n\
-    \\n\
-    \[fruit.apple]"
-
-testCaseDoc12 :: IO ()
-testCaseDoc12 = goodTestCase
-    "[[x]]\n\
-    \a=1\n\
-    \[x.y.z]\n\
-    \b=2\n\
-    \[x.y]\n\
-    \c=3\n"
-    (Map.fromList [
+testCaseDoc12 :: Spec
+testCaseDoc12 =
+    it "allows defining subtables of array tables" $
+    parse [quoteStr|
+        [[x]]
+        a=1
+        [x.y.z]
+        b=2
+        [x.y]
+        c=3|]
+    `shouldBe`
+    Right (Map.fromList [
         ("x",Array [
             table ([
                 ("a",Integer 1),
@@ -284,6 +601,17 @@ testCaseDoc12 = goodTestCase
                     ("c",Integer 3),
                     ("z",table [
                         ("b",Integer 2)])])])])])
+
+-- Likewise, using dotted keys to redefine tables already defined in [table] form is not allowed.
+testCaseDoc13 :: Spec
+testCaseDoc13 =
+    it "prevents using dotted keys to redefine tables already defined in [table] form" $
+    parse [quoteStr|
+        [x.y]
+        z.w=1
+        [x]
+        y.q=2|]
+    `shouldSatisfy` isLeft
 
 table :: [(String, Value)] -> Value
 table = Table . Map.fromList

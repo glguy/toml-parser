@@ -4,7 +4,8 @@ module Parser (toml) where
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
-import Located (Located(Located))
+import Located (Located(Located, locPosition))
+import Position (posLine)
 import Raw
 import Token
 
@@ -46,18 +47,19 @@ EOF             { Located _ TokEOF                  }
 toml ::                       { [Expr]        }
   : sepBy1(line, NEWLINE) EOF { concat $1     }
 
-line ::                 { [Expr]              }
-  :                     { []                  }
-  |            COMMENT  { []                  }
-  | expression          { [$1]                }
-  | expression COMMENT  { [$1]                }
+line ::                   { [Expr]              }
+  :            commentok  { []                  }
+  | expression commentok  { [$1]                }
 
-expression ::       { Expr                    }
-  : keyval          { uncurry KeyValExpr $1   }
-  | '['  key ']'    { TableExpr      $2       }
-  | '[[' key ']]'   { ArrayTableExpr $2       }
+expression ::                 { Expr                            }
+  : getLineNo keyval          { KeyValExpr $1 (fst $2) (snd $2) }
+  | getLineNo '['  key ']'    { TableExpr      $1 $3            }
+  | getLineNo '[[' key ']]'   { ArrayTableExpr $1 $3            }
 
-keyval ::           { (Key, Val)         }
+getLineNo ::        { Int }
+  :                 {%^ Right . posLine . locPosition }
+
+keyval ::           { (Key, Val)              }
   : key '=' val     { ($1,$3)                 }
 
 key ::              { Key                     }
@@ -81,22 +83,25 @@ val ::              { Val                     }
   | array           { ValArray      $1        }
   | inlinetable     { ValTable      $1        }
 
+inlinetable ::                  { [(Key, Val)]      }
+  : '{' sepBy(keyval, ',') '}'  { $2                }
+
 array ::                                                  { [Val]       }
   : '[' commentnewline                                ']' { []          }
   | '[' commentnewline arrayvalues                    ']' { reverse $3  }
   | '[' commentnewline arrayvalues ',' commentnewline ']' { reverse $3  }
 
-commentnewline ::                  { }
-  : commentnewline COMMENT NEWLINE { }
-  | commentnewline         NEWLINE { }
-  |                                { }
-
 arrayvalues ::                                        { [Val]       }
   :                                val commentnewline { [$1]        }
   | arrayvalues ',' commentnewline val commentnewline { $4 : $1     }
 
-inlinetable ::                  { [(Key, Val)]      }
-  : '{' sepBy(keyval, ',') '}'  { $2                }
+commentnewline ::                    {}
+  :                                  {}
+  | commentnewline commentok NEWLINE {}
+
+commentok :: {}
+  :          {}
+  | COMMENT  {}
 
 sepBy(p,q) ::         { [p]                   }
   :                   { []                    }
