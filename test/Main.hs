@@ -23,6 +23,7 @@ main =
     testCaseDoc09
     testCaseDoc10
     testCaseDoc11
+    testCaseDoc12
 
 goodTestCase :: String -> Map String Value -> IO ()
 goodTestCase src expect =
@@ -250,9 +251,11 @@ testCaseDoc09 = goodTestCase
 testCaseDoc10 :: IO ()
 testCaseDoc10 = goodTestCase
     "[x.y.z.w] # for this to work\n\
-    \[x] # defining a super-table afterward is ok\n"
+    \[x] # defining a super-table afterward is ok\n\
+    \q=1"
     (Map.fromList [
         ("x",table [
+            ("q",Integer 1),
             ("y",table [
                 ("z",table [
                     ("w",table [])])])])])
@@ -264,6 +267,23 @@ testCaseDoc11 = badTestCase
     \apple.taste.sweet = true\n\
     \\n\
     \[fruit.apple]"
+
+testCaseDoc12 :: IO ()
+testCaseDoc12 = goodTestCase
+    "[[x]]\n\
+    \a=1\n\
+    \[x.y.z]\n\
+    \b=2\n\
+    \[x.y]\n\
+    \c=3\n"
+    (Map.fromList [
+        ("x",Array [
+            table ([
+                ("a",Integer 1),
+                ("y",table [
+                    ("c",Integer 3),
+                    ("z",table [
+                        ("b",Integer 2)])])])])])
 
 table :: [(String, Value)] -> Value
 table = Table . Map.fromList

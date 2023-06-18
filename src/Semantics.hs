@@ -8,11 +8,38 @@ import Data.Map qualified as Map
 import Pretty (prettyKey)
 import Raw (Key, Val(..), Expr(..))
 import Value (Value(..))
+import Control.Monad (foldM)
 
 data SectionKind = TableKind | ArrayTableKind
+    deriving Show
+
+type KeyVals = [(Key, Val)]
+
+gather :: [Expr] -> (KeyVals, [(SectionKind, Key, KeyVals)])
+gather = goTop []
+    where
+        goTop acc []                           = (reverse acc, [])
+        goTop acc (ArrayTableExpr key : exprs) = (reverse acc, goTable ArrayTableKind key [] exprs)
+        goTop acc (TableExpr      key : exprs) = (reverse acc, goTable TableKind      key [] exprs)
+        goTop acc (KeyValExpr k v     : exprs) = goTop ((k,v):acc) exprs
+
+        goTable kind key acc []                         = (kind, key, reverse acc) : []
+        goTable kind key acc (TableExpr      k : exprs) = (kind, key, reverse acc) : goTable TableKind k [] exprs
+        goTable kind key acc (ArrayTableExpr k : exprs) = (kind, key, reverse acc) : goTable ArrayTableKind k [] exprs
+        goTable kind key acc (KeyValExpr k v   : exprs) = goTable kind key ((k,v):acc) exprs
 
 compileExprs :: [Expr] -> Either String (Map String Value)
-compileExprs exprs = fmap frameToValue <$> build [] Map.empty exprs
+compileExprs exprs =
+ do let (topKVs, tables) = gather exprs
+    m1 <- assignKeyVals Map.empty topKVs
+    m2 <- foldM (\m (kind, key, kvs) -> addTop key kind m \m_ -> assignKeyVals m_ kvs) m1 tables
+    pure (fmap frameToValue m2)
+
+assignKeyVals :: Map String Frame -> KeyVals -> Either String (Map String Frame)
+assignKeyVals =
+    foldM \m (k,v) ->
+     do value <- valToValue v
+        assign k value m
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
@@ -70,79 +97,56 @@ findBadKey keys = check (sort keys)
         check (_:xs) = check xs
         check [] = Nothing
 
-build :: [String] -> Map String Frame -> [Expr] -> Either String (Map String Frame)
+addTop :: Key -> SectionKind -> Map String Frame -> (Map String Frame -> Either String (Map String Frame)) -> Either String (Map String Frame)
 
-build _ acc [] = Right acc
-
-build _ acc (TableExpr key : exprs) =
- do acc' <- addTop key TableKind acc
-    build (NonEmpty.toList key) acc' exprs
-
-build _ acc (ArrayTableExpr key : exprs) =
- do acc' <- addTop key ArrayTableKind acc
-    build (NonEmpty.toList key) acc' exprs
-
-build prefix acc (KeyValExpr key val : exprs) =
- do value <- valToValue val
-    acc' <- assign prefix key value acc
-    build prefix acc' exprs
-
-addTop :: Key -> SectionKind -> Map String Frame -> Either String (Map String Frame)
-
-addTop (key :| []) kind acc = Map.alterF f key acc
+addTop (key :| []) kind acc k = Map.alterF f key acc
     where
+        -- defining a new table
         f Nothing =
             case kind of
-                TableKind -> Right (Just (FrameTable Defined Map.empty))
-                ArrayTableKind -> Right (Just (FrameArray (Map.empty :| [])))
+                TableKind      -> Just . FrameTable Defined   <$> k Map.empty
+                ArrayTableKind -> Just . FrameArray . (:| []) <$> k Map.empty
+
+        -- defining a super table of a previously defined subtable
         f (Just (FrameTable Implicit t)) =
             case kind of
-                TableKind -> Right (Just (FrameTable Defined t))
+                TableKind      -> Just . FrameTable Defined <$> k t
                 ArrayTableKind -> Left "attempt to redefine table as array table"
-        f (Just (FrameTable Defined _)) =
-            Left "attempt to redefine table"
-        f (Just (FrameValue {})) = Left "attempt to defined table over value"
+
+        -- Add a new array element to an existing table array
         f (Just (FrameArray a)) =
             case kind of
-                TableKind -> Left "attempt to open array table as table"
-                ArrayTableKind -> Right (Just (FrameArray (NonEmpty.cons Map.empty a)))
+                ArrayTableKind -> Just . FrameArray . (`NonEmpty.cons` a) <$> k Map.empty
+                TableKind      -> Left "attempt to open array table as table"
 
-addTop (key :| k1:keys) kind acc = Map.alterF f key acc
+        -- failure cases
+        f (Just (FrameTable Defined _)) = Left "attempt to redefine table"
+        f (Just (FrameValue {}))        = Left "attempt to redefined a value"
+
+addTop (key :| k1:keys) kind acc k = Map.alterF f key acc
     where
         keys' = k1 :| keys
-        f Nothing = Just . FrameTable Implicit <$> addTop keys' kind acc
-        f (Just (FrameTable k t)) = Just . FrameTable k <$> addTop keys' kind t
-        f (Just (FrameValue{})) = Left "attempt to traverse value as table"
-        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> addTop keys' kind t
+        f Nothing                       = Just . FrameTable Implicit  <$> addTop keys' kind Map.empty k
+        f (Just (FrameTable tk t))      = Just . FrameTable tk        <$> addTop keys' kind t         k
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> addTop keys' kind t         k
+        f (Just (FrameValue{}))         = Left "attempt to redefine a value"
 
-assign :: [String] -> Key -> Value -> Map String Frame -> Either String (Map String Frame)
+assign :: Key -> Value -> Map String Frame -> Either String (Map String Frame)
 
-assign (p:prefix) key val acc = Map.alterF f p acc
-    where
-        f Nothing = error "underdefined prefix indicates logic error"
-
-        -- when a dotted key mentions an existing table, it just gets traversed
-        f (Just (FrameTable k t)) = Just . FrameTable k <$> assign prefix key val t
-
-        -- when an existing frame array is mentioned, traverse the last element
-        f (Just (FrameArray (t:|ts))) = Just . FrameArray . (:|ts) <$> assign prefix key val t
-
-        f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
-
-assign [] (key :| []) val acc = Map.alterF f key acc
+assign (key :| []) val acc = Map.alterF f key acc
     where
         f Nothing = Right (Just (FrameValue val))
-        f Just{} = Left "key already assigned"
+        f Just{}  = Left "key already assigned"
 
-assign [] (key:| k1:keys) val acc = Map.alterF f key acc
+assign (key:| k1:keys) val acc = Map.alterF f key acc
     where
         keys' = k1:|keys
         -- when a dotted key introduces a table, that defines it
-        f Nothing = Just . FrameTable Defined <$> assign [] keys' val Map.empty
+        f Nothing = Just . FrameTable Defined <$> assign keys' val Map.empty
 
         -- ??? does this define an implicit table ???
-        f (Just (FrameTable _ t)) = Just . FrameTable Defined <$> assign [] keys' val t
-        
-        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> assign [] keys' val t
+        f (Just (FrameTable _ t)) = Just . FrameTable Defined <$> assign keys' val t
+
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> assign keys' val t
 
         f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
