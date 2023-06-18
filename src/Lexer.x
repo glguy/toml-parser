@@ -89,26 +89,30 @@ $time_delim = [T\ ]
 
 toml :-
 
+@comment            { token TokComment                  }
+@newline            { token_ TokNewline                 }
 $wschar+;
-@comment        { token TokComment                      }
-@newline        { token_ TokNewline                     }
-@basic_string   { value mkBasicString                   }
-@literal_string { value mkLiteralString                 }
 
-"}"             { exitTable                             }
-"]"             { exitList                              }
-"="             { equals                                }
-"."             { token_ TokPeriod                      }
-","             { token_ TokComma                       }
+@basic_string       { value mkBasicString               }
+@literal_string     { value mkLiteralString             }
+
+@ml_literal_string  { value mkMlLiteralString           }
+@ml_basic_string    { value mkMlBasicString             }
+
+"}"                 { exitTable                         }
+"]"                 { exitList                          }
+"="                 { equals                            }
+"."                 { token_ TokPeriod                  }
+","                 { token_ TokComma                   }
 
 <0> {
 
-"["             { token_ TokSquareO                     }
-"]"             { token_ TokSquareC                     }
-"{"             { token_ TokCurlyO                      }
-"[["            { token_ Tok2SquareO                    }
-"]]"            { token_ Tok2SquareC                    }
-@barekey        { token  TokBareKey                     }
+"["                 { token_ TokSquareO                 }
+"]"                 { token_ TokSquareC                 }
+"{"                 { token_ TokCurlyO                  }
+"[["                { token_ Tok2SquareO                }
+"]]"                { token_ Tok2SquareC                }
+@barekey            { token  TokBareKey                 }
 
 }
 
@@ -123,13 +127,11 @@ $wschar+;
 @float              { value mkFloat                     }
 "true"              { value_ TokTrue                    }
 "false"             { value_ TokFalse                   }
-@ml_literal_string  { value mkMlLiteralString           }
-@ml_basic_string    { value mkMlBasicString             }
 
 @offset_date_time   { timeValue "offset date-time" offsetDateTimePatterns TokOffsetDateTime }
-@local_date         { timeValue "local date"       localDatePatterns      TokLocalDate }
-@local_date_time    { timeValue "local date-time"  localDateTimePatterns  TokLocalDateTime }
-@local_time         { timeValue "local time"       localTimePatterns      TokLocalTime }
+@local_date         { timeValue "local date"       localDatePatterns      TokLocalDate      }
+@local_date_time    { timeValue "local date-time"  localDateTimePatterns  TokLocalDateTime  }
+@local_time         { timeValue "local time"       localTimePatterns      TokLocalTime      }
 
 }
 
