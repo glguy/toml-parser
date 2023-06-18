@@ -16,4 +16,3 @@ parse str =
         Left le ->
             Left ("Unexpected " ++ prettyToken (locThing le) ++ " at " ++ prettyPosition (locPosition le))
         Right exprs -> compileExprs exprs
-

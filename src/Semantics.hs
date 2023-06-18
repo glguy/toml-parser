@@ -10,16 +10,6 @@ import Raw (Key, Val(..), Expr(..))
 import Value (Value(..))
 import Control.Monad (foldM)
 
-{-
-Dotted keys create and define a table for each key part before the last one,
-provided that such tables were not previously created.
-
-Since tables cannot be defined more than once, redefining such tables using a
-[table] header is not allowed. Likewise, using dotted keys to redefine tables
-already defined in [table] form is not allowed. The [table] form can, however,
- be used to define sub-tables within tables defined via dotted keys.
--}
-
 data SectionKind = TableKind | ArrayTableKind
     deriving Show
 

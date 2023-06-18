@@ -99,7 +99,7 @@ $wschar+;
 "]"             { exitList                              }
 "="             { equals                                }
 "."             { token_ TokPeriod                      }
-","             { token_ TokComma                       } 
+","             { token_ TokComma                       }
 
 <0> {
 

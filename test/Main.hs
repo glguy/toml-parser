@@ -22,7 +22,7 @@ main = hspec $
     testCaseDoc09
     testCaseDoc12
     testCaseDoc13
-    
+
     describe "keys"
      do it "allows bare keys" $
           parse [quoteStr|
@@ -63,19 +63,19 @@ main = hspec $
             ("name",String "Orange"),
             ("physical", table [("color",String "orange"),("shape",String "round")]),
             ("site",table [("google.com",Bool True)])])
-        
+
         it "prevents duplicate keys" $
           parse [quoteStr|
             name = "Tom"
             name = "Pradyun"|]
           `shouldSatisfy` isLeft
-        
+
         it "prevents duplicate keys even between bare and quoted" $
           parse [quoteStr|
             spelling = "favorite"
             "spelling" = "favourite"|]
           `shouldSatisfy` isLeft
-        
+
         it "allows out of order definitions" $
           parse [quoteStr|
             apple.type = "fruit"
@@ -100,7 +100,7 @@ main = hspec $
         it "allows numeric bare keys" $
           parse "3.14159 = 'pi'" `shouldBe` Right (Map.singleton "3" (table [("14159", String "pi")]))
 
-    describe "string" 
+    describe "string"
      do it "parses escapes" $
           parse [quoteStr|
             str = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."|]
@@ -113,7 +113,7 @@ main = hspec $
             Roses are red
             Violets are blue"""|]
           `shouldBe` Right (Map.singleton "str1" (String "Roses are red\nViolets are blue"))
-        
+
         it "strips whitespace with a trailing escape" $
           parse [quoteStr|
             # The following strings are byte-for-byte equivalent:
@@ -136,7 +136,7 @@ main = hspec $
             ("str1",String "The quick brown fox jumps over the lazy dog."),
             ("str2",String "The quick brown fox jumps over the lazy dog."),
             ("str3",String "The quick brown fox jumps over the lazy dog.")])
-        
+
         it "allows quotes inside multiline quoted strings" $
           parse [quoteStr|
             str4 = """Here are two quotation marks: "". Simple enough."""
@@ -151,12 +151,12 @@ main = hspec $
             ("str5",String "Here are three quotation marks: \"\"\"."),
             ("str6",String "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"."),
             ("str7",String "\"This,\" she said, \"is just a pointless statement.\"")])
-        
+
         it "disallows triple quotes inside a multiline string" $
           parse [quoteStr|
             str5 = """Here are three quotation marks: """."""  # INVALID|]
           `shouldSatisfy` isLeft
-        
+
         it "ignores escapes in literal strings" $
           parse [quoteStr|
             # What you see is what you get.
@@ -235,7 +235,7 @@ main = hspec $
     describe "table"
      do it "allows empty tables" $
           parse "[table]" `shouldBe` Right (Map.singleton "table" (table []))
-        
+
         it "parses simple tables" $
           parse [quoteStr|
             [table-1]
@@ -260,7 +260,7 @@ main = hspec $
             type.name = "pug"|]
           `shouldBe`
           Right (Map.fromList [("dog", table [("tater.man", table [("type", table [("name",String "pug")])])])])
-        
+
         it "allows whitespace around keys" $
           parse [quoteStr|
             [a.b.c]            # this is best practice
@@ -310,14 +310,14 @@ main = hspec $
             ("animal",table [("type",table [("name",String "pug")])]),
             ("name",table [("first",String "Tom"),("last",String "Preston-Werner")]),
             ("point",table [("x",Integer 1),("y",Integer 2)])])
-        
+
         it "prevents altering inline tables with dotted keys" $
           parse [quoteStr|
             [product]
             type = { name = "Nail" }
             type.edible = false  # INVALID|]
           `shouldSatisfy` isLeft
-        
+
         it "prevents using inline tables to add keys to existing tables" $
           parse [quoteStr|
             [product]
@@ -350,7 +350,7 @@ main = hspec $
                     ("color",String "gray"),
                     ("name",String "Nail"),
                     ("sku",Integer 284758393)]])])
-        
+
         it "handles subtables under array of tables" $
           parse [quoteStr|
             [[fruits]]
@@ -399,7 +399,7 @@ main = hspec $
                     # an array rather than a table
             name = "apple"|]
             `shouldSatisfy` isLeft
-        
+
         it "prevents redefining an inline array" $
           parse [quoteStr|
             # INVALID TOML DOC
