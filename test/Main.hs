@@ -236,20 +236,6 @@ main = hspec $
             x = "\U11111111"|]
           `shouldSatisfy` isLeft
 
-    describe "float"
-     do it "parses nan correctly" $
-          let checkNaN (Float x) = isNaN x
-              checkNaN _         = False
-          in
-          parse [quoteStr|
-            # not a number
-            sf4 = nan  # actual sNaN/qNaN encoding is implementation-specific
-            sf5 = +nan # same as `nan`
-            sf6 = -nan # valid, actual encoding is implementation-specific|]
-          `shouldSatisfy` \case
-            Left{} -> False
-            Right x -> all checkNaN x
-
     describe "integer"
      do it "parses literals correctly" $
           parse [quoteStr|
@@ -322,6 +308,19 @@ main = hspec $
             ("sf1",Float (1/0)),
             ("sf2",Float (1/0)),
             ("sf3",Float (-1/0))])
+
+        it "parses nan correctly" $
+          let checkNaN (Float x) = isNaN x
+              checkNaN _         = False
+          in
+          parse [quoteStr|
+            # not a number
+            sf4 = nan  # actual sNaN/qNaN encoding is implementation-specific
+            sf5 = +nan # same as `nan`
+            sf6 = -nan # valid, actual encoding is implementation-specific|]
+          `shouldSatisfy` \case
+            Left{} -> False
+            Right x -> all checkNaN x
 
     describe "boolean"
      do it "parses boolean literals" $
