@@ -12,7 +12,7 @@ specification document).
 -}
 module Main (main) where
 
-import Data.Either (isLeft)
+import Data.Either (isLeft, isRight)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import QuoteStr (quoteStr)
@@ -465,6 +465,115 @@ main = hspec $
             fruits = []
 
             [[fruits]] # Not allowed|]
+          `shouldSatisfy` isLeft
+    
+    -- these cases are needed to complete coverage checking on Semantics module
+    describe "corner cases"
+     do it "stays open" $
+          parse [quoteStr|
+            [x.y.z]
+            [x]
+            [x.y]|] `shouldSatisfy` isRight
+
+        it "stays closed" $
+          parse [quoteStr|
+            [x.y]
+            [x]
+            [x.y]|] `shouldSatisfy` isLeft
+        
+        it "super tables of array tables preserve array tables" $
+          parse [quoteStr|
+            [[x.y]]
+            [x]
+            [[x.y]]|] `shouldSatisfy` isRight
+        
+        it "super tables of array tables preserve array tables" $
+          parse [quoteStr|
+            [[x.y]]
+            [x]
+            [x.y.z]|] `shouldSatisfy` isRight
+        
+        it "detects conflicting inline keys" $
+          parse [quoteStr|
+            x = { y = 1, y.z = 2}|]
+          `shouldSatisfy` isLeft
+        
+        it "handles merging dotted inline table keys" $
+          parse [quoteStr|
+            t = { a.x.y = 1, a.x.z = 2, a.q = 3}|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("t", table [
+                ("a", table [
+                    ("q",Integer 3),
+                    ("x", table [
+                        ("y",Integer 1),
+                        ("z",Integer 2)])])])])
+        
+        it "disallows overwriting assignments with tables" $
+          parse [quoteStr|
+            x = 1
+            [x.y]|]
+          `shouldSatisfy` isLeft
+        
+        it "handles super super tables" $
+          parse [quoteStr|
+            [x.y.z]
+            [x.y]
+            [x]|]
+          `shouldSatisfy` isRight
+        
+        it "You can dot into open supertables" $
+          parse [quoteStr|
+            [x.y.z]
+            [x]
+            y.q = 1|]
+          `shouldSatisfy` isRight
+
+        it "dotted tables close previously open tables" $
+          parse [quoteStr|
+            [x.y.z]
+            [x]
+            y.q = 1
+            [x.y]|]
+          `shouldSatisfy` isLeft
+
+        it "dotted tables can assign through closed tables!" $
+          parse [quoteStr|
+            [x.y]
+            [x]
+            y.z.w = 1|]
+          `shouldSatisfy` isRight
+
+        it "dotted tables can assign through closed tables preserves closedness" $
+          parse [quoteStr|
+            [x.y]
+            [x]
+            y.z.w = 1
+            y.q = 2|]
+          `shouldSatisfy` isLeft
+
+        it "super tables can add new subtables to array tables via dotted keys" $
+          parse [quoteStr|
+            [[x.y]]
+            [x]
+            y.z.a = 1
+            y.z.b = 2|]
+          `shouldSatisfy` isRight
+        
+        it "the previous example preserves closeness" $
+          parse [quoteStr|
+            [[x.y]]
+            [x]
+            y.z.a = 1
+            y.w = 2|]
+          `shouldSatisfy` isLeft
+        
+        it "defining a supertable closes the supertable" $
+          parse [quoteStr|
+            [x.y]
+            [x]
+            [x]|]
           `shouldSatisfy` isLeft
 
 goodTestCase :: String -> Map String Value -> Spec

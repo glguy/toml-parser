@@ -28,5 +28,5 @@ move :: Char -> Position -> Position
 move x Position{ posIndex = i, posLine = l, posColumn = c} =
     case x of
         '\n' -> Position{ posIndex = i+1, posLine = l+1, posColumn = 1 }
-        '\t' -> Position{ posIndex = i+1, posLine = l, posColumn = c `quot` 8 * 8 + 8 }
+        '\t' -> Position{ posIndex = i+1, posLine = l, posColumn = (c + 7) `quot` 8 * 8 + 1 }
         _    -> Position{ posIndex = i+1, posLine = l, posColumn = c+1 }
