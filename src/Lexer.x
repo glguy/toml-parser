@@ -44,7 +44,9 @@ $comment_start_symbol = \#
 
 @barekey = [0-9 A-Z a-z \- _]+
 
-@escape_seq_char  = [\x22 \x5C \x62 \x66 \x6E \x72 \x74] | "u" $hexdig{4} | "U" $hexdig{8}
+@escape_seq_char  = [\x22 \x5C \x62 \x66 \x6E \x72 \x74] | "u" $hexdig{4}
+                  | "U0010" $hexdig{4}
+                  | "U000"  $hexdig{5}
 @escaped          = \\ @escape_seq_char
 @basic_char       = $basic_unescaped | @escaped
 

@@ -223,6 +223,20 @@ main = hspec $
           Right (Map.fromList [
             ("lines",String "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n"),
             ("regex2",String "I [dw]on't need \\d{2} apples")])
+        
+        it "parses all the other escapes" $
+          parse [quoteStr|
+            x = "\\\b\f\r\U0010abcd"
+            y = """\\\b\f\r\udbca\U0010abcd\n\r\t"""|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("x", String "\\\b\f\r\x0010abcd"),
+            ("y", String "\\\b\f\r\xdbca\x0010abcd\n\r\t")])
+        
+        it "rejects out of range unicode escapes" $
+          parse [quoteStr|
+            x = "\U11111111"|]
+          `shouldSatisfy` isLeft
 
     parsesLiterals
 
@@ -575,6 +589,24 @@ main = hspec $
             [x]
             [x]|]
           `shouldSatisfy` isLeft
+        
+        it "preserves arrays while assigning through them" $
+          parse [quoteStr|
+            [[x.y]]
+            a=1
+            [[x.y]]
+            b=2
+            [x]
+            y.z.c=3|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("x", table [
+                ("y", Array [
+                    table [("a",Integer 1)],
+                    table [
+                        ("b", Integer 2),
+                        ("z", table [
+                            ("c",Integer 3)])]])])])
 
 goodTestCase :: String -> Map String Value -> Spec
 goodTestCase src expect =
@@ -660,6 +692,7 @@ parsesLiterals =
     \\n\
     \ldt1 = 1979-05-27T07:32:00\n\
     \ldt2 = 1979-05-27T00:32:00.999999\n\
+    \ldt3 = 1979-05-28 00:32:00.999999\n\
     \\n\
     \ld1 = 1979-05-27\n\
     \\n\
@@ -692,6 +725,7 @@ parsesLiterals =
         ("ld1",Day (read "1979-05-27")),
         ("ldt1",LocalTime (read "1979-05-27 07:32:00")),
         ("ldt2",LocalTime (read "1979-05-27 00:32:00.999999")),
+        ("ldt3",LocalTime (read "1979-05-28 00:32:00.999999")),
         ("lt1",TimeOfDay (read "07:32:00")),
         ("lt2",TimeOfDay (read "00:32:00.999999")),
         ("oct1",Integer 0o01234567),
