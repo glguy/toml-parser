@@ -23,6 +23,8 @@ import Toml.Pretty (prettyKey, prettySection)
 import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Value(..))
 
+-- | Extract semantic value from sequence of raw TOML expressions
+-- or report an error string.
 semantics :: [Expr] -> Either String (Map String Value)
 semantics exprs =
  do let (topKVs, tables) = gather exprs

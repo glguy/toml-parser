@@ -10,11 +10,14 @@ All dotted keys are resolved in this representation. Each table
 is a Map with a single level of keys.
 
 -}
-module Toml.Value where
+module Toml.Value (
+    Value(..),
+    ) where
 
 import Data.Map (Map)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 
+-- | Semantic TOML value with all table assignments resolved.
 data Value
   = Integer Integer
   | Float Double

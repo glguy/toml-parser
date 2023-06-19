@@ -14,19 +14,28 @@ for overlapping assignments.
 Further processing will happen in the "Semantics" module.
 
 -}
-module Toml.Raw where
+module Toml.Raw (
+    Key,
+    Expr(..),
+    Val(..),
+    SectionKind(..),
+    ) where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 
+-- | Non-empty sequence of dotted simple keys
 type Key = NonEmpty String
 
+-- | Headers and assignments corresponding to lines of a TOML file
 data Expr
-    = KeyValExpr     Int Key Val
-    | TableExpr      Int Key
-    | ArrayTableExpr Int Key
+    = KeyValExpr     Int Key Val -- ^ line-no key value
+    | TableExpr      Int Key     -- ^ line-no table-header
+    | ArrayTableExpr Int Key     -- ^ line-no array-table-header
     deriving Show
 
+-- | Unvalidated TOML values. Table are represented as a list of
+-- assignments rather than as resolved maps.
 data Val
     = ValInteger Integer
     | ValFloat Double
@@ -40,5 +49,8 @@ data Val
     | ValDay Day
     deriving Show
 
-data SectionKind = TableKind | ArrayTableKind
+-- | Kinds of table headers.
+data SectionKind
+    = TableKind -- ^ [table]
+    | ArrayTableKind -- ^ [[array of tables]]
     deriving Show

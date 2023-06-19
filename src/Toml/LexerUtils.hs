@@ -10,7 +10,29 @@ lexer. This lexer drive provides nested states, unicode support,
 and file location tracking.
 
 -}
-module Toml.LexerUtils where
+module Toml.LexerUtils (
+    
+    -- * Types
+    M, Action,
+    Context(..),
+
+    -- * Actions
+    value,
+    value_,
+    token,
+    token_,
+    enterList,
+    exitList,
+    enterTable,
+    exitTable,
+    equals,
+    timeValue,
+
+    -- * Alex extension points
+    AlexInput,
+    alexGetByte,
+
+    ) where
 
 import Control.Monad.Trans.State (State, modify, state)
 import Data.Char (ord, isAscii)

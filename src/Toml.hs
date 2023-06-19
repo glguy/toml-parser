@@ -17,9 +17,8 @@ import Data.Map (Map)
 import Toml.Lexer (scanTokens)
 import Toml.Located (Located(locPosition, locThing))
 import Toml.Parser (parseRawToml)
-import Toml.Pretty (prettyPosition)
+import Toml.Pretty (prettyPosition, prettyToken)
 import Toml.Semantics (semantics)
-import Toml.Token (prettyToken)
 import Toml.Value (Value(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.

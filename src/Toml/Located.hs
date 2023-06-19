@@ -9,13 +9,15 @@ This module provides a simple tuple for tracking pairs of
 values and their file locations.
 
 -}
-module Toml.Located where
+module Toml.Located (
+    Located(..)
+    ) where
 
 import Toml.Position (Position)
 
 -- | A value annotated with its text file position
 data Located a = Located
-  { locPosition :: {-# UNPACK #-} !Position
-  , locThing    :: !a
-  }
-  deriving (Read, Show, Functor, Foldable, Traversable)
+    { locPosition :: {-# UNPACK #-} !Position
+    , locThing    :: !a
+    }
+    deriving (Read, Show, Functor, Foldable, Traversable)

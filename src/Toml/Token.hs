@@ -10,7 +10,29 @@ syntax of TOML files. These tokens will drive the
 parser in the "Parser" module.
 
 -}
-module Toml.Token where
+module Toml.Token (
+    Token(..),
+    
+    mkBasicString,
+    mkLiteralString,
+    mkMlBasicString,
+    mkMlLiteralString,
+    
+    -- * integer literals
+    mkBinInteger,
+    mkDecInteger,
+    mkOctInteger,
+    mkHexInteger,
+
+    -- * float literals
+    mkFloat,
+
+    -- * date and time patterns
+    localDatePatterns,
+    localTimePatterns,
+    localDateTimePatterns,
+    offsetDateTimePatterns,
+    ) where
 
 import Data.Char (chr, isSpace)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
@@ -43,34 +65,6 @@ data Token
   | TokError String               -- ^ lexical error
   | TokEOF                        -- ^ end of file
   deriving Show
-
--- | Render token for human-readable error messages.
-prettyToken :: Token -> String
-prettyToken = \case
-    TokComma            -> "','"
-    TokEquals           -> "'='"
-    TokPeriod           -> "'.'"
-    TokSquareO          -> "'['"
-    TokSquareC          -> "']'"
-    Tok2SquareO         -> "'[['"
-    Tok2SquareC         -> "']]]"
-    TokCurlyO           -> "'{'"
-    TokCurlyC           -> "'}'"
-    TokComment _        -> "comment"
-    TokNewline          -> "newline"
-    TokBareKey key      -> "bare key: " ++ key
-    TokTrue             -> "true literal"
-    TokFalse            -> "false literal"
-    TokString str       -> "string: " ++ show str
-    TokMlString str     -> "multi-line string: " ++ show str
-    TokInteger str      -> "integer: " ++ show str
-    TokFloat str        -> "float: " ++ show str
-    TokOffsetDateTime _ -> "offset date-time"
-    TokLocalDateTime _  -> "local date-time"
-    TokLocalDate _      -> "local date"
-    TokLocalTime _      -> "local time"
-    TokError e          -> "lexical error: " ++ e
-    TokEOF              -> "end-of-input"
 
 -- | Remove underscores from number literals
 scrub :: String -> String

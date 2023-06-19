@@ -10,12 +10,16 @@ in files while doing lexing and parsing for providing more useful
 error messages.
 
 -}
-module Toml.Position where
+module Toml.Position (
+    Position(..),
+    startPos,
+    move,
+    ) where
 
 -- | A position in a text file
 data Position = Position
-  { posIndex, posLine, posColumn :: {-# UNPACK #-} !Int }
-  deriving (Read, Show, Ord, Eq)
+    { posIndex, posLine, posColumn :: {-# UNPACK #-} !Int }
+    deriving (Read, Show, Ord, Eq)
 
 -- | The initial 'Position' for the start of a file
 startPos :: Position
