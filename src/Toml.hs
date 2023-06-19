@@ -11,13 +11,17 @@ This parser implements TOML 1.0.0 <https://toml.io/en/v1.0.0>
 as carefully as possible.
 
 -}
-module Toml (parse, Value(..)) where
+module Toml (
+    Value(..),
+    parse,
+    prettyToml,
+    ) where
 
 import Data.Map (Map)
 import Toml.Lexer (scanTokens)
 import Toml.Located (Located(locPosition, locThing))
 import Toml.Parser (parseRawToml)
-import Toml.Pretty (prettyPosition, prettyToken)
+import Toml.Pretty (prettyPosition, prettyToken, prettyToml)
 import Toml.Semantics (semantics)
 import Toml.Value (Value(..))
 
