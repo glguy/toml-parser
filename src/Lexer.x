@@ -100,7 +100,6 @@ $wschar+;
 @ml_basic_string    { value mkMlBasicString             }
 
 "}"                 { exitTable                         }
-"]"                 { exitList                          }
 "="                 { equals                            }
 "."                 { token_ TokPeriod                  }
 ","                 { token_ TokComma                   }
@@ -119,6 +118,7 @@ $wschar+;
 <val> {
 
 "["                 { enterList                         }
+"]"                 { exitList                          }
 "{"                 { enterTable                        }
 @dec_int            { value mkDecInteger                }
 @hex_int            { value mkHexInteger                }
