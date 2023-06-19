@@ -1,64 +1,78 @@
+{-|
+Module      : Token
+Description : Lexical tokens
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module provides the datatype for the lexical
+syntax of TOML files. These tokens will drive the
+parser in the "Parser" module.
+
+-}
 module Token where
 
 import Data.Char (chr, isSpace)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 import Numeric (readBin, readHex, readOct)
 
+-- | Lexical token
 data Token
-  = TokTrue
-  | TokFalse
-  | TokComma
-  | TokEquals
-  | TokNewline
-  | TokPeriod
-  | TokSquareO
-  | TokSquareC
-  | Tok2SquareO
-  | Tok2SquareC
-  | TokCurlyO
-  | TokCurlyC
-  | TokBareKey String
-  | TokString String
-  | TokMlString String
-  | TokInteger !Integer
-  | TokFloat !Double
-  | TokComment String
-  | TokOffsetDateTime !ZonedTime
-  | TokLocalDateTime !LocalTime
-  | TokLocalDate !Day
-  | TokLocalTime !TimeOfDay
-  | TokError String
-  | TokEOF
+  = TokTrue                       -- ^ @true@
+  | TokFalse                      -- ^ @false@
+  | TokComma                      -- ^ @','@
+  | TokEquals                     -- ^ @'='@
+  | TokNewline                    -- ^ @'\\n'@
+  | TokPeriod                     -- ^ @'.'@
+  | TokSquareO                    -- ^ @'['@
+  | TokSquareC                    -- ^ @']'@
+  | Tok2SquareO                   -- ^ @'[['@
+  | Tok2SquareC                   -- ^ @']]'@
+  | TokCurlyO                     -- ^ @'{'@
+  | TokCurlyC                     -- ^ @'}'@
+  | TokBareKey String             -- ^ bare key
+  | TokString String              -- ^ string literal
+  | TokMlString String            -- ^ multiline string literal
+  | TokInteger !Integer           -- ^ integer literal
+  | TokFloat !Double              -- ^ floating-point literal
+  | TokComment String             -- ^ comment
+  | TokOffsetDateTime !ZonedTime  -- ^ date-time with timezone offset
+  | TokLocalDateTime !LocalTime   -- ^ local date-time
+  | TokLocalDate !Day             -- ^ local date
+  | TokLocalTime !TimeOfDay       -- ^ local time
+  | TokError String               -- ^ lexical error
+  | TokEOF                        -- ^ end of file
   deriving Show
 
+-- | Render token for human-readable error messages.
 prettyToken :: Token -> String
-prettyToken t =
-  case t of
-    TokTrue -> "true literal"
-    TokFalse -> "false literal"
-    TokComma -> "','"
-    TokEquals -> "'='"
-    TokNewline -> "newline"
-    TokPeriod -> "'.'"
-    TokSquareO -> "'['"
-    TokSquareC -> "']'"
-    Tok2SquareO -> "'[['"
-    Tok2SquareC -> "']]]"
-    TokCurlyO -> "'{'"
-    TokCurlyC -> "'}'"
-    TokBareKey key -> "bare key: " ++ key
-    TokString str -> "string: " ++ show str
-    TokMlString str -> "multi-line string: " ++ show str
-    TokInteger str -> "integer: " ++ show str
-    TokFloat str -> "float: " ++ show str
-    TokComment _ -> "comment"
+prettyToken = \case
+    TokComma            -> "','"
+    TokEquals           -> "'='"
+    TokPeriod           -> "'.'"
+    TokSquareO          -> "'['"
+    TokSquareC          -> "']'"
+    Tok2SquareO         -> "'[['"
+    Tok2SquareC         -> "']]]"
+    TokCurlyO           -> "'{'"
+    TokCurlyC           -> "'}'"
+    TokComment _        -> "comment"
+    TokNewline          -> "newline"
+    TokBareKey key      -> "bare key: " ++ key
+    TokTrue             -> "true literal"
+    TokFalse            -> "false literal"
+    TokString str       -> "string: " ++ show str
+    TokMlString str     -> "multi-line string: " ++ show str
+    TokInteger str      -> "integer: " ++ show str
+    TokFloat str        -> "float: " ++ show str
     TokOffsetDateTime _ -> "offset date-time"
-    TokLocalDateTime _ -> "local date-time"
-    TokLocalDate _ -> "local date"
-    TokLocalTime _ -> "local time"
-    TokError e -> "lexical error: " ++ e
-    TokEOF -> "end-of-input"
+    TokLocalDateTime _  -> "local date-time"
+    TokLocalDate _      -> "local date"
+    TokLocalTime _      -> "local time"
+    TokError e          -> "lexical error: " ++ e
+    TokEOF              -> "end-of-input"
 
+-- | Remove underscores from number literals
 scrub :: String -> String
 scrub = filter ('_' /=)
 

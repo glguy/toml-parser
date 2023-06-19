@@ -1,5 +1,16 @@
 {
-module Parser (toml) where
+{-|
+Module      : Parser
+Description : Raw TOML expression parser
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module parses TOML tokens into a list of raw,
+uninterpreted sections and assignments.
+
+-}
+module Parser (parseRawToml) where
 
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.List.NonEmpty (NonEmpty)
@@ -40,7 +51,7 @@ EOF             { Located _ TokEOF                  }
 %monad          { Either (Located Token)            }
 %error          { errorP                            }
 
-%name toml
+%name parseRawToml toml
 
 %%
 

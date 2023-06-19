@@ -1,3 +1,15 @@
+{-|
+Module      : Position
+Description : File position representation
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module provides the 'Position' type for tracking locations
+in files while doing lexing and parsing for providing more useful
+error messages.
+
+-}
 module Position where
 
 -- | A position in a text file
@@ -18,7 +30,3 @@ move x Position{ posIndex = i, posLine = l, posColumn = c} =
         '\n' -> Position{ posIndex = i+1, posLine = l+1, posColumn = 1 }
         '\t' -> Position{ posIndex = i+1, posLine = l, posColumn = c `quot` 8 * 8 + 8 }
         _    -> Position{ posIndex = i+1, posLine = l, posColumn = c+1 }
-
-prettyPosition :: Position -> String
-prettyPosition Position { posIndex = _, posLine = l, posColumn = c } =
-    "line " ++ show l ++ " column " ++ show c

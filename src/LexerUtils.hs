@@ -1,3 +1,15 @@
+{-|
+Module      : LexerUtils
+Description : Wrapper and actions for generated lexer
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module provides a custom engine for the Alex generated
+lexer. This lexer drive provides nested states, unicode support,
+and file location tracking.
+
+-}
 module LexerUtils where
 
 import Control.Monad.Trans.State (State, modify, state)
@@ -13,9 +25,9 @@ type M a = State [Context] a
 type Action = String -> M Token
 
 data Context
-  = ListContext  -- processing an inline list, lex values
-  | TableContext -- processing an inline table, don't lex values
-  | ValueContext -- processing after an equals, lex one value
+  = ListContext  -- ^ processing an inline list, lex values
+  | TableContext -- ^ processing an inline table, don't lex values
+  | ValueContext -- ^ processing after an equals, lex one value
   deriving Show
 
 pushContext :: Context -> M ()

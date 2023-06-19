@@ -1,3 +1,14 @@
+{-|
+Module      : Located
+Description : Values annotated with positions
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module provides a simple tuple for tracking pairs of
+values and their file locations.
+
+-}
 module Located where
 
 import Position (Position)

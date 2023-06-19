@@ -1,4 +1,22 @@
 {
+{-|
+Module      : Lexer
+Description : TOML lexical analyzer
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module parses a TOML file into a lazy sequence
+of tokens. The lexer is aware of nested brackets and
+equals signs in order to handle TOML's context-sensitive
+lexing requirements. This context enables the lexer to
+distinguish between bare keys and various values like:
+floating-point literals, integer literals, and date literals.
+
+This module uses actions and lexical hooks defined in
+"LexerUtils".
+
+-}
 module Lexer (scanTokens) where
 
 import Data.Char (isSpace)

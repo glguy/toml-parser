@@ -1,53 +1,52 @@
 cabal-version:      3.4
 name:               toml
 version:            0.1.0.0
--- synopsis:
--- description:
+synopsis:           TOML 1.0.0 parser
+description:
+    TOML parser using generated lexers and parsers with
+    careful attention to the TOML 1.0.0 semantics for
+    defining tables.
 license:            ISC
 license-file:       LICENSE
 author:             Eric Mertens
 maintainer:         emertens@gmail.com
--- copyright:
+copyright:          2023 Eric Mertens
 category:           Text
 build-type:         Simple
--- extra-source-files:
-
-common warnings
-    ghc-options: -Wall
 
 common extensions
     default-extensions:
-        BlockArguments,
-        DeriveTraversable,
-        ImportQualifiedPost,
-        LambdaCase,
+        BlockArguments
+        DeriveTraversable
+        ImportQualifiedPost
+        LambdaCase
 
 library
-    import:           warnings, extensions
+    import:             extensions
+    hs-source-dirs:     src
+    default-language:   Haskell2010
     exposed-modules:
-        Toml,
+        Toml
     other-modules:
-        Lexer,
-        LexerUtils,
-        Located,
-        Parser,
-        Position,
-        Pretty,
-        Raw,
-        Semantics,
-        Token,
-        Value,
+        Lexer
+        LexerUtils
+        Located
+        Parser
+        Position
+        Pretty
+        Raw
+        Semantics
+        Token
+        Value
     build-depends:
-        array,
-        base >=4.17.1.0,
-        containers,
-        time,
-        transformers,
-    hs-source-dirs:   src
-    default-language: Haskell2010
+        array           ^>= 0.5,
+        base            >= 4.17.1.0,
+        containers      ^>= 0.6,
+        time            ^>= 1.12,
+        transformers    ^>= 0.6,
 
 test-suite unittests
-    import:             warnings, extensions
+    import:             extensions
     type:               exitcode-stdio-1.0
     hs-source-dirs:     test
     default-language:   Haskell2010
@@ -55,9 +54,9 @@ test-suite unittests
     build-depends:
         base,
         containers,
-        hspec,
+        hspec           ^>= 2.11,
         template-haskell,
         time,
         toml,
     other-modules:
-        Str
+        QuoteStr

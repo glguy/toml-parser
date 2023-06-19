@@ -1,10 +1,21 @@
 {-# Language QuasiQuotes #-}
+{-|
+Module      : Main
+Description : Unit tests
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+TOML parser and validator unit tests (primarily drawn from the
+specification document).
+
+-}
 module Main (main) where
 
 import Data.Either (isLeft)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Str (quoteStr)
+import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse)
 
@@ -15,13 +26,28 @@ main = hspec $
     testCase02
     testCase03
     testCase04
-    testCaseDoc01
-    testCaseDoc02
-    testCaseDoc03
     testCaseDoc08
-    testCaseDoc09
     testCaseDoc12
     testCaseDoc13
+
+    describe "comment"
+     do it "ignores comments" $
+          parse [quoteStr|
+            # This is a full-line comment
+            key = "value"  # This is a comment at the end of a line
+            another = "# This is not a comment"|]
+          `shouldBe`
+          Right (Map.fromList [("another",String "# This is not a comment"),("key",String "value")])
+
+    describe "key/value pair"
+     do it "supports the most basic assignments" $
+          parse "key = \"value\"" `shouldBe` Right (Map.singleton "key" (String "value"))
+
+        it "requires a value after equals" $
+          parse "key = # INVALID" `shouldSatisfy` isLeft
+
+        it "requires newlines between assignments" $
+          parse "first = \"Tom\" last = \"Preston-Werner\" # INVALID" `shouldSatisfy` isLeft
 
     describe "keys"
      do it "allows bare keys" $
@@ -99,7 +125,7 @@ main = hspec $
 
         it "allows numeric bare keys" $
           parse "3.14159 = 'pi'" `shouldBe` Right (Map.singleton "3" (table [("14159", String "pi")]))
-        
+
         it "allows keys that look like other values" $
           parse [quoteStr|
             true = true
@@ -244,7 +270,7 @@ main = hspec $
             Right (Map.fromList [
                 ("integers2",Array [Integer 1,Integer 2,Integer 3]),
                 ("integers3",Array [Integer 1,Integer 2])])
-        
+
         it "disambiguates double brackets from array tables" $
           parse "x = [[1]]" `shouldBe` Right (Map.singleton "x" (Array [Array [Integer 1]]))
 
@@ -314,6 +340,23 @@ main = hspec $
             apple.taste.sweet = true
             [fruit.apple]|]
           `shouldSatisfy` isLeft
+        
+        it "can add subtables" $
+          parse [quoteStr|
+            [fruit]
+            apple.color = "red"
+            apple.taste.sweet = true
+            [fruit.apple.texture]  # you can add sub-tables
+            smooth = true|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("fruit", table [
+                ("apple", table [
+                    ("color",String "red"),
+                    ("taste", table [
+                        ("sweet",Bool True)]),
+                        ("texture", table [
+                            ("smooth", Bool True)])])])])
 
     describe "inline table"
      do it "parses inline tables" $
@@ -457,20 +500,6 @@ testCase04 = badTestCase
     "x.y=1\n\
     \[x]"
 
-testCaseDoc01 :: Spec
-testCaseDoc01 = goodTestCase
-    "# This is a full-line comment\n\
-    \key = \"value\"  # This is a comment at the end of a line\n\
-    \another = \"# This is not a comment\""
-    (Map.fromList [("another",String "# This is not a comment"),("key",String "value")])
-
-testCaseDoc02 :: Spec
-testCaseDoc02 = badTestCase
-    "key = # INVALID"
-
-testCaseDoc03 :: Spec
-testCaseDoc03 = badTestCase "first = \"Tom\" last = \"Preston-Werner\" # INVALID"
-
 parsesLiterals :: Spec
 parsesLiterals =
     it "parses literals correctly" $
@@ -540,9 +569,9 @@ parsesLiterals =
         ("flt6",Float (-2.0e-2)),
         ("flt7",Float 6.626e-34),
         ("flt8",Float 224617.445991228),
-        ("hex1",Integer 3735928559),
-        ("hex2",Integer 3735928559),
-        ("hex3",Integer 3735928559),
+        ("hex1",Integer 0xDEADBEEF),
+        ("hex2",Integer 0xDEADBEEF),
+        ("hex3",Integer 0xDEADBEEF),
         ("int1",Integer 99),
         ("int2",Integer 42),
         ("int3",Integer 0),
@@ -556,8 +585,8 @@ parsesLiterals =
         ("ldt2",LocalTime (read "1979-05-27 00:32:00.999999")),
         ("lt1",TimeOfDay (read "07:32:00")),
         ("lt2",TimeOfDay (read "00:32:00.999999")),
-        ("oct1",Integer 342391),
-        ("oct2",Integer 493),
+        ("oct1",Integer 0o01234567),
+        ("oct2",Integer 0o755),
         ("odt1",ZonedTime (read "1979-05-27 07:32:00 +0000")),
         ("odt2",ZonedTime (read "1979-05-27 00:32:00 -0700")),
         ("odt3",ZonedTime (read "1979-05-27 00:32:00.999999 -0700")),
@@ -580,22 +609,6 @@ testCaseDoc08 =
     where
         checkNaN (Float x) = isNaN x
         checkNaN _         = False
-
-testCaseDoc09 :: Spec
-testCaseDoc09 = goodTestCase
-    "[fruit]\n\
-    \apple.color = 'red'\n\
-    \apple.taste.sweet = true\n\
-    \[fruit.apple.texture]  # you can add sub-tables\n\
-    \smooth = true\n"
-    (Map.fromList [
-        ("fruit", table [
-            ("apple",table [
-                ("color",String "red"),
-                ("taste",table [
-                    ("sweet",Bool True)]),
-                ("texture",table [
-                    ("smooth",Bool True)])])])])
 
 testCaseDoc12 :: Spec
 testCaseDoc12 =

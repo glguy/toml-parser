@@ -1,24 +1,46 @@
-module Semantics (compileExprs) where
+{-|
+Module      : Sematics
+Description : Semantic interpretation of raw TOML expressions
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
 
+This module extracts the nested Map representation of a TOML
+file. It detects invalid key assignments and resolves dotted
+key assignments.
+
+-}
+module Semantics (semantics) where
+
+import Control.Monad (foldM)
 import Data.List (sort)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Pretty (prettyKey)
-import Raw (Key, Val(..), Expr(..))
+import Pretty (prettyKey, prettySection)
+import Raw (SectionKind(..), Key, Val(..), Expr(..))
 import Value (Value(..))
-import Control.Monad (foldM)
 
-data SectionKind = TableKind | ArrayTableKind
-    deriving Show
+
+semantics :: [Expr] -> Either String (Map String Value)
+semantics exprs =
+ do let (topKVs, tables) = gather exprs
+    m1 <- assignKeyVals Map.empty topKVs
+    m2 <- foldM (\m (ln, kind, key, kvs) ->
+        updateError (\e -> e ++ " in " ++ prettySection kind key ++ " on line " ++ show ln) $
+        let update m_ = closeDots <$> assignKeyVals m_ kvs in
+        addSection update key kind m) m1 tables
+    pure (fmap frameToValue m2)
 
 type KeyVals = [(Int, Key, Val)]
 
+-- | Arrange the expressions in a TOML file into the top-level key-value pairs
+-- and then all the key-value pairs for each subtable.
 gather :: [Expr] -> (KeyVals, [(Int, SectionKind, Key, KeyVals)])
 gather = goTop []
     where
-        goTop acc []                           = (reverse acc, [])
+        goTop acc []                              = (reverse acc, [])
         goTop acc (ArrayTableExpr ln key : exprs) = (reverse acc, goTable ln ArrayTableKind key [] exprs)
         goTop acc (TableExpr      ln key : exprs) = (reverse acc, goTable ln TableKind      key [] exprs)
         goTop acc (KeyValExpr     ln k v : exprs) = goTop ((ln,k,v):acc) exprs
@@ -28,32 +50,20 @@ gather = goTop []
         goTable ln kind key acc (ArrayTableExpr ln' k   : exprs) = (ln, kind, key, reverse acc) : goTable ln' ArrayTableKind k [] exprs
         goTable ln kind key acc (KeyValExpr     ln' k v : exprs) = goTable ln kind key ((ln',k,v):acc) exprs
 
-compileExprs :: [Expr] -> Either String (Map String Value)
-compileExprs exprs =
- do let (topKVs, tables) = gather exprs
-    m1 <- assignKeyVals Map.empty topKVs
-    m2 <- foldM (\m (ln, kind, key, kvs) ->
-        updateError (\e -> e ++ " in " ++ prettySection kind key ++ " on line " ++ show ln) $
-        addTop key kind m \m_ -> closeDots <$> assignKeyVals m_ kvs) m1 tables
-    pure (fmap frameToValue m2)
 
-prettySection :: SectionKind -> Key -> String
-prettySection TableKind      key = "[" ++ prettyKey key ++ "]"
-prettySection ArrayTableKind key = "[[" ++ prettyKey key ++ "]]"
-
-updateError :: (e -> e) -> Either e a -> Either e a
-updateError f (Left e) = Left (f e)
+updateError :: (e -> e') -> Either e a -> Either e' a
+updateError f (Left  e) = Left (f e)
 updateError _ (Right a) = Right a
 
 closeDots :: Map String Frame -> Map String Frame
 closeDots = fmap closeFrame
-
-closeFrame :: Frame -> Frame
-closeFrame (FrameValue v) = FrameValue v
-closeFrame (FrameTable Dotted t) = FrameTable Closed (closeDots t) -- <- dotted to closed
-closeFrame (FrameTable Open   t) = FrameTable Open   (closeDots t)
-closeFrame (FrameTable Closed t) = FrameTable Closed (closeDots t)
-closeFrame (FrameArray        t) = FrameArray   (fmap closeDots t)
+    where
+        closeFrame = \case
+            FrameValue        v -> FrameValue        v
+            FrameTable Open   t -> FrameTable Open   t -- don't bother recursing, no further dotted
+            FrameTable Dotted t -> FrameTable Closed (closeDots t) -- <- dotted to closed
+            FrameTable Closed t -> FrameTable Closed (closeDots t)
+            FrameArray        t -> FrameArray        (fmap closeDots t)
 
 assignKeyVals :: Map String Frame -> KeyVals -> Either String (Map String Frame)
 assignKeyVals =
@@ -109,6 +119,7 @@ constructTable entries =
         singleValue k []      v = Map.singleton k v
         singleValue k (k1:ks) v = Map.singleton k (Table (singleValue k1 ks v))
 
+-- | Finds a key that overlaps with another in the same list
 findBadKey :: [Key] -> Maybe Key
 findBadKey keys = check (sort keys)
     where
@@ -118,40 +129,46 @@ findBadKey keys = check (sort keys)
         check (_:xs) = check xs
         check [] = Nothing
 
-addTop :: Key -> SectionKind -> Map String Frame -> (Map String Frame -> Either String (Map String Frame)) -> Either String (Map String Frame)
+addSection ::
+    (Map String Frame -> Either String (Map String Frame)) {- ^ section update action -} ->
+    Key                              {- ^ section key -} ->
+    SectionKind                      {- ^ section kind -} ->
+    Map String Frame                 {- ^ local frame map -} ->
+    Either String (Map String Frame) {- ^ error message or updated local frame map -}
 
-addTop (key :| []) kind acc k = Map.alterF f key acc
+addSection update (key :| []) kind acc = Map.alterF f key acc
     where
         -- defining a new table
         f Nothing =
             case kind of
-                TableKind      -> Just . FrameTable Closed    <$> k Map.empty
-                ArrayTableKind -> Just . FrameArray . (:| []) <$> k Map.empty
+                TableKind      -> Just . FrameTable Closed    <$> update Map.empty
+                ArrayTableKind -> Just . FrameArray . (:| []) <$> update Map.empty
 
         -- defining a super table of a previously defined subtable
         f (Just (FrameTable Open t)) =
             case kind of
-                TableKind      -> Just . FrameTable Closed <$> k t
+                TableKind      -> Just . FrameTable Closed <$> update t
                 ArrayTableKind -> Left "attempt to redefine table as array table"
 
         -- Add a new array element to an existing table array
         f (Just (FrameArray a)) =
             case kind of
-                ArrayTableKind -> Just . FrameArray . (`NonEmpty.cons` a) <$> k Map.empty
+                ArrayTableKind -> Just . FrameArray . (`NonEmpty.cons` a) <$> update Map.empty
                 TableKind      -> Left "attempt to open array table as table"
 
         -- failure cases
         f (Just (FrameTable Dotted _)) = Left "attempt to redefine dotted-key defined table"
         f (Just (FrameTable Closed _)) = Left "attempt to redefine top-level defined table"
-        f (Just (FrameValue {}))        = Left "attempt to redefined a value"
+        f (Just (FrameValue {}))       = Left "attempt to redefined a value"
 
-addTop (key :| k1:keys) kind acc k = Map.alterF f key acc
+addSection update (k1 :| k2 : ks) kind acc = Map.alterF f k1 acc
     where
-        keys' = k1 :| keys
-        f Nothing                       = Just . FrameTable Open      <$> addTop keys' kind Map.empty k
-        f (Just (FrameTable tk t))      = Just . FrameTable tk        <$> addTop keys' kind t         k
-        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> addTop keys' kind t         k
-        f (Just (FrameValue{}))         = Left "attempt to redefine a value"
+        go = addSection update (k2 :| ks) kind
+
+        f Nothing                       = Just . FrameTable Open      <$> go Map.empty
+        f (Just (FrameTable tk t))      = Just . FrameTable tk        <$> go t
+        f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> go t
+        f (Just (FrameValue _))         = Left "attempt to redefine a value"
 
 
 
@@ -166,13 +183,16 @@ assign (key :| []) val _ acc = Map.alterF f key acc
 
 assign (key:| k1:keys) val _ acc = Map.alterF f key acc
     where
-        keys' = k1:|keys
-        -- when a dotted key introduces a table, that defines it
-        f Nothing = Just . FrameTable Dotted <$> assign keys' val Dotted Map.empty
+        go = assign (k1:|keys) val
 
-        f (Just (FrameTable Open     t)) = Just . FrameTable Dotted    <$> assign keys' val Dotted t
-        f (Just (FrameTable Dotted   t)) = Just . FrameTable Dotted    <$> assign keys' val Dotted t
-        f (Just (FrameTable Closed   t)) = Just . FrameTable Closed    <$> assign keys' val Closed t
-        f (Just (FrameArray (t :| ts)))  = Just . FrameArray . (:| ts) <$> assign keys' val Closed t
+        -- when a dotted key introduces a table, that defines it
+        f Nothing = Just . FrameTable Dotted <$> go Dotted Map.empty
+
+        f (Just (FrameTable Open     t)) = Just . FrameTable Dotted    <$> go Dotted t
+        f (Just (FrameTable Dotted   t)) = Just . FrameTable Dotted    <$> go Dotted t
+        f (Just (FrameTable Closed   t)) = Just . FrameTable Closed    <$> go Closed t
+
+        -- all array tables are closed
+        f (Just (FrameArray (t :| ts)))  = Just . FrameArray . (:| ts) <$> go Closed t
 
         f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"

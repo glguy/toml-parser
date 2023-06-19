@@ -1,9 +1,21 @@
-module Pretty (prettyKey) where
+{-|
+Module      : Pretty
+Description : Human-readable representations for error messages
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
 
-import Raw
+This module provides human-readable renderers for types used
+in this package to assist error message production.
+
+-}
+module Pretty (prettyKey, prettySection, prettyPosition) where
+
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
-import Text.Printf (printf)
 import Data.List.NonEmpty qualified as NonEmpty
+import Position (Position(..))
+import Raw (Key, SectionKind(..))
+import Text.Printf (printf)
 
 prettyKey :: Key -> String
 prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey
@@ -30,3 +42,11 @@ quoteString = \case
     | isPrint x     -> x : quoteString xs
     | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (quoteString xs)
     | otherwise     -> printf "\\U%08X%s" (ord x) (quoteString xs)
+
+prettySection :: SectionKind -> Key -> String
+prettySection TableKind      key = "[" ++ prettyKey key ++ "]"
+prettySection ArrayTableKind key = "[[" ++ prettyKey key ++ "]]"
+
+prettyPosition :: Position -> String
+prettyPosition Position { posIndex = _, posLine = l, posColumn = c } =
+    "line " ++ show l ++ " column " ++ show c

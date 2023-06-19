@@ -1,3 +1,15 @@
+{-|
+Module      : Value
+Description : Semantic TOML values
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This module provides the type for the semantics of a TOML file.
+All dotted keys are resolved in this representation. Each table
+is a Map with a single level of keys.
+
+-}
 module Value where
 
 import Data.Map (Map)
