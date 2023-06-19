@@ -20,8 +20,6 @@ This module uses actions and lexical hooks defined in
 module Toml.Lexer (scanTokens) where
 
 import Control.Monad.Trans.State (runState)
-import Data.Char (isSpace)
-import Data.Functor ((<&>))
 
 import Toml.LexerUtils
 import Toml.Located

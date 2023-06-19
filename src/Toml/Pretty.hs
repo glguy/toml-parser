@@ -16,6 +16,7 @@ module Toml.Pretty (
     prettyPosition,
     prettyToken,
     prettyValue,
+    prettyExpr,
     prettyVal,
     prettyToml,
     ) where
@@ -141,12 +142,19 @@ isAlwaysSimple = \case
     ZonedTime {} -> True
     LocalTime {} -> True
     Day       {} -> True
-    Table     {} -> False
+    Table     t  -> isSingularTable t
     Array     xs -> null xs || not (all isTable xs)
 
 isTable :: Value -> Bool
 isTable Table{} = True
 isTable _       = False
+
+isSingularTable :: Map String Value -> Bool
+isSingularTable t =
+    case Map.elems t of
+        [Table v] -> isSingularTable v
+        [v]       -> isAlwaysSimple v
+        _         -> False
 
 prettyToml :: Map String Value -> String
 prettyToml = prettyToml_ []
@@ -154,7 +162,7 @@ prettyToml = prettyToml_ []
 prettyToml_ :: [String] -> Map String Value -> String
 prettyToml_ prefix t =
     intercalate "\n" $
-      [unlines [prettySimpleKey k ++ " = " ++ prettyValue v | (k,v) <- simple] | not (null simple)] ++
+      [unlines [prettyAssignment (pure k) v | (k,v) <- simple] | not (null simple)] ++
       [prettySection (snoc prefix k) v | (k,v) <- sections]
     where
         snoc [] x = x :| []
@@ -162,13 +170,17 @@ prettyToml_ prefix t =
         (simple, sections) =
             partition (isAlwaysSimple . snd) (Map.assocs t)
 
+prettyAssignment :: Key -> Value -> String
+prettyAssignment k (Table (Map.assocs -> [(k',v)])) = prettyAssignment (k <> pure k') v
+prettyAssignment k v = prettyKey k ++ " = " ++ prettyValue v
+
 prettySection :: Key -> Value -> String
 prettySection key (Table t) =
-    (if null t || any isAlwaysSimple t then "[" ++ prettyKey key ++ "]\n" else "") ++
+    (if null t || any isAlwaysSimple t then prettySectionKind TableKind key ++ "\n" else "") ++
     prettyToml_ (NonEmpty.toList key) t
 prettySection key (Array a) =
     intercalate "\n" [
-        "[[" ++ prettyKey key ++ "]]\n" ++
+        prettySectionKind ArrayTableKind key ++ "\n" ++
         prettyToml_ (NonEmpty.toList key) t
         | Table t <- a]
-prettySection key _ = error "prettySection applied to simple value"
+prettySection _ _ = error "prettySection applied to simple value"
