@@ -26,7 +26,6 @@ main = hspec $
     testCase02
     testCase03
     testCase04
-    testCaseDoc08
     testCaseDoc12
     testCaseDoc13
 
@@ -223,7 +222,7 @@ main = hspec $
           Right (Map.fromList [
             ("lines",String "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n"),
             ("regex2",String "I [dw]on't need \\d{2} apples")])
-        
+
         it "parses all the other escapes" $
           parse [quoteStr|
             x = "\\\b\f\r\U0010abcd"
@@ -232,11 +231,49 @@ main = hspec $
           Right (Map.fromList [
             ("x", String "\\\b\f\r\x0010abcd"),
             ("y", String "\\\b\f\r\xdbca\x0010abcd\n\r\t")])
-        
+
         it "rejects out of range unicode escapes" $
           parse [quoteStr|
             x = "\U11111111"|]
           `shouldSatisfy` isLeft
+
+    describe "float"
+     do it "parses nan correctly" $
+          let checkNaN (Float x) = isNaN x
+              checkNaN _         = False
+          in
+          parse [quoteStr|
+            # not a number
+            sf4 = nan  # actual sNaN/qNaN encoding is implementation-specific
+            sf5 = +nan # same as `nan`
+            sf6 = -nan # valid, actual encoding is implementation-specific|]
+          `shouldSatisfy` \case
+            Left{} -> False
+            Right x -> all checkNaN x
+
+    describe "boolean"
+     do it "parses boolean literals" $
+          parse [quoteStr|
+            bool1 = true
+            bool2 = false|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("bool1", Bool True),
+            ("bool2", Bool False)])
+    
+    describe "offset date-time"
+     do it "parses offset date times" $
+          parse [quoteStr|
+            odt1 = 1979-05-27T07:32:00Z
+            odt2 = 1979-05-27T00:32:00-07:00
+            odt3 = 1979-05-27T00:32:00.999999-07:00
+            odt4 = 1979-05-27 07:32:00Z|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("odt1",ZonedTime (read "1979-05-27 07:32:00 +0000")),
+            ("odt2",ZonedTime (read "1979-05-27 00:32:00 -0700")),
+            ("odt3",ZonedTime (read "1979-05-27 00:32:00.999999 -0700")),
+            ("odt4",ZonedTime (read "1979-05-27 07:32:00 +0000"))])
 
     parsesLiterals
 
@@ -354,7 +391,7 @@ main = hspec $
             apple.taste.sweet = true
             [fruit.apple]|]
           `shouldSatisfy` isLeft
-        
+
         it "can add subtables" $
           parse [quoteStr|
             [fruit]
@@ -480,7 +517,7 @@ main = hspec $
 
             [[fruits]] # Not allowed|]
           `shouldSatisfy` isLeft
-    
+
     -- these cases are needed to complete coverage checking on Semantics module
     describe "corner cases"
      do it "stays open" $
@@ -494,24 +531,24 @@ main = hspec $
             [x.y]
             [x]
             [x.y]|] `shouldSatisfy` isLeft
-        
+
         it "super tables of array tables preserve array tables" $
           parse [quoteStr|
             [[x.y]]
             [x]
             [[x.y]]|] `shouldSatisfy` isRight
-        
+
         it "super tables of array tables preserve array tables" $
           parse [quoteStr|
             [[x.y]]
             [x]
             [x.y.z]|] `shouldSatisfy` isRight
-        
+
         it "detects conflicting inline keys" $
           parse [quoteStr|
             x = { y = 1, y.z = 2}|]
           `shouldSatisfy` isLeft
-        
+
         it "handles merging dotted inline table keys" $
           parse [quoteStr|
             t = { a.x.y = 1, a.x.z = 2, a.q = 3}|]
@@ -523,20 +560,20 @@ main = hspec $
                     ("x", table [
                         ("y",Integer 1),
                         ("z",Integer 2)])])])])
-        
+
         it "disallows overwriting assignments with tables" $
           parse [quoteStr|
             x = 1
             [x.y]|]
           `shouldSatisfy` isLeft
-        
+
         it "handles super super tables" $
           parse [quoteStr|
             [x.y.z]
             [x.y]
             [x]|]
           `shouldSatisfy` isRight
-        
+
         it "You can dot into open supertables" $
           parse [quoteStr|
             [x.y.z]
@@ -574,7 +611,7 @@ main = hspec $
             y.z.a = 1
             y.z.b = 2|]
           `shouldSatisfy` isRight
-        
+
         it "the previous example preserves closeness" $
           parse [quoteStr|
             [[x.y]]
@@ -582,14 +619,14 @@ main = hspec $
             y.z.a = 1
             y.w = 2|]
           `shouldSatisfy` isLeft
-        
+
         it "defining a supertable closes the supertable" $
           parse [quoteStr|
             [x.y]
             [x]
             [x]|]
           `shouldSatisfy` isLeft
-        
+
         it "preserves arrays while assigning through them" $
           parse [quoteStr|
             [[x.y]]
@@ -685,11 +722,6 @@ parsesLiterals =
     \bool1 = true\n\
     \bool2 = false\n\
     \\n\
-    \odt1 = 1979-05-27T07:32:00Z\n\
-    \odt2 = 1979-05-27T00:32:00-07:00\n\
-    \odt3 = 1979-05-27T00:32:00.999999-07:00\n\
-    \odt4 = 1979-05-27 07:32:00Z\n\
-    \\n\
     \ldt1 = 1979-05-27T07:32:00\n\
     \ldt2 = 1979-05-27T00:32:00.999999\n\
     \ldt3 = 1979-05-28 00:32:00.999999\n\
@@ -730,28 +762,9 @@ parsesLiterals =
         ("lt2",TimeOfDay (read "00:32:00.999999")),
         ("oct1",Integer 0o01234567),
         ("oct2",Integer 0o755),
-        ("odt1",ZonedTime (read "1979-05-27 07:32:00 +0000")),
-        ("odt2",ZonedTime (read "1979-05-27 00:32:00 -0700")),
-        ("odt3",ZonedTime (read "1979-05-27 00:32:00.999999 -0700")),
-        ("odt4",ZonedTime (read "1979-05-27 07:32:00 +0000")),
         ("sf1",Float (1/0)),
         ("sf2",Float (1/0)),
         ("sf3",Float (-1/0))])
-
-testCaseDoc08 :: Spec
-testCaseDoc08 =
-    it "parses nan correctly"
-    do parse
-            "# not a number\n\
-            \sf4 = nan  # actual sNaN/qNaN encoding is implementation-specific\n\
-            \sf5 = +nan # same as `nan`\n\
-            \sf6 = -nan # valid, actual encoding is implementation-specific\n"
-        `shouldSatisfy` \case
-          Left{} -> False
-          Right x -> all checkNaN x
-    where
-        checkNaN (Float x) = isNaN x
-        checkNaN _         = False
 
 testCaseDoc12 :: Spec
 testCaseDoc12 =

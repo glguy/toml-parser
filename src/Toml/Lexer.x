@@ -1,6 +1,6 @@
 {
 {-|
-Module      : Lexer
+Module      : Toml.Lexer
 Description : TOML lexical analyzer
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -17,16 +17,16 @@ This module uses actions and lexical hooks defined in
 "LexerUtils".
 
 -}
-module Lexer (scanTokens) where
+module Toml.Lexer (scanTokens) where
 
+import Control.Monad.Trans.State (runState)
 import Data.Char (isSpace)
 import Data.Functor ((<&>))
-import Control.Monad.Trans.State (runState)
 
-import LexerUtils
-import Located
-import Position
-import Token
+import Toml.LexerUtils
+import Toml.Located
+import Toml.Position
+import Toml.Token
 
 }
 $non_ascii        = \x1

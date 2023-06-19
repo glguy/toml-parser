@@ -1,5 +1,5 @@
 {-|
-Module      : Value
+Module      : Toml.Value
 Description : Semantic TOML values
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,7 +10,7 @@ All dotted keys are resolved in this representation. Each table
 is a Map with a single level of keys.
 
 -}
-module Value where
+module Toml.Value where
 
 import Data.Map (Map)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)

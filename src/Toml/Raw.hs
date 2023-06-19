@@ -1,5 +1,5 @@
 {-|
-Module      : Raw
+Module      : Toml.Raw
 Description : Raw expressions from a parsed TOML file
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -14,7 +14,7 @@ for overlapping assignments.
 Further processing will happen in the "Semantics" module.
 
 -}
-module Raw where
+module Toml.Raw where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)

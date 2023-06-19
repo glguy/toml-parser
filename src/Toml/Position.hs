@@ -1,5 +1,5 @@
 {-|
-Module      : Position
+Module      : Toml.Position
 Description : File position representation
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,7 +10,7 @@ in files while doing lexing and parsing for providing more useful
 error messages.
 
 -}
-module Position where
+module Toml.Position where
 
 -- | A position in a text file
 data Position = Position

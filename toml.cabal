@@ -27,17 +27,16 @@ library
     default-language:   Haskell2010
     exposed-modules:
         Toml
-    other-modules:
-        Lexer
-        LexerUtils
-        Located
-        Parser
-        Position
-        Pretty
-        Raw
-        Semantics
-        Token
-        Value
+        Toml.Lexer
+        Toml.LexerUtils
+        Toml.Located
+        Toml.Parser
+        Toml.Position
+        Toml.Pretty
+        Toml.Raw
+        Toml.Semantics
+        Toml.Token
+        Toml.Value
     build-depends:
         array           ^>= 0.5,
         base            >= 4.17.1.0,

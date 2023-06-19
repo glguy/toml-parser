@@ -1,5 +1,5 @@
 {-|
-Module      : LexerUtils
+Module      : Toml.LexerUtils
 Description : Wrapper and actions for generated lexer
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,15 +10,16 @@ lexer. This lexer drive provides nested states, unicode support,
 and file location tracking.
 
 -}
-module LexerUtils where
+module Toml.LexerUtils where
 
 import Control.Monad.Trans.State (State, modify, state)
 import Data.Char (ord, isAscii)
 import Data.Foldable (asum)
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
-import Located (Located(..))
-import Position (move)
-import Token (Token(..))
+
+import Toml.Located (Located(..))
+import Toml.Position (move)
+import Toml.Token (Token(..))
 
 type M a = State [Context] a
 

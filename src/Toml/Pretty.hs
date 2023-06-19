@@ -1,5 +1,5 @@
 {-|
-Module      : Pretty
+Module      : Toml.Pretty
 Description : Human-readable representations for error messages
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -9,13 +9,14 @@ This module provides human-readable renderers for types used
 in this package to assist error message production.
 
 -}
-module Pretty (prettyKey, prettySection, prettyPosition) where
+module Toml.Pretty (prettyKey, prettySection, prettyPosition) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
 import Data.List.NonEmpty qualified as NonEmpty
-import Position (Position(..))
-import Raw (Key, SectionKind(..))
 import Text.Printf (printf)
+
+import Toml.Position (Position(..))
+import Toml.Raw (Key, SectionKind(..))
 
 prettyKey :: Key -> String
 prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey

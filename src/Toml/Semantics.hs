@@ -1,5 +1,5 @@
 {-|
-Module      : Sematics
+Module      : Toml.Sematics
 Description : Semantic interpretation of raw TOML expressions
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,7 +10,7 @@ file. It detects invalid key assignments and resolves dotted
 key assignments.
 
 -}
-module Semantics (semantics) where
+module Toml.Semantics (semantics) where
 
 import Control.Monad (foldM)
 import Data.List (sort)
@@ -18,10 +18,10 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Pretty (prettyKey, prettySection)
-import Raw (SectionKind(..), Key, Val(..), Expr(..))
-import Value (Value(..))
 
+import Toml.Pretty (prettyKey, prettySection)
+import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
+import Toml.Value (Value(..))
 
 semantics :: [Expr] -> Either String (Map String Value)
 semantics exprs =

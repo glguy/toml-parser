@@ -1,6 +1,6 @@
 {
 {-|
-Module      : Parser
+Module      : Toml.Parser
 Description : Raw TOML expression parser
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,15 +10,16 @@ This module parses TOML tokens into a list of raw,
 uninterpreted sections and assignments.
 
 -}
-module Parser (parseRawToml) where
+module Toml.Parser (parseRawToml) where
 
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
-import Located (Located(Located, locPosition))
-import Position (posLine)
-import Raw
-import Token
+
+import Toml.Located (Located(Located, locPosition))
+import Toml.Position (posLine)
+import Toml.Raw
+import Toml.Token
 
 }
 

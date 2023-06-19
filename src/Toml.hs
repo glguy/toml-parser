@@ -14,13 +14,13 @@ as carefully as possible.
 module Toml (parse, Value(..)) where
 
 import Data.Map (Map)
-import Lexer (scanTokens)
-import Located (Located(locPosition, locThing))
-import Parser (parseRawToml)
-import Pretty (prettyPosition)
-import Semantics (semantics)
-import Token (prettyToken)
-import Value (Value(..))
+import Toml.Lexer (scanTokens)
+import Toml.Located (Located(locPosition, locThing))
+import Toml.Parser (parseRawToml)
+import Toml.Pretty (prettyPosition)
+import Toml.Semantics (semantics)
+import Toml.Token (prettyToken)
+import Toml.Value (Value(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse :: String -> Either String (Map String Value)

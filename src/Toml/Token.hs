@@ -1,5 +1,5 @@
 {-|
-Module      : Token
+Module      : Toml.Token
 Description : Lexical tokens
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,7 +10,7 @@ syntax of TOML files. These tokens will drive the
 parser in the "Parser" module.
 
 -}
-module Token where
+module Toml.Token where
 
 import Data.Char (chr, isSpace)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
