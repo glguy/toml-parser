@@ -90,13 +90,13 @@ $mlb_unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
 @date_fullyear = $digit {4}
 @date_month = $digit {2}
 @date_mday = $digit {2}
-$time_delim = [T\ ]
+$time_delim = [Tt\ ]
 @time_hour = $digit {2}
 @time_minute = $digit {2}
 @time_second = $digit {2}
 @time_secfrac = "." $digit+
 @time_numoffset = [\+\-] @time_hour ":" @time_minute
-@time_offset = "Z" | @time_numoffset
+@time_offset = [Zz] | @time_numoffset
 
 @partial_time = @time_hour ":" @time_minute ":" @time_second @time_secfrac?
 @full_date = @date_fullyear "-" @date_month "-" @date_mday
