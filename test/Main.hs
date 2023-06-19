@@ -25,7 +25,6 @@ main = hspec $
  do testCase01
     testCase02
     testCase03
-    testCase04
     testCaseDoc12
     testCaseDoc13
 
@@ -251,6 +250,79 @@ main = hspec $
             Left{} -> False
             Right x -> all checkNaN x
 
+    describe "integer"
+     do it "parses literals correctly" $
+          parse [quoteStr|
+            int1 = +99
+            int2 = 42
+            int3 = 0
+            int4 = -17
+            int5 = 1_000
+            int6 = 5_349_221
+            int7 = 53_49_221  # Indian number system grouping
+            int8 = 1_2_3_4_5  # VALID but discouraged
+            # hexadecimal with prefix `0x`
+            hex1 = 0xDEADBEEF
+            hex2 = 0xdeadbeef
+            hex3 = 0xdead_beef
+            
+            # octal with prefix `0o`
+            oct1 = 0o01234567
+            oct2 = 0o755 # useful for Unix file permissions
+            
+            # binary with prefix `0b`
+            bin1 = 0b11010110|]
+          `shouldBe` Right
+          (Map.fromList [
+              ("bin1",Integer 214),
+              ("hex1",Integer 0xDEADBEEF),
+              ("hex2",Integer 0xDEADBEEF),
+              ("hex3",Integer 0xDEADBEEF),
+              ("int1",Integer 99),
+              ("int2",Integer 42),
+              ("int3",Integer 0),
+              ("int4",Integer (-17)),
+              ("int5",Integer 1000),
+              ("int6",Integer 5349221),
+              ("int7",Integer 5349221),
+              ("int8",Integer 12345),
+              ("oct1",Integer 0o01234567),
+              ("oct2",Integer 0o755)])
+
+    describe "float"
+     do it "parses floats" $
+          parse [quoteStr|
+            # fractional
+            flt1 = +1.0
+            flt2 = 3.1415
+            flt3 = -0.01
+
+            # exponent
+            flt4 = 5e+22
+            flt5 = 1e06
+            flt6 = -2E-2
+
+            # both
+            flt7 = 6.626e-34
+            flt8 = 224_617.445_991_228
+            # infinity
+            sf1 = inf  # positive infinity
+            sf2 = +inf # positive infinity
+            sf3 = -inf # negative infinity|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("flt1",Float 1.0),
+            ("flt2",Float 3.1415),
+            ("flt3",Float (-1.0e-2)),
+            ("flt4",Float 4.9999999999999996e22),
+            ("flt5",Float 1000000.0),
+            ("flt6",Float (-2.0e-2)),
+            ("flt7",Float 6.626e-34),
+            ("flt8",Float 224617.445991228),
+            ("sf1",Float (1/0)),
+            ("sf2",Float (1/0)),
+            ("sf3",Float (-1/0))])
+
     describe "boolean"
      do it "parses boolean literals" $
           parse [quoteStr|
@@ -275,7 +347,34 @@ main = hspec $
             ("odt3",ZonedTime (read "1979-05-27 00:32:00.999999 -0700")),
             ("odt4",ZonedTime (read "1979-05-27 07:32:00 +0000"))])
 
-    parsesLiterals
+    describe "local date-time"
+     do it "parses local date-times" $
+          parse [quoteStr|
+            ldt1 = 1979-05-27T07:32:00
+            ldt2 = 1979-05-27T00:32:00.999999
+            ldt3 = 1979-05-28 00:32:00.999999|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("ldt1",LocalTime (read "1979-05-27 07:32:00")),
+            ("ldt2",LocalTime (read "1979-05-27 00:32:00.999999")),
+            ("ldt3",LocalTime (read "1979-05-28 00:32:00.999999"))])
+
+    describe "local date"
+     do it "parses dates" $
+          parse [quoteStr|
+            ld1 = 1979-05-27|]
+          `shouldBe`
+          Right (Map.singleton "ld1" (Day (read "1979-05-27")))
+
+    describe "local time"
+     do it "parses times" $
+          parse [quoteStr|
+            lt1 = 07:32:00
+            lt2 = 00:32:00.999999|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("lt1",TimeOfDay (read "07:32:00")),
+            ("lt2",TimeOfDay (read "00:32:00.999999"))])
 
     describe "array"
      do it "parses array examples" $
@@ -673,99 +772,6 @@ testCase03 = goodTestCase
     \m = false"
     (Map.fromList [("ok",Array [table [("ko",Array [table [("m",Bool False)]])]])])
 
-testCase04 :: Spec
-testCase04 = badTestCase
-    "x.y=1\n\
-    \[x]"
-
-parsesLiterals :: Spec
-parsesLiterals =
-    it "parses literals correctly" $
-    parse
-    "int1 = +99\n\
-    \int2 = 42\n\
-    \int3 = 0\n\
-    \int4 = -17\n\
-    \int5 = 1_000\n\
-    \int6 = 5_349_221\n\
-    \int7 = 53_49_221  # Indian number system grouping\n\
-    \int8 = 1_2_3_4_5  # VALID but discouraged\n\
-    \# hexadecimal with prefix `0x`\n\
-    \hex1 = 0xDEADBEEF\n\
-    \hex2 = 0xdeadbeef\n\
-    \hex3 = 0xdead_beef\n\
-    \\n\
-    \# octal with prefix `0o`\n\
-    \oct1 = 0o01234567\n\
-    \oct2 = 0o755 # useful for Unix file permissions\n\
-    \\n\
-    \# binary with prefix `0b`\n\
-    \bin1 = 0b11010110\n\
-    \# fractional\n\
-    \flt1 = +1.0\n\
-    \flt2 = 3.1415\n\
-    \flt3 = -0.01\n\
-    \\n\
-    \# exponent\n\
-    \flt4 = 5e+22\n\
-    \flt5 = 1e06\n\
-    \flt6 = -2E-2\n\
-    \\n\
-    \# both\n\
-    \flt7 = 6.626e-34\n\
-    \flt8 = 224_617.445_991_228\n\
-    \# infinity\n\
-    \sf1 = inf  # positive infinity\n\
-    \sf2 = +inf # positive infinity\n\
-    \sf3 = -inf # negative infinity\n\
-    \\n\
-    \bool1 = true\n\
-    \bool2 = false\n\
-    \\n\
-    \ldt1 = 1979-05-27T07:32:00\n\
-    \ldt2 = 1979-05-27T00:32:00.999999\n\
-    \ldt3 = 1979-05-28 00:32:00.999999\n\
-    \\n\
-    \ld1 = 1979-05-27\n\
-    \\n\
-    \lt1 = 07:32:00\n\
-    \lt2 = 00:32:00.999999\n"
-    `shouldBe` Right
-    (Map.fromList [
-        ("bin1",Integer 214),
-        ("bool1",Bool True),
-        ("bool2",Bool False),
-        ("flt1",Float 1.0),
-        ("flt2",Float 3.1415),
-        ("flt3",Float (-1.0e-2)),
-        ("flt4",Float 4.9999999999999996e22),
-        ("flt5",Float 1000000.0),
-        ("flt6",Float (-2.0e-2)),
-        ("flt7",Float 6.626e-34),
-        ("flt8",Float 224617.445991228),
-        ("hex1",Integer 0xDEADBEEF),
-        ("hex2",Integer 0xDEADBEEF),
-        ("hex3",Integer 0xDEADBEEF),
-        ("int1",Integer 99),
-        ("int2",Integer 42),
-        ("int3",Integer 0),
-        ("int4",Integer (-17)),
-        ("int5",Integer 1000),
-        ("int6",Integer 5349221),
-        ("int7",Integer 5349221),
-        ("int8",Integer 12345),
-        ("ld1",Day (read "1979-05-27")),
-        ("ldt1",LocalTime (read "1979-05-27 07:32:00")),
-        ("ldt2",LocalTime (read "1979-05-27 00:32:00.999999")),
-        ("ldt3",LocalTime (read "1979-05-28 00:32:00.999999")),
-        ("lt1",TimeOfDay (read "07:32:00")),
-        ("lt2",TimeOfDay (read "00:32:00.999999")),
-        ("oct1",Integer 0o01234567),
-        ("oct2",Integer 0o755),
-        ("sf1",Float (1/0)),
-        ("sf2",Float (1/0)),
-        ("sf3",Float (-1/0))])
-
 testCaseDoc12 :: Spec
 testCaseDoc12 =
     it "allows defining subtables of array tables" $
@@ -779,12 +785,12 @@ testCaseDoc12 =
     `shouldBe`
     Right (Map.fromList [
         ("x",Array [
-            table ([
+            table [
                 ("a",Integer 1),
                 ("y",table [
                     ("c",Integer 3),
                     ("z",table [
-                        ("b",Integer 2)])])])])])
+                        ("b",Integer 2)])])]])])
 
 -- Likewise, using dotted keys to redefine tables already defined in [table] form is not allowed.
 testCaseDoc13 :: Spec

@@ -32,6 +32,9 @@ module Toml.Token (
     localTimePatterns,
     localDateTimePatterns,
     offsetDateTimePatterns,
+
+    -- * errors
+    mkError,
     ) where
 
 import Data.Char (chr, isSpace)
@@ -75,14 +78,17 @@ mkDecInteger ('+':xs) = TokInteger (read (scrub xs))
 mkDecInteger xs = TokInteger (read (scrub xs))
 
 mkHexInteger :: String -> Token
+mkHexInteger ('0':'X':xs) = TokInteger (fst (head (readHex (scrub xs))))
 mkHexInteger ('0':'x':xs) = TokInteger (fst (head (readHex (scrub xs))))
 mkHexInteger _ = error "processHex: bad input"
 
 mkOctInteger :: String -> Token
+mkOctInteger ('0':'O':xs) = TokInteger (fst (head (readOct (scrub xs))))
 mkOctInteger ('0':'o':xs) = TokInteger (fst (head (readOct (scrub xs))))
 mkOctInteger _ = error "processHex: bad input"
 
 mkBinInteger :: String -> Token
+mkBinInteger ('0':'B':xs) = TokInteger (fst (head (readBin (scrub xs))))
 mkBinInteger ('0':'b':xs) = TokInteger (fst (head (readBin (scrub xs))))
 mkBinInteger _ = error "processHex: bad input"
 
@@ -154,6 +160,9 @@ mkMlLiteralString str =
     go "'''" = ""
     go (x:xs) = x : go xs
     go "" = error "processMlLiteral: missing terminator"
+
+mkError :: String -> Token
+mkError str = TokError ("Lexical error: " ++ show (head str))
 
 localDatePatterns :: [String]
 localDatePatterns = ["%Y-%m-%d"]

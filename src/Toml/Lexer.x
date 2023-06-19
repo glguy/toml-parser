@@ -53,9 +53,9 @@ $comment_start_symbol = \#
 @unsigned_dec_int = $digit | [1-9] ($digit | _ $digit)+
 @dec_int = [\-\+]? @unsigned_dec_int
 @zero_prefixable_int = $digit ($digit | _ $digit)*
-@hex_int = "0x" $hexdig ($hexdig | _ $hexdig)*
-@oct_int = "0o" $octdig ($octdig | _ $octdig)*
-@bin_int = "0b" $bindig ($bindig | _ $bindig)*
+@hex_int = "0" [Xx] $hexdig ($hexdig | _ $hexdig)*
+@oct_int = "0" [Oo] $octdig ($octdig | _ $octdig)*
+@bin_int = "0" [Bb] $bindig ($bindig | _ $bindig)*
 
 @frac = "." @zero_prefixable_int
 @float_exp_part = [\+\-]? @zero_prefixable_int
@@ -156,6 +156,10 @@ $wschar+;
 @barekey            { token  TokBareKey                 }
 
 {
+
+-- | Generate a lazy-list of tokens from the input string.
+-- The token stream is guaranteed to be terminated either with
+-- 'TokEOF' or 'TokError'.
 scanTokens :: String -> [Located Token]
 scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str }
 
@@ -163,7 +167,7 @@ scanTokens' :: [Context] -> AlexInput -> [Located Token]
 scanTokens' st str =
   case alexScan str (stateInt st) of
     AlexEOF -> [TokEOF <$ str]
-    AlexError str' -> [str' <&> \txt -> TokError ("Bad lexeme: " ++ show (takeWhile (not . isSpace) txt))]
+    AlexError str' -> [mkError <$> str']
     AlexSkip  str' _ -> scanTokens' st str'
     AlexToken str' n action ->
       case runState (traverse (action . take n) str) st of
