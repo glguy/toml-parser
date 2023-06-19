@@ -260,7 +260,7 @@ main = hspec $
           Right (Map.fromList [
             ("bool1", Bool True),
             ("bool2", Bool False)])
-    
+
     describe "offset date-time"
      do it "parses offset date times" $
           parse [quoteStr|
