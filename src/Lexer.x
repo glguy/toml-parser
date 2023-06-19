@@ -89,32 +89,6 @@ $time_delim = [T\ ]
 
 toml :-
 
-@comment            { token TokComment                  }
-@newline            { token_ TokNewline                 }
-$wschar+;
-
-@basic_string       { value mkBasicString               }
-@literal_string     { value mkLiteralString             }
-
-@ml_literal_string  { value mkMlLiteralString           }
-@ml_basic_string    { value mkMlBasicString             }
-
-"}"                 { exitTable                         }
-"="                 { equals                            }
-"."                 { token_ TokPeriod                  }
-","                 { token_ TokComma                   }
-
-<0> {
-
-"["                 { token_ TokSquareO                 }
-"]"                 { token_ TokSquareC                 }
-"{"                 { token_ TokCurlyO                  }
-"[["                { token_ Tok2SquareO                }
-"]]"                { token_ Tok2SquareC                }
-@barekey            { token  TokBareKey                 }
-
-}
-
 <val> {
 
 "["                 { enterList                         }
@@ -135,6 +109,32 @@ $wschar+;
 
 }
 
+<0> {
+"[["                { token_ Tok2SquareO                }
+"]]"                { token_ Tok2SquareC                }
+}
+
+@comment            { token TokComment                  }
+@newline            { token_ TokNewline                 }
+$wschar+;
+
+@basic_string       { value mkBasicString               }
+@literal_string     { value mkLiteralString             }
+
+@ml_literal_string  { value mkMlLiteralString           }
+@ml_basic_string    { value mkMlBasicString             }
+
+"}"                 { exitTable                         }
+"="                 { equals                            }
+"."                 { token_ TokPeriod                  }
+","                 { token_ TokComma                   }
+
+"["                 { token_ TokSquareO                 }
+"]"                 { token_ TokSquareC                 }
+"{"                 { token_ TokCurlyO                  }
+
+@barekey            { token  TokBareKey                 }
+
 {
 scanTokens :: String -> [Located Token]
 scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str }
@@ -146,7 +146,7 @@ scanTokens' st str =
     AlexError str' -> [str' <&> \txt -> TokError ("Bad lexeme: " ++ show (takeWhile (not . isSpace) txt))]
     AlexSkip  str' _ -> scanTokens' st str'
     AlexToken str' n action ->
-      case runState (traverse action (take n <$> str)) st of
+      case runState (traverse (action . take n) str) st of
         (t, st') -> t : scanTokens' st' str'
 
 stateInt :: [Context] -> Int

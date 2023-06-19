@@ -99,6 +99,19 @@ main = hspec $
 
         it "allows numeric bare keys" $
           parse "3.14159 = 'pi'" `shouldBe` Right (Map.singleton "3" (table [("14159", String "pi")]))
+        
+        it "allows keys that look like other values" $
+          parse [quoteStr|
+            true = true
+            false = false
+            1900-01-01 = 1900-01-01
+            1_2 = 2_3|]
+          `shouldBe`
+          Right (Map.fromList [
+            ("1900-01-01", Day (read "1900-01-01")),
+            ("1_2", Integer 23),
+            ("false", Bool False),
+            ("true", Bool True)])
 
     describe "string"
      do it "parses escapes" $
@@ -231,6 +244,9 @@ main = hspec $
             Right (Map.fromList [
                 ("integers2",Array [Integer 1,Integer 2,Integer 3]),
                 ("integers3",Array [Integer 1,Integer 2])])
+        
+        it "disambiguates double brackets from array tables" $
+          parse "x = [[1]]" `shouldBe` Right (Map.singleton "x" (Array [Array [Integer 1]]))
 
     describe "table"
      do it "allows empty tables" $
