@@ -19,7 +19,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 
-import Toml.Pretty (prettyKey, prettySection)
+import Toml.Pretty (prettyKey, prettySectionKind)
 import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Value(..))
 
@@ -30,7 +30,7 @@ semantics exprs =
  do let (topKVs, tables) = gather exprs
     m1 <- assignKeyVals Map.empty topKVs
     m2 <- foldM (\m (ln, kind, key, kvs) ->
-        updateError (\e -> e ++ " in " ++ prettySection kind key ++ " on line " ++ show ln) $
+        updateError (\e -> e ++ " in " ++ prettySectionKind kind key ++ " on line " ++ show ln) $
         let update m_ = closeDots <$> assignKeyVals m_ kvs in
         addSection update key kind m) m1 tables
     pure (fmap frameToValue m2)
