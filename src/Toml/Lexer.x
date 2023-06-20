@@ -51,9 +51,9 @@ $comment_start_symbol = \#
 @unsigned_dec_int = $digit | [1-9] ($digit | _ $digit)+
 @dec_int = [\-\+]? @unsigned_dec_int
 @zero_prefixable_int = $digit ($digit | _ $digit)*
-@hex_int = "0" [Xx] $hexdig ($hexdig | _ $hexdig)*
-@oct_int = "0" [Oo] $octdig ($octdig | _ $octdig)*
-@bin_int = "0" [Bb] $bindig ($bindig | _ $bindig)*
+@hex_int = "0x" $hexdig ($hexdig | _ $hexdig)*
+@oct_int = "0o" $octdig ($octdig | _ $octdig)*
+@bin_int = "0b" $bindig ($bindig | _ $bindig)*
 
 @frac = "." @zero_prefixable_int
 @float_exp_part = [\+\-]? @zero_prefixable_int
@@ -62,7 +62,7 @@ $comment_start_symbol = \#
 @float_int_part = @dec_int
 @float = @float_int_part ( @exp | @frac @exp? ) | @special_float
 
-$non_eol = [\x09 \x20-\x7F $non_ascii]
+$non_eol = [\x09 \x20-\x7E $non_ascii]
 @comment = $comment_start_symbol $non_eol*
 
 $literal_char = [ \x09 \x20-\x26 \x28-\x7E $non_ascii ]

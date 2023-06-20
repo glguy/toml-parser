@@ -60,3 +60,10 @@ test-suite unittests
         toml,
     other-modules:
         QuoteStr
+
+executable TomlDecoder
+    import: extensions
+    hs-source-dirs: decoder
+    main-is: Main.hs
+    build-depends: aeson, toml, base, containers, bytestring, text, time, vector
+    

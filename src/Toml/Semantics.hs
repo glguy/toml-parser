@@ -192,7 +192,7 @@ assign (key:| k1:keys) val _ acc = Map.alterF f key acc
 
         f (Just (FrameTable Open     t)) = Just . FrameTable Dotted    <$> go Dotted t
         f (Just (FrameTable Dotted   t)) = Just . FrameTable Dotted    <$> go Dotted t
-        f (Just (FrameTable Closed   t)) = Just . FrameTable Closed    <$> go Closed t
+        f (Just (FrameTable Closed   t)) = Left "attempt to extend through a closed table"
 
         -- all array tables are closed
         f (Just (FrameArray (t :| ts)))  = Just . FrameArray . (:| ts) <$> go Closed t

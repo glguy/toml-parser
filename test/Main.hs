@@ -687,19 +687,11 @@ main = hspec $
             [x.y]|]
           `shouldSatisfy` isLeft
 
-        it "dotted tables can assign through closed tables!" $
+        it "dotted tables can't assign through closed tables!" $
           parse [quoteStr|
             [x.y]
             [x]
             y.z.w = 1|]
-          `shouldSatisfy` isRight
-
-        it "dotted tables can assign through closed tables preserves closedness" $
-          parse [quoteStr|
-            [x.y]
-            [x]
-            y.z.w = 1
-            y.q = 2|]
           `shouldSatisfy` isLeft
 
         it "super tables can add new subtables to array tables via dotted keys" $

@@ -110,6 +110,7 @@ alexGetByte Located { locPosition = p, locThing = str } =
   case str of
     "" -> Nothing
     x:xs
+      | x == '\DEL' -> Just (0, rest)
       | x == '\1' -> Just (0,     rest)
       | isAscii x -> Just (ord x, rest)
       | otherwise -> Just (1,     rest)
