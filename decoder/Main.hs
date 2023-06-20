@@ -14,7 +14,6 @@ module Main (main) where
 
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
-import Data.Text (Text)
 import System.Exit (exitFailure)
 import Toml qualified
 import Toml.Pretty (prettyValue)
@@ -26,19 +25,19 @@ main =
         Left{}  -> exitFailure
         Right t -> BS.putStr (Aeson.encode t)
 
-simple :: Text -> Toml.Value -> Aeson.Value
-simple ty value = Aeson.object ["type" Aeson..= ty, "value" Aeson..= prettyValue value]
+simple :: Aeson.Key -> String -> Aeson.Value
+simple ty value = Aeson.object ["type" Aeson..= ty, "value" Aeson..= value]
 
 instance Aeson.ToJSON Toml.Value where
     toJSON v =
         case v of
-            Toml.Table t     -> Aeson.toJSON t
-            Toml.Array a     -> Aeson.toJSON a
-            Toml.String s    -> Aeson.object ["type" Aeson..= ("string"::Text), "value" Aeson..= s]
-            Toml.Integer  {} -> simple "integer"        v
-            Toml.Float    {} -> simple "float"          v
-            Toml.Bool     {} -> simple "bool"           v
-            Toml.TimeOfDay{} -> simple "time-local"     v
-            Toml.ZonedTime{} -> simple "datetime"       v
-            Toml.LocalTime{} -> simple "datetime-local" v
-            Toml.Day      {} -> simple "date-local"     v
+            Toml.Table     t -> Aeson.toJSON t
+            Toml.Array     a -> Aeson.toJSON a
+            Toml.String    s -> simple "string"         s
+            Toml.Integer   _ -> simple "integer"        (prettyValue v)
+            Toml.Float     _ -> simple "float"          (prettyValue v)
+            Toml.Bool      _ -> simple "bool"           (prettyValue v)
+            Toml.TimeOfDay _ -> simple "time-local"     (prettyValue v)
+            Toml.ZonedTime _ -> simple "datetime"       (prettyValue v)
+            Toml.LocalTime _ -> simple "datetime-local" (prettyValue v)
+            Toml.Day       _ -> simple "date-local"     (prettyValue v)

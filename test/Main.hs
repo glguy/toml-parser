@@ -18,6 +18,8 @@ import Data.Map qualified as Map
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse)
+import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable)
+import Toml.Value (Table)
 
 main :: IO ()
 main = hspec $
@@ -716,6 +718,84 @@ main = hspec $
             [x]
             [x]|]
           `shouldSatisfy` isLeft
+
+    describe "de/serialization" serializationTests
+
+data Fruit = Fruit String (Maybe Physical) [Variety]
+    deriving (Eq, Show)
+data Physical = Physical String String
+    deriving (Eq, Show)
+
+newtype Variety = Variety String
+    deriving (Eq, Show)
+
+fruitFromTable :: Table -> Either String Fruit
+fruitFromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+
+physicalFromTable :: Table -> Either String Physical
+physicalFromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
+
+varietyFromTable :: Table -> Either String Variety
+varietyFromTable = runParseTable (Variety <$> reqKey "name")
+
+instance FromValue Fruit where
+    fromValue (Table t) = fruitFromTable t
+    fromValue _ = Left "fruit: expected table"
+
+instance FromValue Physical where
+    fromValue (Table t) = physicalFromTable t
+    fromValue _ = Left "physical: expected table"
+
+instance FromValue Variety where
+    fromValue (Table t) = varietyFromTable t
+    fromValue _ = Left "variety: expected table"
+
+serializationTests :: Spec
+serializationTests =
+     do it "handles fruit example"
+         do let r = parse [quoteStr|
+                      [[fruits]]
+                      name = "apple"
+
+                      [fruits.physical]  # subtable
+                      color = "red"
+                      shape = "round"
+
+                      [[fruits.varieties]]  # nested array of tables
+                      name = "red delicious"
+
+                      [[fruits.varieties]]
+                      name = "granny smith"
+
+
+                      [[fruits]]
+                      name = "banana"
+
+                      [[fruits.varieties]]
+                      name = "plantain"|]
+            
+            r `shouldBe`
+              Right (Map.fromList [
+                ("fruits",Array [
+                    table [
+                        ("name",String "apple"),
+                        ("physical", table [
+                            ("color", String "red"),
+                            ("shape", String "round")]),
+                        ("varieties", Array [
+                            table [("name", String "red delicious")],
+                            table [("name", String "granny smith")]])],
+                    table [
+                        ("name",String "banana"),
+                        ("varieties",Array [
+                            table [("name",String "plantain")]])]])])
+
+            let Right t = r
+            
+            runParseTable (reqKey "fruits") t
+              `shouldBe`
+              Right [Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
+                     Fruit "banana" Nothing [Variety "plantain"]]
 
 goodTestCase :: String -> Map String Value -> Spec
 goodTestCase src expect =

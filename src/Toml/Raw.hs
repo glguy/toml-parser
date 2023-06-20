@@ -37,16 +37,16 @@ data Expr
 -- | Unvalidated TOML values. Table are represented as a list of
 -- assignments rather than as resolved maps.
 data Val
-    = ValInteger Integer
-    | ValFloat Double
-    | ValArray [Val]
-    | ValTable [(Key, Val)]
-    | ValBool Bool
-    | ValString String
+    = ValInteger   Integer
+    | ValFloat     Double
+    | ValArray     [Val]
+    | ValTable     [(Key, Val)]
+    | ValBool      Bool
+    | ValString    String
     | ValTimeOfDay TimeOfDay
     | ValZonedTime ZonedTime
     | ValLocalTime LocalTime
-    | ValDay Day
+    | ValDay       Day
     deriving (Read, Show)
 
 -- | Kinds of table headers.

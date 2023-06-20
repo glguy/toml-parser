@@ -12,6 +12,7 @@ is a Map with a single level of keys.
 -}
 module Toml.Value (
     Value(..),
+    Table,
     valueToVal,
     ) where
 
@@ -21,12 +22,14 @@ import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zon
 
 import Toml.Raw(Val(..))
 
+type Table = Map String Value
+
 -- | Semantic TOML value with all table assignments resolved.
 data Value
     = Integer Integer
     | Float Double
     | Array [Value]
-    | Table (Map String Value)
+    | Table Table
     | Bool Bool
     | String String
     | TimeOfDay TimeOfDay

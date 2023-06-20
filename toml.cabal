@@ -18,8 +18,10 @@ common extensions
     default-extensions:
         BlockArguments
         DeriveTraversable
+        GeneralizedNewtypeDeriving
         ImportQualifiedPost
         LambdaCase
+        ScopedTypeVariables
         ViewPatterns
 
 library
@@ -28,6 +30,7 @@ library
     default-language:   Haskell2010
     exposed-modules:
         Toml
+        Toml.FromValue
         Toml.Lexer
         Toml.LexerUtils
         Toml.Located
@@ -37,6 +40,7 @@ library
         Toml.Raw
         Toml.Semantics
         Toml.Token
+        Toml.ToValue
         Toml.Value
     build-depends:
         array           ^>= 0.5,
@@ -62,13 +66,23 @@ test-suite unittests
         QuoteStr
 
 executable TomlDecoder
-    import: extensions
-    hs-source-dirs: decoder
-    main-is: Main.hs
-    build-depends: aeson, toml, base, containers, bytestring, text, time, vector
+    import:             extensions
+    hs-source-dirs:     decoder
+    main-is:            Main.hs
+    build-depends:
+        aeson,
+        base,
+        bytestring,
+        time,
+        toml,
 
 executable TomlEncoder
-    import: extensions
-    hs-source-dirs: encoder
-    main-is: Main.hs
-    build-depends: aeson, toml, base, containers, bytestring, text, time, vector
+    import:             extensions
+    hs-source-dirs:     encoder
+    main-is:            Main.hs
+    build-depends:
+        aeson,
+        toml,
+        base,
+        bytestring,
+        time,

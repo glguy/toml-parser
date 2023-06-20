@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use list literal" #-}
 {-|
 Module      : Toml.Sematics
 Description : Semantic interpretation of raw TOML expressions
@@ -186,6 +188,6 @@ assign (key:| k1:keys) val acc = Map.alterF f key acc
         f Nothing                        = go Map.empty
         f (Just (FrameTable Open     t)) = go t
         f (Just (FrameTable Dotted   t)) = go t
-        f (Just (FrameTable Closed   t)) = Left "attempt to extend through a closed table"
-        f (Just (FrameArray (t :| ts)))  = Left "attempt to extend through an array of tables"
-        f (Just (FrameValue {}))         = Left "attempted to overwrite a value"
+        f (Just (FrameTable Closed   _)) = Left "attempt to extend through a closed table"
+        f (Just (FrameArray          _)) = Left "attempt to extend through an array of tables"
+        f (Just (FrameValue          _)) = Left "attempted to overwrite a value"
