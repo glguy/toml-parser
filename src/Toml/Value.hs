@@ -12,10 +12,14 @@ is a Map with a single level of keys.
 -}
 module Toml.Value (
     Value(..),
+    valueToVal,
     ) where
 
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
+
+import Toml.Raw(Val(..))
 
 -- | Semantic TOML value with all table assignments resolved.
 data Value
@@ -47,3 +51,17 @@ instance Eq Value where
 -- Extract the relevant parts to build an Eq instance
 projectZT :: ZonedTime -> (LocalTime, Int)
 projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
+
+-- | Transform the semantic value back into the simpler syntactic value.
+valueToVal :: Value -> Val
+valueToVal = \case
+    Integer   x    -> ValInteger   x
+    Float     x    -> ValFloat     x
+    Bool      x    -> ValBool      x
+    String    x    -> ValString    x
+    TimeOfDay x    -> ValTimeOfDay x
+    ZonedTime x    -> ValZonedTime x
+    LocalTime x    -> ValLocalTime x
+    Day x          -> ValDay       x
+    Array xs       -> ValArray (valueToVal <$> xs)
+    Table kvs      -> ValTable [(pure k, valueToVal v) | (k,v) <- Map.assocs kvs]

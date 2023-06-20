@@ -77,19 +77,18 @@ assignKeyVals =
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
 valToValue :: Val -> Either String Value
-valToValue v =
-    case v of
-      ValInteger i      -> Right (Integer   i)
-      ValFloat x        -> Right (Float     x)
-      ValBool x         -> Right (Bool      x)
-      ValString x       -> Right (String    x)
-      ValTimeOfDay x    -> Right (TimeOfDay x)
-      ValZonedTime x    -> Right (ZonedTime x)
-      ValLocalTime x    -> Right (LocalTime x)
-      ValDay x          -> Right (Day       x)
-      ValArray xs       -> Array <$> traverse valToValue xs
-      ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
-                              Table <$> constructTable entries
+valToValue = \case
+    ValInteger   x    -> Right (Integer   x)
+    ValFloat     x    -> Right (Float     x)
+    ValBool      x    -> Right (Bool      x)
+    ValString    x    -> Right (String    x)
+    ValTimeOfDay x    -> Right (TimeOfDay x)
+    ValZonedTime x    -> Right (ZonedTime x)
+    ValLocalTime x    -> Right (LocalTime x)
+    ValDay       x    -> Right (Day       x)
+    ValArray xs       -> Array <$> traverse valToValue xs
+    ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
+                            Table <$> constructTable entries
 
 -- | Frames help distinguish tables and arrays written in block and inline
 -- syntax. This allows us to enforce that inline tables and arrays can not

@@ -10,15 +10,20 @@ in this package to assist error message production.
 
 -}
 module Toml.Pretty (
-    prettySimpleKey,
-    prettyKey,
-    prettySectionKind,
-    prettyPosition,
-    prettyToken,
+    -- * semantic values
+    prettyToml,
     prettyValue,
+
+    -- * syntactic components
+    prettyToken,
     prettyExpr,
     prettyVal,
-    prettyToml,
+    prettyPosition,
+    prettySectionKind,
+
+    -- * keys
+    prettySimpleKey,
+    prettyKey,
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
@@ -33,7 +38,7 @@ import Data.Time.Format (formatTime, defaultTimeLocale)
 import Toml.Position (Position(..))
 import Toml.Raw (Key, SectionKind(..), Expr (..), Val(..))
 import Toml.Token (Token(..))
-import Toml.Value (Value(..))
+import Toml.Value (Value(..), valueToVal)
 
 prettyKey :: Key -> String
 prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey
@@ -104,6 +109,11 @@ prettyExpr (KeyValExpr _ k v) = prettyKey k ++ " = " ++ prettyVal v
 prettyExpr (TableExpr      _ k) = "["  ++ prettyKey k ++ "]"
 prettyExpr (ArrayTableExpr _ k) = "[[" ++ prettyKey k ++ "]]"
 
+-- | Render a value suitable for assignment on the right-hand side
+-- of an equals sign. This value will always occupy a single line.
+prettyValue :: Value -> String
+prettyValue = prettyVal . valueToVal
+
 prettyVal :: Val -> String
 prettyVal = \case
     ValInteger i -> show i
@@ -120,23 +130,6 @@ prettyVal = \case
     ValZonedTime zt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
     ValLocalTime lt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
     ValDay d         -> formatTime defaultTimeLocale "%Y-%m-%d" d
-
-prettyValue :: Value -> String
-prettyValue = \case
-    Integer i -> show i
-    Float   f
-        | isNaN f -> "nan"
-        | isInfinite f -> if f > 0 then "inf" else "-inf"
-        | otherwise -> show f
-    Array  xs -> "[" ++ intercalate ", " (map prettyValue xs) ++ "]"
-    Table t   -> "{" ++ intercalate ", " [prettySimpleKey k ++ " = " ++ prettyValue v | (k,v) <- Map.assocs t] ++ "}"
-    Bool True -> "true"
-    Bool False -> "false"
-    String str -> quoteString str
-    TimeOfDay tod -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
-    ZonedTime zt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
-    LocalTime lt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
-    Day d         -> formatTime defaultTimeLocale "%Y-%m-%d" d
 
 isAlwaysSimple :: Value -> Bool
 isAlwaysSimple = \case
@@ -162,6 +155,8 @@ isSingularTable t =
         [v]       -> isAlwaysSimple v
         _         -> False
 
+-- | Render a complete TOML document using top-level table
+-- and array of table sections where appropriate.
 prettyToml :: Map String Value -> String
 prettyToml = prettyToml_ []
 
