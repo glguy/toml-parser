@@ -66,4 +66,9 @@ executable TomlDecoder
     hs-source-dirs: decoder
     main-is: Main.hs
     build-depends: aeson, toml, base, containers, bytestring, text, time, vector
-    
+
+executable TomlEncoder
+    import: extensions
+    hs-source-dirs: encoder
+    main-is: Main.hs
+    build-depends: aeson, toml, base, containers, bytestring, text, time, vector
