@@ -122,7 +122,7 @@ prettyVal = \case
         | isInfinite f -> if f > 0 then "inf" else "-inf"
         | otherwise -> show f
     ValArray  xs -> "[" ++ intercalate ", " (map prettyVal xs) ++ "]"
-    ValTable t   -> "{" ++ intercalate ", " [prettyKey k ++ " = " ++ prettyVal v | (k,v) <- t] ++ "}"
+    ValTable t   -> "{" ++ intercalate ", " [prettyAssignment k v | (k,v) <- t] ++ "}"
     ValBool True -> "true"
     ValBool False -> "false"
     ValString str -> quoteString str
@@ -163,7 +163,7 @@ prettyToml = prettyToml_ []
 prettyToml_ :: [String] -> Map String Value -> String
 prettyToml_ prefix t =
     intercalate "\n" $
-      [unlines [prettyAssignment (pure k) v | (k,v) <- simple] | not (null simple)] ++
+      [unlines [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple] | not (null simple)] ++
       [prettySection (snoc prefix k) v | (k,v) <- sections]
     where
         snoc [] x = x :| []
@@ -171,9 +171,9 @@ prettyToml_ prefix t =
         (simple, sections) =
             partition (isAlwaysSimple . snd) (Map.assocs t)
 
-prettyAssignment :: Key -> Value -> String
-prettyAssignment k (Table (Map.assocs -> [(k',v)])) = prettyAssignment (k <> pure k') v
-prettyAssignment k v = prettyKey k ++ " = " ++ prettyValue v
+prettyAssignment :: Key -> Val -> String
+prettyAssignment k (ValTable [(k',v)]) = prettyAssignment (k <> k') v
+prettyAssignment k v = prettyKey k ++ " = " ++ prettyVal v
 
 prettySection :: Key -> Value -> String
 prettySection key (Table t) =
