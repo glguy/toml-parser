@@ -694,13 +694,13 @@ main = hspec $
             y.z.w = 1|]
           `shouldSatisfy` isLeft
 
-        it "super tables can add new subtables to array tables via dotted keys" $
+        it "super tables can't add new subtables to array tables via dotted keys" $
           parse [quoteStr|
             [[x.y]]
             [x]
             y.z.a = 1
             y.z.b = 2|]
-          `shouldSatisfy` isRight
+          `shouldSatisfy` isLeft
 
         it "the previous example preserves closeness" $
           parse [quoteStr|
@@ -716,24 +716,6 @@ main = hspec $
             [x]
             [x]|]
           `shouldSatisfy` isLeft
-
-        it "preserves arrays while assigning through them" $
-          parse [quoteStr|
-            [[x.y]]
-            a=1
-            [[x.y]]
-            b=2
-            [x]
-            y.z.c=3|]
-          `shouldBe`
-          Right (Map.fromList [
-            ("x", table [
-                ("y", Array [
-                    table [("a",Integer 1)],
-                    table [
-                        ("b", Integer 2),
-                        ("z", table [
-                            ("c",Integer 3)])]])])])
 
 goodTestCase :: String -> Map String Value -> Spec
 goodTestCase src expect =

@@ -195,6 +195,6 @@ assign (key:| k1:keys) val _ acc = Map.alterF f key acc
         f (Just (FrameTable Closed   t)) = Left "attempt to extend through a closed table"
 
         -- all array tables are closed
-        f (Just (FrameArray (t :| ts)))  = Just . FrameArray . (:| ts) <$> go Closed t
+        f (Just (FrameArray (t :| ts)))  = Left "attempt to extend through a closed table"
 
         f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
