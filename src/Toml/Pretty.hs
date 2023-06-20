@@ -39,6 +39,7 @@ import Toml.Position (Position(..))
 import Toml.Raw (Key, SectionKind(..), Expr (..), Val(..))
 import Toml.Token (Token(..))
 import Toml.Value (Value(..), valueToVal)
+import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 
 prettyKey :: Key -> String
 prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey
@@ -127,7 +128,9 @@ prettyVal = \case
     ValBool False -> "false"
     ValString str -> quoteString str
     ValTimeOfDay tod -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
-    ValZonedTime zt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
+    ValZonedTime zt
+      | timeZoneMinutes (zonedTimeZone zt) == 0 -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt
+      | otherwise                               -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
     ValLocalTime lt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
     ValDay d         -> formatTime defaultTimeLocale "%Y-%m-%d" d
 
