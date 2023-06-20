@@ -175,10 +175,10 @@ prettyToml_ kind prefix t =
     unlines [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple] +++
     intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
     where
-        snoc [] x = x :| []
-        snoc (x:xs) y = x :| (xs ++ [y])
-        (simple, sections) =
-            partition (isAlwaysSimple . snd) (Map.assocs t)
+        snoc []     y = y :| []
+        snoc (x:xs) y = x :| xs ++ [y]
+        
+        (simple, sections) = partition (isAlwaysSimple . snd) (Map.assocs t)
         
         header =
             case NonEmpty.nonEmpty prefix of

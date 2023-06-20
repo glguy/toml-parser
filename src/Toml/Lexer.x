@@ -17,7 +17,7 @@ This module uses actions and lexical hooks defined in
 "LexerUtils".
 
 -}
-module Toml.Lexer (scanTokens) where
+module Toml.Lexer (scanTokens, lexValue) where
 
 import Control.Monad.Trans.State (runState)
 
@@ -164,8 +164,8 @@ scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str
 scanTokens' :: [Context] -> AlexInput -> [Located Token]
 scanTokens' st str =
   case alexScan str (stateInt st) of
-    AlexEOF -> [TokEOF <$ str]
-    AlexError str' -> [mkError <$> str']
+    AlexEOF          -> [TokEOF <$ str]
+    AlexError str'   -> [mkError <$> str']
     AlexSkip  str' _ -> scanTokens' st str'
     AlexToken str' n action ->
       case runState (traverse (action . take n) str) st of
@@ -175,5 +175,17 @@ stateInt :: [Context] -> Int
 stateInt (ValueContext : _) = val
 stateInt (ListContext  : _) = val
 stateInt _                  = 0
+
+-- | Lex a single token in a value context. This is mostly useful for testing.
+lexValue :: String -> Token
+lexValue str = lexValue_ Located { locPosition = startPos, locThing = str } 
+
+lexValue_ :: Located String -> Token
+lexValue_ str =
+  case alexScan str val of
+    AlexEOF              -> TokError "end of input"
+    AlexError{}          -> TokError "lexer error"
+    AlexSkip str' _      -> lexValue_ str'
+    AlexToken _ n action -> fst (runState (action (take n (locThing str))) [ValueContext])
 
 }
