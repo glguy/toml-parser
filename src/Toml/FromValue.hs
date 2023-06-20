@@ -12,6 +12,7 @@ module Toml.FromValue (
 
     -- * table matching
     ParseTable,
+    fromParseTableValue,
     runParseTable,
     optKey,
     reqKey,
@@ -28,11 +29,13 @@ import Data.Word ( Word8, Word16, Word32, Word64 )
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Control.Monad.Trans.State (StateT(..), put)
 import Data.List (intercalate)
+import Control.Monad (zipWithM)
+import Control.Monad.Trans.Class (lift)
 
 class FromValue a where
     fromValue     :: Value -> Either String a
     listFromValue :: Value -> Either String [a]
-    listFromValue (Array xs) = traverse fromValue xs
+    listFromValue (Array xs) = zipWithM (\i v -> fromValue v `backtrace` ("[" ++ show i ++ "]")) [0::Int ..] xs
 
 typeError :: String -> Value -> Either String a
 typeError wanted got = Left ("Type error. wanted: " ++ wanted ++ " got: " ++ prettyValue got)
@@ -107,11 +110,23 @@ instance FromValue LocalTime where
 instance FromValue Value where
     fromValue = Right
 
+-- | Helper for implementing 'FromValue' with a 'ParseTable'
+fromParseTableValue :: ParseTable a -> Value -> Either String a
+fromParseTableValue p (Table t) = runParseTable p t
+fromParseTableValue _ v         = typeError "table" v
+
 class FromTable a where
     fromTable :: Table -> Either String a
 
 newtype ParseTable a = ParseTable (StateT Table (Either String) a)
     deriving (Functor, Applicative, Monad)
+
+instance MonadFail ParseTable where
+    fail = ParseTable . lift . Left
+
+backtrace :: Either String a -> String -> Either String a
+Right x `backtrace` _ = Right x
+Left  e `backtrace` l = Left (e ++ " in " ++ l)
 
 runParseTable :: ParseTable a -> Table -> Either String a
 runParseTable (ParseTable p) t =
@@ -126,16 +141,15 @@ optKey key = ParseTable $ StateT \t ->
     case Map.lookup key t of
         Nothing -> Right (Nothing, t)
         Just v ->
-         do r <- fromValue v
+         do r <- fromValue v `backtrace` ('.' : prettySimpleKey key)
             pure (Just r, Map.delete key t)
 
 reqKey :: FromValue a => String -> ParseTable a
-reqKey key = ParseTable $ StateT \t ->
-    case Map.lookup key t of
-        Nothing -> Left ("Missing key: " ++ prettyValue (String key))
-        Just v ->
-         do r <- fromValue v
-            pure (r, Map.delete key t)
+reqKey key =
+ do mb <- optKey key
+    case mb of
+        Nothing -> fail ("Missing key: " ++ prettyValue (String key))
+        Just v -> pure v
 
 -- | Discard the remainder of the table to ignore any unused keys
 discardKeys :: ParseTable ()

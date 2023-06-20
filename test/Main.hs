@@ -18,7 +18,7 @@ import Data.Map qualified as Map
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse)
-import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable)
+import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable, fromParseTableValue, ParseTable)
 import Toml.Value (Table)
 
 main :: IO ()
@@ -253,11 +253,11 @@ main = hspec $
             hex1 = 0xDEADBEEF
             hex2 = 0xdeadbeef
             hex3 = 0xdead_beef
-            
+
             # octal with prefix `0o`
             oct1 = 0o01234567
             oct2 = 0o755 # useful for Unix file permissions
-            
+
             # binary with prefix `0b`
             bin1 = 0b11010110|]
           `shouldBe` Right
@@ -723,37 +723,30 @@ main = hspec $
 
 data Fruit = Fruit String (Maybe Physical) [Variety]
     deriving (Eq, Show)
+
 data Physical = Physical String String
     deriving (Eq, Show)
 
 newtype Variety = Variety String
     deriving (Eq, Show)
 
-fruitFromTable :: Table -> Either String Fruit
-fruitFromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+fruitFromTable :: ParseTable Fruit
+fruitFromTable = Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties"
 
-physicalFromTable :: Table -> Either String Physical
-physicalFromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
+physicalFromTable :: ParseTable Physical
+physicalFromTable = Physical <$> reqKey "color" <*> reqKey "shape"
 
-varietyFromTable :: Table -> Either String Variety
-varietyFromTable = runParseTable (Variety <$> reqKey "name")
+varietyFromTable :: ParseTable Variety
+varietyFromTable = Variety <$> reqKey "name"
 
-instance FromValue Fruit where
-    fromValue (Table t) = fruitFromTable t
-    fromValue _ = Left "fruit: expected table"
-
-instance FromValue Physical where
-    fromValue (Table t) = physicalFromTable t
-    fromValue _ = Left "physical: expected table"
-
-instance FromValue Variety where
-    fromValue (Table t) = varietyFromTable t
-    fromValue _ = Left "variety: expected table"
+instance FromValue Fruit    where fromValue = fromParseTableValue fruitFromTable
+instance FromValue Physical where fromValue = fromParseTableValue physicalFromTable
+instance FromValue Variety  where fromValue = fromParseTableValue varietyFromTable
 
 serializationTests :: Spec
 serializationTests =
      do it "handles fruit example"
-         do let r = parse [quoteStr|
+         do Right r <- pure $ parse [quoteStr|
                       [[fruits]]
                       name = "apple"
 
@@ -773,9 +766,9 @@ serializationTests =
 
                       [[fruits.varieties]]
                       name = "plantain"|]
-            
+
             r `shouldBe`
-              Right (Map.fromList [
+              Map.fromList [
                 ("fruits",Array [
                     table [
                         ("name",String "apple"),
@@ -788,11 +781,9 @@ serializationTests =
                     table [
                         ("name",String "banana"),
                         ("varieties",Array [
-                            table [("name",String "plantain")]])]])])
+                            table [("name",String "plantain")]])]])]
 
-            let Right t = r
-            
-            runParseTable (reqKey "fruits") t
+            runParseTable (reqKey "fruits") r
               `shouldBe`
               Right [Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
                      Fruit "banana" Nothing [Variety "plantain"]]
