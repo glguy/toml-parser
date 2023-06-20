@@ -161,13 +161,19 @@ isSingularTable t =
 -- | Render a complete TOML document using top-level table
 -- and array of table sections where appropriate.
 prettyToml :: Map String Value -> String
-prettyToml = prettyToml_ []
+prettyToml = prettyToml_ TableKind []
 
-prettyToml_ :: [String] -> Map String Value -> String
-prettyToml_ prefix t =
-    intercalate "\n" $
-      [unlines [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple] | not (null simple)] ++
-      [prettySection (snoc prefix k) v | (k,v) <- sections]
+(+++) :: String -> String -> String
+"" +++ x = x
+x +++ "" = x
+x +++ y = x ++ "\n" ++ y
+infixr 5 +++
+
+prettyToml_ :: SectionKind -> [String] -> Map String Value -> String
+prettyToml_ kind prefix t =
+    (maybe "" ((++"\n") . prettySectionKind kind) (NonEmpty.nonEmpty prefix)) ++
+    unlines [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple] +++
+    intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
     where
         snoc [] x = x :| []
         snoc (x:xs) y = x :| (xs ++ [y])
@@ -180,11 +186,8 @@ prettyAssignment k v = prettyKey k ++ " = " ++ prettyVal v
 
 prettySection :: Key -> Value -> String
 prettySection key (Table t) =
-    (if null t || any isAlwaysSimple t then prettySectionKind TableKind key ++ "\n" else "") ++
-    prettyToml_ (NonEmpty.toList key) t
+    prettyToml_ TableKind (NonEmpty.toList key) t
 prettySection key (Array a) =
-    intercalate "\n" [
-        prettySectionKind ArrayTableKind key ++ "\n" ++
-        prettyToml_ (NonEmpty.toList key) t
-        | Table t <- a]
+    intercalate "\n"
+    [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | Table t <- a]
 prettySection _ _ = error "prettySection applied to simple value"
