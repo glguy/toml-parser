@@ -107,30 +107,36 @@ prettyExpr (ArrayTableExpr _ k) = "[[" ++ prettyKey k ++ "]]"
 prettyVal :: Val -> String
 prettyVal = \case
     ValInteger i -> show i
-    ValFloat   f -> show f
+    ValFloat   f
+        | isNaN f -> "nan"
+        | isInfinite f -> if f > 0 then "inf" else "-inf"
+        | otherwise -> show f
     ValArray  xs -> "[" ++ intercalate ", " (map prettyVal xs) ++ "]"
     ValTable t   -> "{" ++ intercalate ", " [prettyKey k ++ " = " ++ prettyVal v | (k,v) <- t] ++ "}"
     ValBool True -> "true"
     ValBool False -> "false"
     ValString str -> quoteString str
-    ValTimeOfDay tod -> show tod
-    ValZonedTime zt -> formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S%Q%Ez" zt
-    ValLocalTime lt -> show lt
-    ValDay d -> show d
+    ValTimeOfDay tod -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
+    ValZonedTime zt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
+    ValLocalTime lt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
+    ValDay d         -> formatTime defaultTimeLocale "%Y-%m-%d" d
 
 prettyValue :: Value -> String
 prettyValue = \case
     Integer i -> show i
-    Float   f -> show f
+    Float   f
+        | isNaN f -> "nan"
+        | isInfinite f -> if f > 0 then "inf" else "-inf"
+        | otherwise -> show f
     Array  xs -> "[" ++ intercalate ", " (map prettyValue xs) ++ "]"
     Table t   -> "{" ++ intercalate ", " [prettySimpleKey k ++ " = " ++ prettyValue v | (k,v) <- Map.assocs t] ++ "}"
     Bool True -> "true"
     Bool False -> "false"
     String str -> quoteString str
-    TimeOfDay tod -> show tod
-    ZonedTime zt -> formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S%Q%Ez" zt
-    LocalTime lt -> show lt
-    Day d -> show d
+    TimeOfDay tod -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
+    ZonedTime zt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
+    LocalTime lt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
+    Day d         -> formatTime defaultTimeLocale "%Y-%m-%d" d
 
 isAlwaysSimple :: Value -> Bool
 isAlwaysSimple = \case

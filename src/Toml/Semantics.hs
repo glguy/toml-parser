@@ -71,8 +71,8 @@ assignKeyVals :: Map String Frame -> KeyVals -> Either String (Map String Frame)
 assignKeyVals =
     foldM \m (ln,k,v) ->
      do value <- valToValue v
-        updateError (\e -> e ++ " while assigning " ++ prettyKey k ++ " on line " ++ show ln) $
-          assign k value Open m
+        updateError (\e -> e ++ " while assigning " ++ prettyKey k ++ " on line " ++ show ln)
+          (assign k value m)
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
@@ -159,8 +159,8 @@ addSection update (key :| []) kind acc = Map.alterF f key acc
                 TableKind      -> Left "attempt to open array table as table"
 
         -- failure cases
-        f (Just (FrameTable Dotted _)) = Left "attempt to redefine dotted-key defined table"
         f (Just (FrameTable Closed _)) = Left "attempt to redefine top-level defined table"
+        f (Just (FrameTable Dotted _)) = error "addSection: dotted table left unclosed"
         f (Just (FrameValue {}))       = Left "attempt to redefined a value"
 
 addSection update (k1 :| k2 : ks) kind acc = Map.alterF f k1 acc
@@ -173,28 +173,20 @@ addSection update (k1 :| k2 : ks) kind acc = Map.alterF f k1 acc
         f (Just (FrameValue _))         = Left "attempt to redefine a value"
 
 
+assign :: Key -> Value -> Map String Frame -> Either String (Map String Frame)
 
-assign :: Key -> Value -> FrameKind -> Map String Frame -> Either String (Map String Frame)
-
-assign (_ :| []) _ Closed _ = Left "attempt to assign into a closed table"
-
-assign (key :| []) val _ acc = Map.alterF f key acc
+assign (key :| []) val acc = Map.alterF f key acc
     where
         f Nothing = Right (Just (FrameValue val))
         f Just{}  = Left "key already assigned"
 
-assign (key:| k1:keys) val _ acc = Map.alterF f key acc
+assign (key:| k1:keys) val acc = Map.alterF f key acc
     where
-        go = assign (k1:|keys) val
+        go t = Just . FrameTable Dotted <$> assign (k1:|keys) val t
 
-        -- when a dotted key introduces a table, that defines it
-        f Nothing = Just . FrameTable Dotted <$> go Dotted Map.empty
-
-        f (Just (FrameTable Open     t)) = Just . FrameTable Dotted    <$> go Dotted t
-        f (Just (FrameTable Dotted   t)) = Just . FrameTable Dotted    <$> go Dotted t
+        f Nothing                        = go Map.empty
+        f (Just (FrameTable Open     t)) = go t
+        f (Just (FrameTable Dotted   t)) = go t
         f (Just (FrameTable Closed   t)) = Left "attempt to extend through a closed table"
-
-        -- all array tables are closed
-        f (Just (FrameArray (t :| ts)))  = Left "attempt to extend through a closed table"
-
-        f (Just (FrameValue{})) = Left "attempted to traverse a primitive value"
+        f (Just (FrameArray (t :| ts)))  = Left "attempt to extend through an array of tables"
+        f (Just (FrameValue {}))         = Left "attempted to overwrite a value"
