@@ -32,7 +32,7 @@ data Expr
     = KeyValExpr     Int Key Val -- ^ line-no key value
     | TableExpr      Int Key     -- ^ line-no table-header
     | ArrayTableExpr Int Key     -- ^ line-no array-table-header
-    deriving Show
+    deriving (Read, Show)
 
 -- | Unvalidated TOML values. Table are represented as a list of
 -- assignments rather than as resolved maps.
@@ -47,10 +47,10 @@ data Val
     | ValZonedTime ZonedTime
     | ValLocalTime LocalTime
     | ValDay Day
-    deriving Show
+    deriving (Read, Show)
 
 -- | Kinds of table headers.
 data SectionKind
     = TableKind -- ^ [table]
     | ArrayTableKind -- ^ [[array of tables]]
-    deriving Show
+    deriving (Read, Show, Eq)

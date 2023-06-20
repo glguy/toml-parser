@@ -171,7 +171,7 @@ infixr 5 +++
 
 prettyToml_ :: SectionKind -> [String] -> Map String Value -> String
 prettyToml_ kind prefix t =
-    (maybe "" ((++"\n") . prettySectionKind kind) (NonEmpty.nonEmpty prefix)) ++
+    header ++
     unlines [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple] +++
     intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
     where
@@ -179,6 +179,12 @@ prettyToml_ kind prefix t =
         snoc (x:xs) y = x :| (xs ++ [y])
         (simple, sections) =
             partition (isAlwaysSimple . snd) (Map.assocs t)
+        
+        header =
+            case NonEmpty.nonEmpty prefix of
+                Just key | not (null simple) || null sections || kind == ArrayTableKind ->
+                    prettySectionKind kind key ++ "\n"
+                _ -> ""
 
 prettyAssignment :: Key -> Val -> String
 prettyAssignment k (ValTable [(k',v)]) = prettyAssignment (k <> k') v

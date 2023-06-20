@@ -67,7 +67,7 @@ data Token
   | TokLocalTime !TimeOfDay       -- ^ local time
   | TokError String               -- ^ lexical error
   | TokEOF                        -- ^ end of file
-  deriving Show
+  deriving (Read, Show)
 
 -- | Remove underscores from number literals
 scrub :: String -> String
