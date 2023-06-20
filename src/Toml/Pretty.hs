@@ -45,8 +45,8 @@ prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey
 
 prettySimpleKey :: String -> String
 prettySimpleKey str
-    | all isBareKey str = str
-    | otherwise         = quoteString str
+    | not (null str), all isBareKey str = str
+    | otherwise                         = quoteString str
 
 isBareKey :: Char -> Bool
 isBareKey x = isAsciiLower x || isAsciiUpper x || isDigit x || x == '-' || x == '_'
