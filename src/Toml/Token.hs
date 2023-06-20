@@ -104,7 +104,7 @@ mkLiteralString = TokString . tail . init
 
 mkBasicString :: String -> Token
 mkBasicString "" = error "processBasic: missing initializer"
-mkBasicString (_:start) = TokString (go start)
+mkBasicString (_:start) = enforceScalar TokString (go start)
   where
     go [] = error "processBasic: missing terminator"
     go "\"" = ""
@@ -121,7 +121,7 @@ mkBasicString (_:start) = TokString (go start)
 
 mkMlBasicString :: String -> Token
 mkMlBasicString str =
-  TokMlString
+  enforceScalar TokMlString
   case str of
     '"':'"':'"':'\r':'\n':start -> go start
     '"':'"':'"':'\n':start -> go start
@@ -157,6 +157,13 @@ mkMlLiteralString str =
     go "'''" = ""
     go (x:xs) = x : go xs
     go "" = error "processMlLiteral: missing terminator"
+
+enforceScalar :: (String -> Token) -> String -> Token
+enforceScalar f str
+    | any isInvalid str = TokError "string literal controls non-scalar value"
+    | otherwise = f str
+    where
+        isInvalid x = '\xd800' <= x && x < '\xe000'
 
 mkError :: String -> Token
 mkError str = TokError ("Lexical error: " ++ show (head str))

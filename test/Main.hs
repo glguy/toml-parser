@@ -225,11 +225,11 @@ main = hspec $
         it "parses all the other escapes" $
           parse [quoteStr|
             x = "\\\b\f\r\U0010abcd"
-            y = """\\\b\f\r\udbca\U0010abcd\n\r\t"""|]
+            y = """\\\b\f\r\u7bca\U0010abcd\n\r\t"""|]
           `shouldBe`
           Right (Map.fromList [
             ("x", String "\\\b\f\r\x0010abcd"),
-            ("y", String "\\\b\f\r\xdbca\x0010abcd\n\r\t")])
+            ("y", String "\\\b\f\r\x7bca\x0010abcd\n\r\t")])
 
         it "rejects out of range unicode escapes" $
           parse [quoteStr|
