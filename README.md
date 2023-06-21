@@ -5,6 +5,8 @@ This package implements a validating parser for [TOML 1.0.0](https://toml.io/en/
 This package uses an [alex](https://haskell-alex.readthedocs.io/en/latest/)-generated
 lexer and [happy](https://haskell-happy.readthedocs.io/en/latest/)-generated parser.
 
+It also provides a pair of classes for serializing into and out of TOML.
+
 ## Example
 
 Consider this sample TOML text from the specification.
@@ -55,3 +57,37 @@ Right (fromList [
 We can render this parsed value back to TOML text using `prettyToml fruitToml`.
 In this case the input was already sorted, so the generated text will happen
 to match almost exactly.
+
+Here's an example of defining datatypes and deserializers for the TOML above.
+
+```haskell
+data Fruit = Fruit String (Maybe Physical) [Variety]
+    deriving (Eq, Show)
+
+data Physical = Physical String String
+    deriving (Eq, Show)
+
+newtype Variety = Variety String
+    deriving (Eq, Show)
+
+parseFruitsToml :: Table -> Either String [Fruit]
+parseFruitsToml = runParseTable (reqKey "fruits")
+
+instance FromValue Fruit where
+    fromValue = fromParseTableValue (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+
+instance FromValue Physical where
+    fromValue = fromParseTableValue (Physical <$> reqKey "color" <*> reqKey "shape")
+
+instance FromValue Variety where
+    fromValue = fromParseTableValue (Variety <$> reqKey "name")
+```
+
+We can run this example on the original value to deserialize it into domain-specific datatypes.
+
+```haskell
+>>> parseFruitsToml fruitToml
+Right [
+    Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
+    Fruit "banana" Nothing [Variety "plantain"]]
+```

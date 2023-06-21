@@ -15,13 +15,13 @@ module Main (main) where
 import Data.Either (isLeft)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse)
 import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable, fromParseTableValue, ParseTable)
+import Toml.ToValue (table, (.=))
 import Toml.Value (Table)
-import Toml.ToValue
-import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 
 main :: IO ()
 main = hspec do
