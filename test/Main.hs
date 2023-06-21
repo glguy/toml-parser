@@ -724,6 +724,12 @@ main = hspec do
             [x]|]
           `shouldSatisfy` isLeft
 
+        it "prevents redefining an array of tables" $
+          parse [quoteStr|
+            [[x.y]]
+            [x.y]|]
+          `shouldSatisfy` isLeft
+
   describe "deserialization" deserializationTests
   describe "pretty-printing" prettyTests
 
@@ -811,7 +817,7 @@ prettyTests =
     it "renders empty documents" $
       fmap prettyToml (parse "")
         `shouldBe` Right ""
-    
+
     it "renders dates and time" $
       fmap prettyToml (parse [quoteStr|
         a = 2020-05-07
@@ -823,6 +829,11 @@ prettyTests =
         b = 15:16:17.99
         c = 2020-05-07T15:16:17.99
         d = 2020-05-07T15:16:17.99Z|]
+
+    it "renders quoted keys" $
+      fmap prettyToml (parse "''.'a b'.'\"' = 10")
+        `shouldBe` Right [quoteStr|
+        ""."a b"."\"" = 10|]
 
 deserializationTests :: Spec
 deserializationTests =
