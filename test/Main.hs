@@ -12,7 +12,7 @@ specification document).
 -}
 module Main (main) where
 
-import Data.Either (isLeft, isRight)
+import Data.Either (isLeft)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import QuoteStr (quoteStr)
@@ -624,7 +624,9 @@ main = hspec $
           parse [quoteStr|
             [x.y.z]
             [x]
-            [x.y]|] `shouldSatisfy` isRight
+            [x.y]|]
+          `shouldBe`
+          parse "x.y.z={}"
 
         it "stays closed" $
           parse [quoteStr|
@@ -636,13 +638,17 @@ main = hspec $
           parse [quoteStr|
             [[x.y]]
             [x]
-            [[x.y]]|] `shouldSatisfy` isRight
+            [[x.y]]|]
+          `shouldBe`
+          parse "x.y=[{},{}]"
 
         it "super tables of array tables preserve array tables" $
           parse [quoteStr|
             [[x.y]]
             [x]
-            [x.y.z]|] `shouldSatisfy` isRight
+            [x.y.z]|]
+          `shouldBe`
+          parse "x.y=[{z={}}]"
 
         it "detects conflicting inline keys" $
           parse [quoteStr|
@@ -672,14 +678,16 @@ main = hspec $
             [x.y.z]
             [x.y]
             [x]|]
-          `shouldSatisfy` isRight
+          `shouldBe`
+          parse "x.y.z={}"
 
         it "You can dot into open supertables" $
           parse [quoteStr|
             [x.y.z]
             [x]
             y.q = 1|]
-          `shouldSatisfy` isRight
+          `shouldBe`
+          parse "x.y={z={},q=1}"
 
         it "dotted tables close previously open tables" $
           parse [quoteStr|
