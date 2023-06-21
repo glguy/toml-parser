@@ -132,8 +132,8 @@ toml :-
 "]]"                { token_ Tok2SquareC                }
 }
 
-@comment            { token TokComment                  }
 @newline            { token_ TokNewline                 }
+@comment;
 $wschar+;
 
 @basic_string       { value mkBasicString               }

@@ -42,7 +42,6 @@ STRING          { Located _ (TokString         $$)  }
 MLSTRING        { Located _ (TokMlString       $$)  }
 INTEGER         { Located _ (TokInteger        $$)  }
 FLOAT           { Located _ (TokFloat          $$)  }
-COMMENT         { Located _ (TokComment        $$)  }
 OFFSETDATETIME  { Located _ (TokOffsetDateTime $$)  }
 LOCALDATETIME   { Located _ (TokLocalDateTime  $$)  }
 LOCALDATE       { Located _ (TokLocalDate      $$)  }
@@ -60,8 +59,8 @@ toml ::                       { [Expr]        }
   : sepBy1(line, NEWLINE) EOF { concat $1     }
 
 line ::                   { [Expr]              }
-  :            commentok  { []                  }
-  | expression commentok  { [$1]                }
+  :                       { []                  }
+  | expression            { [$1]                }
 
 expression ::                 { Expr                            }
   : getLineNo keyval          { KeyValExpr $1 (fst $2) (snd $2) }
@@ -99,21 +98,17 @@ inlinetable ::                  { [(Key, Val)]      }
   : '{' sepBy(keyval, ',') '}'  { $2                }
 
 array ::                                                  { [Val]       }
-  : '[' commentnewline                                ']' { []          }
-  | '[' commentnewline arrayvalues                    ']' { reverse $3  }
-  | '[' commentnewline arrayvalues ',' commentnewline ']' { reverse $3  }
+  : '[' newlines                          ']' { []          }
+  | '[' newlines arrayvalues              ']' { reverse $3  }
+  | '[' newlines arrayvalues ',' newlines ']' { reverse $3  }
 
 arrayvalues ::                                        { [Val]       }
-  :                                val commentnewline { [$1]        }
-  | arrayvalues ',' commentnewline val commentnewline { $4 : $1     }
+  :                          val newlines { [$1]        }
+  | arrayvalues ',' newlines val newlines { $4 : $1     }
 
-commentnewline ::                    {}
-  :                                  {}
-  | commentnewline commentok NEWLINE {}
-
-commentok :: {}
-  :          {}
-  | COMMENT  {}
+newlines ::          {}
+  :                  {}
+  | newlines NEWLINE {}
 
 sepBy(p,q) ::         { [p]                   }
   :                   { []                    }

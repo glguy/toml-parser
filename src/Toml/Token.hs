@@ -60,7 +60,6 @@ data Token
   | TokMlString String            -- ^ multiline string literal
   | TokInteger !Integer           -- ^ integer literal
   | TokFloat !Double              -- ^ floating-point literal
-  | TokComment String             -- ^ comment
   | TokOffsetDateTime !ZonedTime  -- ^ date-time with timezone offset
   | TokLocalDateTime !LocalTime   -- ^ local date-time
   | TokLocalDate !Day             -- ^ local date
