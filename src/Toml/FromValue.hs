@@ -12,7 +12,7 @@ module Toml.FromValue (
 
     -- * table matching
     ParseTable,
-    fromParseTableValue,
+    defaultTableFromValue,
     runParseTable,
     optKey,
     reqKey,
@@ -36,6 +36,12 @@ class FromValue a where
     fromValue     :: Value -> Either String a
     listFromValue :: Value -> Either String [a]
     listFromValue (Array xs) = zipWithM (\i v -> fromValue v `backtrace` ("[" ++ show i ++ "]")) [0::Int ..] xs
+
+class FromValue a => FromTable a where
+    fromTable :: Table -> Either String a
+
+defaultTableFromValue (Table t) = fromTable t
+defaultTableFromValue v = typeError "table" v
 
 typeError :: String -> Value -> Either String a
 typeError wanted got = Left ("Type error. wanted: " ++ wanted ++ " got: " ++ prettyValue got)
@@ -109,14 +115,6 @@ instance FromValue LocalTime where
 
 instance FromValue Value where
     fromValue = Right
-
--- | Helper for implementing 'FromValue' with a 'ParseTable'
-fromParseTableValue :: ParseTable a -> Value -> Either String a
-fromParseTableValue p (Table t) = runParseTable p t
-fromParseTableValue _ v         = typeError "table" v
-
-class FromTable a where
-    fromTable :: Table -> Either String a
 
 newtype ParseTable a = ParseTable (StateT Table (Either String) a)
     deriving (Functor, Applicative, Monad)

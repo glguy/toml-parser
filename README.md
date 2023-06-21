@@ -61,6 +61,9 @@ to match almost exactly.
 Here's an example of defining datatypes and deserializers for the TOML above.
 
 ```haskell
+newtype Fruits = Fruits [Fruit]
+    deriving (Eq, Show)
+
 data Fruit = Fruit String (Maybe Physical) [Variety]
     deriving (Eq, Show)
 
@@ -70,24 +73,29 @@ data Physical = Physical String String
 newtype Variety = Variety String
     deriving (Eq, Show)
 
-parseFruitsToml :: Table -> Either String [Fruit]
-parseFruitsToml = runParseTable (reqKey "fruits")
+instance FromTable Fruits where
+    fromTable = runParseTable (Fruits <$> reqKey "fruits")
 
-instance FromValue Fruit where
-    fromValue = fromParseTableValue (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+instance FromTable Fruit where
+    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
 
-instance FromValue Physical where
-    fromValue = fromParseTableValue (Physical <$> reqKey "color" <*> reqKey "shape")
+instance FromTable Physical where
+    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
 
-instance FromValue Variety where
-    fromValue = fromParseTableValue (Variety <$> reqKey "name")
+instance FromTable Variety where
+    fromTable = runParseTable (Variety <$> reqKey "name")
+
+instance FromValue Fruits   where fromValue = defaultTableFromValue
+instance FromValue Fruit    where fromValue = defaultTableFromValue
+instance FromValue Physical where fromValue = defaultTableFromValue
+instance FromValue Variety  where fromValue = defaultTableFromValue
 ```
 
 We can run this example on the original value to deserialize it into domain-specific datatypes.
 
 ```haskell
->>> parseFruitsToml fruitToml
-Right [
+>>> decode fruitToml :: Either String Fruits
+Right (Fruits [
     Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
-    Fruit "banana" Nothing [Variety "plantain"]]
+    Fruit "banana" Nothing [Variety "plantain"]])
 ```

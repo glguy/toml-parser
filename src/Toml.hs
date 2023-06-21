@@ -15,6 +15,10 @@ module Toml (
     Value(..),
     parse,
     prettyToml,
+
+    -- * Serialization
+    decode,
+    encode,
     ) where
 
 import Data.Map (Map)
@@ -24,6 +28,9 @@ import Toml.Parser (parseRawToml)
 import Toml.Pretty (prettyPosition, prettyToken, prettyToml)
 import Toml.Semantics (semantics)
 import Toml.Value (Value(..))
+import Toml.FromValue (FromTable (fromTable))
+import Control.Monad ((<=<))
+import Toml.ToValue (ToTable (toTable))
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse :: String -> Either String (Map String Value)
@@ -32,3 +39,9 @@ parse str =
         Left le ->
             Left ("Unexpected " ++ prettyToken (locThing le) ++ " at " ++ prettyPosition (locPosition le))
         Right exprs -> semantics exprs
+
+decode :: FromTable a => String -> Either String a
+decode = fromTable <=< parse
+
+encode :: ToTable a => a -> String
+encode = prettyToml . toTable

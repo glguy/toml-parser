@@ -18,11 +18,11 @@ import Data.Map qualified as Map
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
-import Toml (Value(..), parse)
-import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable, fromParseTableValue, ParseTable)
+import Toml (Value(..), parse, decode)
+import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable))
+import Toml.Pretty (prettyToml)
 import Toml.ToValue (table, (.=))
 import Toml.Value (Table)
-import Toml.Pretty (prettyToml)
 
 main :: IO ()
 main = hspec do
@@ -733,29 +733,6 @@ main = hspec do
   describe "deserialization" deserializationTests
   describe "pretty-printing" prettyTests
 
-
-data Fruit = Fruit String (Maybe Physical) [Variety]
-    deriving (Eq, Show)
-
-data Physical = Physical String String
-    deriving (Eq, Show)
-
-newtype Variety = Variety String
-    deriving (Eq, Show)
-
-fruitFromTable :: ParseTable Fruit
-fruitFromTable = Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties"
-
-physicalFromTable :: ParseTable Physical
-physicalFromTable = Physical <$> reqKey "color" <*> reqKey "shape"
-
-varietyFromTable :: ParseTable Variety
-varietyFromTable = Variety <$> reqKey "name"
-
-instance FromValue Fruit    where fromValue = fromParseTableValue fruitFromTable
-instance FromValue Physical where fromValue = fromParseTableValue physicalFromTable
-instance FromValue Variety  where fromValue = fromParseTableValue varietyFromTable
-
 prettyTests :: Spec
 prettyTests =
  do it "renders example 1" $
@@ -835,46 +812,59 @@ prettyTests =
         `shouldBe` Right [quoteStr|
         ""."a b"."\"" = 10|]
 
+newtype Fruits = Fruits [Fruit]
+    deriving (Eq, Show)
+
+data Fruit = Fruit String (Maybe Physical) [Variety]
+    deriving (Eq, Show)
+
+data Physical = Physical String String
+    deriving (Eq, Show)
+
+newtype Variety = Variety String
+    deriving (Eq, Show)
+
+instance FromTable Fruits where
+    fromTable = runParseTable (Fruits <$> reqKey "fruits")
+
+instance FromTable Fruit where
+    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+
+instance FromTable Physical where
+    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
+
+instance FromTable Variety where
+    fromTable = runParseTable (Variety <$> reqKey "name")
+
+instance FromValue Fruits   where fromValue = defaultTableFromValue
+instance FromValue Fruit    where fromValue = defaultTableFromValue
+instance FromValue Physical where fromValue = defaultTableFromValue
+instance FromValue Variety  where fromValue = defaultTableFromValue
+
 deserializationTests :: Spec
 deserializationTests =
-     do it "handles fruit example"
-         do Right r <- pure $ parse [quoteStr|
-                      [[fruits]]
-                      name = "apple"
+     do it "handles fruit example" $
+          decode [quoteStr|
+              [[fruits]]
+              name = "apple"
 
-                      [fruits.physical]  # subtable
-                      color = "red"
-                      shape = "round"
+              [fruits.physical]  # subtable
+              color = "red"
+              shape = "round"
 
-                      [[fruits.varieties]]  # nested array of tables
-                      name = "red delicious"
+              [[fruits.varieties]]  # nested array of tables
+              name = "red delicious"
 
-                      [[fruits.varieties]]
-                      name = "granny smith"
+              [[fruits.varieties]]
+              name = "granny smith"
 
 
-                      [[fruits]]
-                      name = "banana"
+              [[fruits]]
+              name = "banana"
 
-                      [[fruits.varieties]]
-                      name = "plantain"|]
-
-            r `shouldBe` Map.fromList [
-                "fruits" .= [
-                    table [
-                        "name" .= "apple",
-                        "physical" .= table [
-                            "color" .= "red",
-                            "shape" .= "round"],
-                        "varieties" .= [
-                            table ["name" .= "red delicious"],
-                            table ["name" .= "granny smith"]]],
-                    table [
-                        "name" .= "banana",
-                        "varieties" .= [
-                            table ["name" .= "plantain"]]]]]
-
-            runParseTable (reqKey "fruits") r
-              `shouldBe`
-              Right [Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
-                     Fruit "banana" Nothing [Variety "plantain"]]
+              [[fruits.varieties]]
+              name = "plantain"|]
+          `shouldBe`
+          Right (Fruits [
+              Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
+              Fruit "banana" Nothing [Variety "plantain"]])

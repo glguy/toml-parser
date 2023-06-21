@@ -10,6 +10,8 @@ module Toml.ToValue (
     ToValue(..),
 
     -- * Table construction
+    ToTable(..),
+    defaultTableToValue,
     table,
     (.=),
     ) where
@@ -19,7 +21,7 @@ import Data.Map qualified as Map
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.Value (Value(..))
+import Toml.Value (Value(..), Table)
 
 table :: [(String, Value)] -> Value
 table = Table . Map.fromList
@@ -32,6 +34,12 @@ class ToValue a where
 
     toValueList :: [a] -> Value
     toValueList = Array . map toValue
+
+class ToValue a => ToTable a where
+    toTable :: a -> Table
+
+defaultTableToValue :: ToTable a => a -> Value
+defaultTableToValue = Table . toTable
 
 instance ToValue Value where
     toValue v = v
