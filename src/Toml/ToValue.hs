@@ -6,19 +6,35 @@ License     : ISC
 Maintainer  : emertens@gmail.com
 
 -}
-module Toml.ToValue where
+module Toml.ToValue (
+    ToValue(..),
+
+    -- * Table construction
+    table,
+    (.=),
+    ) where
 
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.Map qualified as Map
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Value (Value(..))
 
+table :: [(String, Value)] -> Value
+table = Table . Map.fromList
+
+(.=) :: ToValue a => String -> a -> (String, Value)
+k .= v = (k, toValue v)
+
 class ToValue a where
-    toValue     :: a -> Value
+    toValue :: a -> Value
 
     toValueList :: [a] -> Value
     toValueList = Array . map toValue
+
+instance ToValue Value where
+    toValue v = v
 
 -- | Single characters are encoded as singleton strings. Lists of characters
 -- are encoded as a single string value.

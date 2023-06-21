@@ -20,16 +20,12 @@ import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse)
 import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable, fromParseTableValue, ParseTable)
 import Toml.Value (Table)
+import Toml.ToValue
+import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 
 main :: IO ()
-main = hspec $
- describe "parse"
- do testCase01
-    testCase02
-    testCase03
-    testCaseDoc12
-    testCaseDoc13
-
+main = hspec do
+  describe "parse" do
     describe "comment"
      do it "ignores comments" $
           parse [quoteStr|
@@ -58,10 +54,10 @@ main = hspec $
             1234 = "value"|]
           `shouldBe`
           Right (Map.fromList [
-            ("1234",String "value"),
-            ("bare-key",String "value"),
-            ("bare_key",String "value"),
-            ("key",String "value")])
+            "1234"     .= "value",
+            "bare-key" .= "value",
+            "bare_key" .= "value",
+            "key"      .= "value"])
 
         it "allows quoted keys" $
           parse [quoteStr|
@@ -72,11 +68,11 @@ main = hspec $
             'quoted "value"' = "value"|]
           `shouldBe`
           Right (Map.fromList [
-            ("127.0.0.1",String "value"),
-            ("character encoding",String "value"),
-            ("key2",String "value"),
-            ("quoted \"value\"",String "value"),
-            ("ʎǝʞ",String "value")])
+            "127.0.0.1"          .= "value",
+            "character encoding" .= "value",
+            "key2"               .= "value",
+            "quoted \"value\""   .= "value",
+            "ʎǝʞ"                .= "value"])
 
         it "allows dotted keys" $
           parse [quoteStr|
@@ -86,9 +82,9 @@ main = hspec $
             site."google.com" = true|]
           `shouldBe`
           Right (Map.fromList [
-            ("name",String "Orange"),
-            ("physical", table [("color",String "orange"),("shape",String "round")]),
-            ("site",table [("google.com",Bool True)])])
+            "name"     .= "Orange",
+            "physical" .= table ["color" .= "orange", "shape" .= "round"],
+            "site"     .= table ["google.com" .= True]])
 
         it "prevents duplicate keys" $
           parse [quoteStr|
@@ -114,14 +110,14 @@ main = hspec $
             orange.color = "orange"|]
           `shouldBe`
           Right (Map.fromList [
-            ("apple", table [
-                ("color",String "red"),
-                ("skin",String "thin"),
-                ("type",String "fruit")]),
-            ("orange", table [
-                ("color",String "orange"),
-                ("skin",String "thick"),
-                ("type",String "fruit")])])
+            "apple" .= table [
+                "color" .= "red",
+                "skin"  .= "thin",
+                "type"  .= "fruit"],
+            "orange" .= table [
+                "color" .= "orange",
+                "skin"  .= "thick",
+                "type"  .= "fruit"]])
 
         it "allows numeric bare keys" $
           parse "3.14159 = 'pi'" `shouldBe` Right (Map.singleton "3" (table [("14159", String "pi")]))
@@ -134,10 +130,10 @@ main = hspec $
             1_2 = 2_3|]
           `shouldBe`
           Right (Map.fromList [
-            ("1900-01-01", Day (read "1900-01-01")),
-            ("1_2", Integer 23),
-            ("false", Bool False),
-            ("true", Bool True)])
+            "1900-01-01" .= (read "1900-01-01" :: Day),
+            "1_2"        .= (23::Int),
+            "false"      .= False,
+            "true"       .= True])
 
     describe "string"
      do it "parses escapes" $
@@ -172,9 +168,9 @@ main = hspec $
                 """|]
           `shouldBe`
           Right (Map.fromList [
-            ("str1",String "The quick brown fox jumps over the lazy dog."),
-            ("str2",String "The quick brown fox jumps over the lazy dog."),
-            ("str3",String "The quick brown fox jumps over the lazy dog.")])
+            "str1" .= "The quick brown fox jumps over the lazy dog.",
+            "str2" .= "The quick brown fox jumps over the lazy dog.",
+            "str3" .= "The quick brown fox jumps over the lazy dog."])
 
         it "allows quotes inside multiline quoted strings" $
           parse [quoteStr|
@@ -186,10 +182,10 @@ main = hspec $
             str7 = """"This," she said, "is just a pointless statement.""""|]
           `shouldBe`
           Right (Map.fromList [
-            ("str4",String "Here are two quotation marks: \"\". Simple enough."),
-            ("str5",String "Here are three quotation marks: \"\"\"."),
-            ("str6",String "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\"."),
-            ("str7",String "\"This,\" she said, \"is just a pointless statement.\"")])
+            "str4" .= "Here are two quotation marks: \"\". Simple enough.",
+            "str5" .= "Here are three quotation marks: \"\"\".",
+            "str6" .= "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".",
+            "str7" .= "\"This,\" she said, \"is just a pointless statement.\""])
 
         it "disallows triple quotes inside a multiline string" $
           parse [quoteStr|
@@ -205,10 +201,10 @@ main = hspec $
             regex    = '<\i\c*\s*>'|]
           `shouldBe`
           Right (Map.fromList [
-            ("quoted",String "Tom \"Dubs\" Preston-Werner"),
-            ("regex",String "<\\i\\c*\\s*>"),
-            ("winpath",String "C:\\Users\\nodejs\\templates"),
-            ("winpath2",String "\\\\ServerX\\admin$\\system32\\")])
+            "quoted"   .= "Tom \"Dubs\" Preston-Werner",
+            "regex"    .= "<\\i\\c*\\s*>",
+            "winpath"  .= "C:\\Users\\nodejs\\templates",
+            "winpath2" .= "\\\\ServerX\\admin$\\system32\\"])
 
         it "handles multiline literal strings" $
           parse [quoteStr|
@@ -221,8 +217,8 @@ main = hspec $
             '''|]
           `shouldBe`
           Right (Map.fromList [
-            ("lines",String "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n"),
-            ("regex2",String "I [dw]on't need \\d{2} apples")])
+            "lines"  .= "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n",
+            "regex2" .= "I [dw]on't need \\d{2} apples"])
 
         it "parses all the other escapes" $
           parse [quoteStr|
@@ -230,8 +226,8 @@ main = hspec $
             y = """\\\b\f\r\u7bca\U0010abcd\n\r\t"""|]
           `shouldBe`
           Right (Map.fromList [
-            ("x", String "\\\b\f\r\x0010abcd"),
-            ("y", String "\\\b\f\r\x7bca\x0010abcd\n\r\t")])
+            "x" .= "\\\b\f\r\x0010abcd",
+            "y" .= "\\\b\f\r\x7bca\x0010abcd\n\r\t"])
 
         it "rejects out of range unicode escapes" $
           parse [quoteStr|
@@ -262,20 +258,20 @@ main = hspec $
             bin1 = 0b11010110|]
           `shouldBe` Right
           (Map.fromList [
-              ("bin1",Integer 214),
-              ("hex1",Integer 0xDEADBEEF),
-              ("hex2",Integer 0xDEADBEEF),
-              ("hex3",Integer 0xDEADBEEF),
-              ("int1",Integer 99),
-              ("int2",Integer 42),
-              ("int3",Integer 0),
-              ("int4",Integer (-17)),
-              ("int5",Integer 1000),
-              ("int6",Integer 5349221),
-              ("int7",Integer 5349221),
-              ("int8",Integer 12345),
-              ("oct1",Integer 0o01234567),
-              ("oct2",Integer 0o755)])
+              "bin1" .= Integer 214,
+              "hex1" .= Integer 0xDEADBEEF,
+              "hex2" .= Integer 0xDEADBEEF,
+              "hex3" .= Integer 0xDEADBEEF,
+              "int1" .= Integer 99,
+              "int2" .= Integer 42,
+              "int3" .= Integer 0,
+              "int4" .= Integer (-17),
+              "int5" .= Integer 1000,
+              "int6" .= Integer 5349221,
+              "int7" .= Integer 5349221,
+              "int8" .= Integer 12345,
+              "oct1" .= Integer 0o01234567,
+              "oct2" .= Integer 0o755])
 
     describe "float"
      do it "parses floats" $
@@ -299,17 +295,17 @@ main = hspec $
             sf3 = -inf # negative infinity|]
           `shouldBe`
           Right (Map.fromList [
-            ("flt1",Float 1.0),
-            ("flt2",Float 3.1415),
-            ("flt3",Float (-1.0e-2)),
-            ("flt4",Float 4.9999999999999996e22),
-            ("flt5",Float 1000000.0),
-            ("flt6",Float (-2.0e-2)),
-            ("flt7",Float 6.626e-34),
-            ("flt8",Float 224617.445991228),
-            ("sf1",Float (1/0)),
-            ("sf2",Float (1/0)),
-            ("sf3",Float (-1/0))])
+            "flt1" .= Float 1.0,
+            "flt2" .= Float 3.1415,
+            "flt3" .= Float (-1.0e-2),
+            "flt4" .= Float 4.9999999999999996e22,
+            "flt5" .= Float 1000000.0,
+            "flt6" .= Float (-2.0e-2),
+            "flt7" .= Float 6.626e-34,
+            "flt8" .= Float 224617.445991228,
+            "sf1"  .= Float (1/0),
+            "sf2"  .= Float (1/0),
+            "sf3"  .= Float (-1/0)])
 
         it "parses nan correctly" $
           let checkNaN (Float x) = isNaN x
@@ -331,8 +327,8 @@ main = hspec $
             bool2 = false|]
           `shouldBe`
           Right (Map.fromList [
-            ("bool1", Bool True),
-            ("bool2", Bool False)])
+            "bool1" .= True,
+            "bool2" .= False])
 
     describe "offset date-time"
      do it "parses offset date times" $
@@ -343,10 +339,10 @@ main = hspec $
             odt4 = 1979-05-27 07:32:00Z|]
           `shouldBe`
           Right (Map.fromList [
-            ("odt1",ZonedTime (read "1979-05-27 07:32:00 +0000")),
-            ("odt2",ZonedTime (read "1979-05-27 00:32:00 -0700")),
-            ("odt3",ZonedTime (read "1979-05-27 00:32:00.999999 -0700")),
-            ("odt4",ZonedTime (read "1979-05-27 07:32:00 +0000"))])
+            "odt1" .= ZonedTime (read "1979-05-27 07:32:00 +0000"),
+            "odt2" .= ZonedTime (read "1979-05-27 00:32:00 -0700"),
+            "odt3" .= ZonedTime (read "1979-05-27 00:32:00.999999 -0700"),
+            "odt4" .= ZonedTime (read "1979-05-27 07:32:00 +0000")])
 
     describe "local date-time"
      do it "parses local date-times" $
@@ -356,9 +352,9 @@ main = hspec $
             ldt3 = 1979-05-28 00:32:00.999999|]
           `shouldBe`
           Right (Map.fromList [
-            ("ldt1",LocalTime (read "1979-05-27 07:32:00")),
-            ("ldt2",LocalTime (read "1979-05-27 00:32:00.999999")),
-            ("ldt3",LocalTime (read "1979-05-28 00:32:00.999999"))])
+            "ldt1" .= LocalTime (read "1979-05-27 07:32:00"),
+            "ldt2" .= LocalTime (read "1979-05-27 00:32:00.999999"),
+            "ldt3" .= LocalTime (read "1979-05-28 00:32:00.999999")])
 
     describe "local date"
      do it "parses dates" $
@@ -374,8 +370,8 @@ main = hspec $
             lt2 = 00:32:00.999999|]
           `shouldBe`
           Right (Map.fromList [
-            ("lt1",TimeOfDay (read "07:32:00")),
-            ("lt2",TimeOfDay (read "00:32:00.999999"))])
+            "lt1" .= TimeOfDay (read "07:32:00"),
+            "lt2" .= TimeOfDay (read "00:32:00.999999")])
 
     describe "array"
      do it "parses array examples" $
@@ -394,18 +390,18 @@ main = hspec $
             ]|]
             `shouldBe`
             Right (Map.fromList [
-                ("colors",Array [String "red",String "yellow",String "green"]),
-                ("contributors",Array [
+                "colors" .= ["red", "yellow", "green"],
+                "contributors" .= [
                     String "Foo Bar <foo@example.com>",
                     table [
-                        ("email",String "bazqux@example.com"),
-                        ("name",String "Baz Qux"),
-                        ("url",String "https://example.com/bazqux")]]),
-                ("integers", Array [Integer 1,Integer 2,Integer 3]),
-                ("nested_arrays_of_ints",Array [Array [Integer 1,Integer 2],Array [Integer 3,Integer 4,Integer 5]]),
-                ("nested_mixed_array",Array [Array [Integer 1,Integer 2],Array [String "a",String "b",String "c"]]),
-                ("numbers",Array [Float 0.1,Float 0.2,Float 0.5,Integer 1,Integer 2,Integer 5]),
-                ("string_array",Array [String "all",String "strings",String "are the same",String "type"])])
+                        "email" .= "bazqux@example.com",
+                        "name" .= "Baz Qux",
+                        "url" .= "https://example.com/bazqux"]],
+                "integers" .= [1, 2, 3 :: Integer],
+                "nested_arrays_of_ints" .= [[1, 2], [3, 4, 5 :: Integer]],
+                "nested_mixed_array" .= [[Integer 1, Integer 2], [String "a", String "b", String "c"]],
+                "numbers" .= [Float 0.1, Float 0.2, Float 0.5, Integer 1, Integer 2, Integer 5],
+                "string_array" .= ["all", "strings", "are the same", "type"]])
 
         it "handles newlines and comments" $
           parse [quoteStr|
@@ -419,8 +415,8 @@ main = hspec $
             ]|]
             `shouldBe`
             Right (Map.fromList [
-                ("integers2",Array [Integer 1,Integer 2,Integer 3]),
-                ("integers3",Array [Integer 1,Integer 2])])
+                "integers2" .= [1, 2, 3 :: Int],
+                "integers3" .= [1, 2 :: Int]])
 
         it "disambiguates double brackets from array tables" $
           parse "x = [[1]]" `shouldBe` Right (Map.singleton "x" (Array [Array [Integer 1]]))
@@ -440,12 +436,12 @@ main = hspec $
             key2 = 456|]
           `shouldBe`
           Right (Map.fromList [
-            ("table-1", table [
-                ("key1",String "some string"),
-                ("key2",Integer 123)]),
-            ("table-2", table [
-                ("key1",String "another string"),
-                ("key2",Integer 456)])])
+            "table-1" .= table [
+                "key1" .= "some string",
+                "key2" .= Integer 123],
+            "table-2" .= table [
+                "key1" .= "another string",
+                "key2" .= Integer 456]])
 
         it "allows quoted keys" $
           parse [quoteStr|
@@ -462,10 +458,10 @@ main = hspec $
             [ j . "ʞ" . 'l' ]  # same as [j."ʞ".'l']|]
           `shouldBe`
           Right (Map.fromList [
-            ("a", table [("b", table [("c", table [])])]),
-            ("d", table [("e", table [("f", table [])])]),
-            ("g", table [("h", table [("i", table [])])]),
-            ("j", table [("ʞ", table [("l", table [])])])])
+            "a" .= table ["b" .= table ["c" .= table []]],
+            "d" .= table ["e" .= table ["f" .= table []]],
+            "g" .= table ["h" .= table ["i" .= table []]],
+            "j" .= table ["ʞ" .= table ["l" .= table []]]])
 
         it "allows supertables to be defined after subtables" $
           parse [quoteStr|
@@ -478,11 +474,11 @@ main = hspec $
             q=1|]
           `shouldBe`
           Right (Map.fromList [
-            ("x",table [
-                ("q",Integer 1),
-                ("y",table [
-                    ("z",table [
-                        ("w",table [])])])])])
+            "x" .= table [
+                "q" .= Integer 1,
+                "y" .= table [
+                    "z" .= table [
+                        "w" .= table []]]]])
 
         it "prevents using a [table] to open a table defined with dotted keys" $
           parse [quoteStr|
@@ -501,13 +497,13 @@ main = hspec $
             smooth = true|]
           `shouldBe`
           Right (Map.fromList [
-            ("fruit", table [
-                ("apple", table [
-                    ("color",String "red"),
-                    ("taste", table [
-                        ("sweet",Bool True)]),
-                        ("texture", table [
-                            ("smooth", Bool True)])])])])
+            "fruit" .= table [
+                "apple" .= table [
+                    "color" .= "red",
+                    "taste" .= table [
+                        "sweet" .= True],
+                        "texture" .= table [
+                            "smooth" .= True]]]])
 
     describe "inline table"
      do it "parses inline tables" $
@@ -517,9 +513,9 @@ main = hspec $
             animal = { type.name = "pug" }|]
           `shouldBe`
           Right (Map.fromList [
-            ("animal",table [("type",table [("name",String "pug")])]),
-            ("name",table [("first",String "Tom"),("last",String "Preston-Werner")]),
-            ("point",table [("x",Integer 1),("y",Integer 2)])])
+            "animal" .= table ["type" .= table ["name" .= "pug"]],
+            "name"   .= table ["first" .= "Tom", "last" .= "Preston-Werner"],
+            "point"  .= table ["x" .= Integer 1, "y" .= Integer 2]])
 
         it "prevents altering inline tables with dotted keys" $
           parse [quoteStr|
@@ -551,15 +547,15 @@ main = hspec $
             color = "gray"|]
           `shouldBe`
           Right (Map.fromList [
-            ("products",Array [
+            "products" .= [
                 table [
-                    ("name",String "Hammer"),
-                    ("sku",Integer 738594937)],
+                    "name" .= "Hammer",
+                    "sku"  .= Integer 738594937],
                 table [],
                 table [
-                    ("color",String "gray"),
-                    ("name",String "Nail"),
-                    ("sku",Integer 284758393)]])])
+                    "color" .= "gray",
+                    "name"  .= "Nail",
+                    "sku"   .= Integer 284758393]]])
 
         it "handles subtables under array of tables" $
           parse [quoteStr|
@@ -584,19 +580,19 @@ main = hspec $
             name = "plantain"|]
           `shouldBe`
           Right (Map.fromList [
-            ("fruits",Array [
+            "fruits" .= [
                 table [
-                    ("name",String "apple"),
-                    ("physical",table [
-                        ("color",String "red"),
-                        ("shape",String "round")]),
-                    ("varieties",Array [
-                        table [("name",String "red delicious")],
-                        table [("name",String "granny smith")]])],
+                    "name" .= "apple",
+                    "physical" .= table [
+                        "color" .= "red",
+                        "shape" .= "round"],
+                    "varieties" .= [
+                        table ["name" .= "red delicious"],
+                        table ["name" .= "granny smith"]]],
                 table [
-                    ("name",String "banana"),
-                    ("varieties",Array [
-                        table [("name",String "plantain")]])]])])
+                    "name" .= "banana",
+                    "varieties" .= [
+                        table ["name" .= "plantain"]]]]])
 
         it "prevents redefining a supertable with an array of tables" $
           parse [quoteStr|
@@ -727,7 +723,7 @@ main = hspec $
             [x]|]
           `shouldSatisfy` isLeft
 
-    describe "de/serialization" serializationTests
+  describe "deserialization" deserializationTests
 
 data Fruit = Fruit String (Maybe Physical) [Variety]
     deriving (Eq, Show)
@@ -751,8 +747,8 @@ instance FromValue Fruit    where fromValue = fromParseTableValue fruitFromTable
 instance FromValue Physical where fromValue = fromParseTableValue physicalFromTable
 instance FromValue Variety  where fromValue = fromParseTableValue varietyFromTable
 
-serializationTests :: Spec
-serializationTests =
+deserializationTests :: Spec
+deserializationTests =
      do it "handles fruit example"
          do Right r <- pure $ parse [quoteStr|
                       [[fruits]]
@@ -775,85 +771,22 @@ serializationTests =
                       [[fruits.varieties]]
                       name = "plantain"|]
 
-            r `shouldBe`
-              Map.fromList [
-                ("fruits",Array [
+            r `shouldBe` Map.fromList [
+                "fruits" .= [
                     table [
-                        ("name",String "apple"),
-                        ("physical", table [
-                            ("color", String "red"),
-                            ("shape", String "round")]),
-                        ("varieties", Array [
-                            table [("name", String "red delicious")],
-                            table [("name", String "granny smith")]])],
+                        "name" .= "apple",
+                        "physical" .= table [
+                            "color" .= "red",
+                            "shape" .= "round"],
+                        "varieties" .= [
+                            table ["name" .= "red delicious"],
+                            table ["name" .= "granny smith"]]],
                     table [
-                        ("name",String "banana"),
-                        ("varieties",Array [
-                            table [("name",String "plantain")]])]])]
+                        "name" .= "banana",
+                        "varieties" .= [
+                            table ["name" .= "plantain"]]]]]
 
             runParseTable (reqKey "fruits") r
               `shouldBe`
               Right [Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
                      Fruit "banana" Nothing [Variety "plantain"]]
-
-goodTestCase :: String -> Map String Value -> Spec
-goodTestCase src expect =
-    it "starts" $
-    parse src `shouldBe` Right expect
-
-badTestCase :: String -> Spec
-badTestCase src =
-    it "fails" $
-    parse src `shouldSatisfy` isLeft
-
-testCase01 :: Spec
-testCase01 = goodTestCase
-    "x = 123_456_789"
-    (Map.fromList [("x", Integer 123456789)])
-
-testCase02 :: Spec
-testCase02 = goodTestCase
-    "x.y = 0x10\n\
-    \x.z = 0o21"
-    (Map.fromList [("x", table [("y", Integer 16), ("z", Integer 17)])])
-
-testCase03 :: Spec
-testCase03 = goodTestCase
-    "[['ok']]\n\
-    \[[ok.ko]]\n\
-    \m = false"
-    (Map.fromList [("ok",Array [table [("ko",Array [table [("m",Bool False)]])]])])
-
-testCaseDoc12 :: Spec
-testCaseDoc12 =
-    it "allows defining subtables of array tables" $
-    parse [quoteStr|
-        [[x]]
-        a=1
-        [x.y.z]
-        b=2
-        [x.y]
-        c=3|]
-    `shouldBe`
-    Right (Map.fromList [
-        ("x",Array [
-            table [
-                ("a",Integer 1),
-                ("y",table [
-                    ("c",Integer 3),
-                    ("z",table [
-                        ("b",Integer 2)])])]])])
-
--- Likewise, using dotted keys to redefine tables already defined in [table] form is not allowed.
-testCaseDoc13 :: Spec
-testCaseDoc13 =
-    it "prevents using dotted keys to redefine tables already defined in [table] form" $
-    parse [quoteStr|
-        [x.y]
-        z.w=1
-        [x]
-        y.q=2|]
-    `shouldSatisfy` isLeft
-
-table :: [(String, Value)] -> Value
-table = Table . Map.fromList
