@@ -22,6 +22,7 @@ import Toml (Value(..), parse)
 import Toml.FromValue (FromValue(..), reqKey, optKey, runParseTable, fromParseTableValue, ParseTable)
 import Toml.ToValue (table, (.=))
 import Toml.Value (Table)
+import Toml.Pretty (prettyToml)
 
 main :: IO ()
 main = hspec do
@@ -724,6 +725,8 @@ main = hspec do
           `shouldSatisfy` isLeft
 
   describe "deserialization" deserializationTests
+  describe "pretty-printing" prettyTests
+
 
 data Fruit = Fruit String (Maybe Physical) [Variety]
     deriving (Eq, Show)
@@ -746,6 +749,80 @@ varietyFromTable = Variety <$> reqKey "name"
 instance FromValue Fruit    where fromValue = fromParseTableValue fruitFromTable
 instance FromValue Physical where fromValue = fromParseTableValue physicalFromTable
 instance FromValue Variety  where fromValue = fromParseTableValue varietyFromTable
+
+prettyTests :: Spec
+prettyTests =
+ do it "renders example 1" $
+      fmap prettyToml (parse "x=1")
+        `shouldBe` Right [quoteStr|
+        x = 1|]
+
+    it "renders example 2" $
+      fmap prettyToml (parse "x=1\ny=2")
+        `shouldBe` Right [quoteStr|
+        x = 1
+        y = 2|]
+
+    it "renders example lists" $
+      fmap prettyToml (parse "x=[1,'two', [true]]")
+        `shouldBe` Right [quoteStr|
+        x = [1, "two", [true]]|]
+
+    it "renders empty tables" $
+      fmap prettyToml (parse "x.y.z={}\nz.y.w=false")
+        `shouldBe` Right [quoteStr|
+        z.y.w = false
+
+        [x.y.z]|]
+
+    it "renders empty tables in array of tables" $
+      fmap prettyToml (parse "ex=[{},{},{a=9}]")
+        `shouldBe` Right [quoteStr|
+        [[ex]]
+
+        [[ex]]
+
+        [[ex]]
+        a = 9|]
+
+    it "renders multiple tables" $
+      fmap prettyToml (parse "a.x=1\nb.x=3\na.y=2\nb.y=4")
+        `shouldBe` Right [quoteStr|
+        [a]
+        x = 1
+        y = 2
+
+        [b]
+        x = 3
+        y = 4|]
+
+    it "renders escapes in strings" $
+      fmap prettyToml (parse "a=\"\\b\\t\\r\\f\"")
+        `shouldBe` Right [quoteStr|
+        a = "\b\t\r\f"|]
+
+    it "renders special floats" $
+      fmap prettyToml (parse "a=inf\nb=-inf\nc=nan")
+        `shouldBe` Right [quoteStr|
+        a = inf
+        b = -inf
+        c = nan|]
+
+    it "renders empty documents" $
+      fmap prettyToml (parse "")
+        `shouldBe` Right ""
+    
+    it "renders dates and time" $
+      fmap prettyToml (parse [quoteStr|
+        a = 2020-05-07
+        b = 15:16:17.990
+        c = 2020-05-07T15:16:17.990
+        d = 2020-05-07T15:16:17.990Z|])
+        `shouldBe` Right [quoteStr|
+        a = 2020-05-07
+        b = 15:16:17.99
+        c = 2020-05-07T15:16:17.99
+        d = 2020-05-07T15:16:17.99Z|]
 
 deserializationTests :: Spec
 deserializationTests =

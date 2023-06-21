@@ -97,12 +97,12 @@ val ::              { Val                     }
 inlinetable ::                  { [(Key, Val)]      }
   : '{' sepBy(keyval, ',') '}'  { $2                }
 
-array ::                                                  { [Val]       }
+array ::                                      { [Val]       }
   : '[' newlines                          ']' { []          }
   | '[' newlines arrayvalues              ']' { reverse $3  }
   | '[' newlines arrayvalues ',' newlines ']' { reverse $3  }
 
-arrayvalues ::                                        { [Val]       }
+arrayvalues ::                            { [Val]       }
   :                          val newlines { [$1]        }
   | arrayvalues ',' newlines val newlines { $4 : $1     }
 
@@ -118,7 +118,7 @@ sepBy1(p,q) ::        { NonEmpty p            }
   : sepBy1_(p,q)      { NonEmpty.reverse $1   }
 
 sepBy1_(p,q) ::       { NonEmpty p            }
-  : p                 { NonEmpty.singleton $1 }
+  :                p  { NonEmpty.singleton $1 }
   | sepBy1_(p,q) q p  { NonEmpty.cons $3 $1   }
 
 {

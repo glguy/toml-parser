@@ -166,24 +166,25 @@ prettyToml = prettyToml_ TableKind []
 "" +++ x = x
 x +++ "" = x
 x +++ y = x ++ "\n" ++ y
-infixr 5 +++
+infix 5 +++
 
 prettyToml_ :: SectionKind -> [String] -> Map String Value -> String
-prettyToml_ kind prefix t =
-    header ++
-    unlines [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple] +++
-    intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
+prettyToml_ kind prefix t = unlines (headers ++ assignments) +++ subtables
     where
         snoc []     y = y :| []
         snoc (x:xs) y = x :| xs ++ [y]
-        
+
         (simple, sections) = partition (isAlwaysSimple . snd) (Map.assocs t)
-        
-        header =
+
+        headers =
             case NonEmpty.nonEmpty prefix of
                 Just key | not (null simple) || null sections || kind == ArrayTableKind ->
-                    prettySectionKind kind key ++ "\n"
-                _ -> ""
+                    [prettySectionKind kind key]
+                _ -> []
+
+        assignments = [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple]
+
+        subtables = intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
 
 prettyAssignment :: Key -> Val -> String
 prettyAssignment k (ValTable [(k',v)]) = prettyAssignment (k <> k') v
