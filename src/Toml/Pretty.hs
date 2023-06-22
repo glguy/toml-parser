@@ -116,22 +116,23 @@ prettyValue = prettyVal . valueToVal
 
 prettyVal :: Val -> String
 prettyVal = \case
-    ValInteger i -> show i
+    ValInteger i       -> show i
     ValFloat   f
-        | isNaN f -> "nan"
+        | isNaN f      -> "nan"
         | isInfinite f -> if f > 0 then "inf" else "-inf"
-        | otherwise -> show f
-    ValArray  xs -> "[" ++ intercalate ", " (map prettyVal xs) ++ "]"
-    ValTable t   -> "{" ++ intercalate ", " [prettyAssignment k v | (k,v) <- t] ++ "}"
-    ValBool True -> "true"
-    ValBool False -> "false"
-    ValString str -> quoteString str
-    ValTimeOfDay tod -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
+        | otherwise    -> show f
+    ValArray a         -> "[" ++ intercalate ", " [prettyVal          v | v     <- a] ++ "]"
+    ValTable t         -> "{" ++ intercalate ", " [prettyAssignment k v | (k,v) <- t] ++ "}"
+    ValBool True       -> "true"
+    ValBool False      -> "false"
+    ValString str      -> quoteString str
+    ValTimeOfDay tod   -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
     ValZonedTime zt
-      | timeZoneMinutes (zonedTimeZone zt) == 0 -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt
-      | otherwise                               -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
-    ValLocalTime lt  -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
-    ValDay d         -> formatTime defaultTimeLocale "%Y-%m-%d" d
+      | timeZoneMinutes (zonedTimeZone zt) == 0 ->
+                          formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt
+      | otherwise      -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
+    ValLocalTime lt    -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
+    ValDay d           -> formatTime defaultTimeLocale "%Y-%m-%d" d
 
 isAlwaysSimple :: Value -> Bool
 isAlwaysSimple = \case

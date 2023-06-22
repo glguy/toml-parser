@@ -21,16 +21,16 @@ module Toml (
     encode,
     ) where
 
+import Control.Monad ((<=<))
 import Data.Map (Map)
+import Toml.FromValue (FromTable (fromTable))
 import Toml.Lexer (scanTokens)
 import Toml.Located (Located(locPosition, locThing))
 import Toml.Parser (parseRawToml)
 import Toml.Pretty (prettyPosition, prettyToken, prettyToml)
 import Toml.Semantics (semantics)
-import Toml.Value (Value(..))
-import Toml.FromValue (FromTable (fromTable))
-import Control.Monad ((<=<))
 import Toml.ToValue (ToTable (toTable))
+import Toml.Value (Value(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse :: String -> Either String (Map String Value)

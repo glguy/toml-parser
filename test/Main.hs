@@ -780,9 +780,18 @@ prettyTests =
         y = 4|]
 
     it "renders escapes in strings" $
-      fmap prettyToml (parse "a=\"\\b\\t\\r\\f\"")
+      fmap prettyToml (parse "a=\"\\b\\t\\r\\f\\\"\\u007f\\U0001000c\"")
         `shouldBe` Right [quoteStr|
-        a = "\b\t\r\f"|]
+        a = "\b\t\r\f\"\u007F\U0001000C"|]
+
+    it "renders floats" $
+      fmap prettyToml (parse "a=0.0\nb=-0.1\nc=0.1\nd=3.141592653589793\ne=4e123")
+        `shouldBe` Right [quoteStr|
+        a = 0.0
+        b = -0.1
+        c = 0.1
+        d = 3.141592653589793
+        e = 4.0e123|]
 
     it "renders special floats" $
       fmap prettyToml (parse "a=inf\nb=-inf\nc=nan")
@@ -800,12 +809,16 @@ prettyTests =
         a = 2020-05-07
         b = 15:16:17.990
         c = 2020-05-07T15:16:17.990
-        d = 2020-05-07T15:16:17.990Z|])
+        d = 2020-05-07T15:16:17.990Z
+        e = 2020-05-07T15:16:17-07:00
+        f = 2021-09-06T14:15:19+08:00|])
         `shouldBe` Right [quoteStr|
         a = 2020-05-07
         b = 15:16:17.99
         c = 2020-05-07T15:16:17.99
-        d = 2020-05-07T15:16:17.99Z|]
+        d = 2020-05-07T15:16:17.99Z
+        e = 2020-05-07T15:16:17-07:00
+        f = 2021-09-06T14:15:19+08:00|]
 
     it "renders quoted keys" $
       fmap prettyToml (parse "''.'a b'.'\"' = 10")
