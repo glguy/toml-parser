@@ -32,10 +32,10 @@ semantics exprs =
  do let (topKVs, tables) = gather exprs
     m1 <- assignKeyVals Map.empty topKVs
     m2 <- foldM (\m (ln, kind, key, kvs) ->
-        updateError (\e -> e ++ " in " ++ prettySectionKind kind key ++ " on line " ++ show ln) $
-        addSection kind kvs key m) m1 tables
+        addSection kind kvs ln key m) m1 tables
     pure (fmap frameToValue m2)
 
+-- | Line number, key, value
 type KeyVals = [(Int, Key, Val)]
 
 -- | Arrange the expressions in a TOML file into the top-level key-value pairs
@@ -52,11 +52,6 @@ gather = goTop []
         goTable ln kind key acc (TableExpr      ln' k   : exprs) = (ln, kind, key, reverse acc) : goTable ln' TableKind k [] exprs
         goTable ln kind key acc (ArrayTableExpr ln' k   : exprs) = (ln, kind, key, reverse acc) : goTable ln' ArrayTableKind k [] exprs
         goTable ln kind key acc (KeyValExpr     ln' k v : exprs) = goTable ln kind key ((ln',k,v):acc) exprs
-
-
-updateError :: (e -> e') -> Either e a -> Either e' a
-updateError f (Left  e) = Left (f e)
-updateError _ (Right a) = Right a
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
@@ -109,7 +104,7 @@ constructTable entries =
 
 -- | Finds a key that overlaps with another in the same list
 findBadKey :: [Key] -> Maybe Key
-findBadKey keys = check (sort keys)
+findBadKey = check . sort
     where
         check :: [Key] -> Maybe Key
         check (x:y:_)
@@ -118,14 +113,17 @@ findBadKey keys = check (sort keys)
         check [] = Nothing
 
 addSection ::
-    SectionKind                      {- ^ section kind -} ->
-    KeyVals                          {- ^ values to install -} ->
-    Key                              {- ^ section key -} ->
-    Map String Frame                 {- ^ local frame map -} ->
+    SectionKind                      {- ^ section kind        -} ->
+    KeyVals                          {- ^ values to install   -} ->
+    Int                              {- ^ section line number -} ->
+    Key                              {- ^ section key         -} ->
+    Map String Frame                 {- ^ local frame map     -} ->
     Either String (Map String Frame) {- ^ error message or updated local frame map -}
 
-addSection kind kvs = walk
+addSection kind kvs ln topkey = walk topkey
     where
+        failure e = Left (e ++ " in " ++ prettySectionKind kind topkey ++ " on line " ++ show ln)
+
         walk (key :| []) = Map.alterF f key
             where
                 update t = closeDots <$> assignKeyVals t kvs
@@ -140,18 +138,18 @@ addSection kind kvs = walk
                 f (Just (FrameTable Open t)) =
                     case kind of
                         TableKind      -> Just . FrameTable Closed <$> update t
-                        ArrayTableKind -> Left "attempt to redefine table as array table"
+                        ArrayTableKind -> failure "attempt to redefine table as array table"
 
                 -- Add a new array element to an existing table array
                 f (Just (FrameArray a)) =
                     case kind of
                         ArrayTableKind -> Just . FrameArray . (`NonEmpty.cons` a) <$> update Map.empty
-                        TableKind      -> Left "attempt to open array table as table"
+                        TableKind      -> failure "attempt to open array table as table"
 
                 -- failure cases
-                f (Just (FrameTable Closed _)) = Left "attempt to redefine top-level defined table"
+                f (Just (FrameTable Closed _)) = failure "attempt to redefine top-level defined table"
                 f (Just (FrameTable Dotted _)) = error "addSection: dotted table left unclosed"
-                f (Just (FrameValue {}))       = Left "attempt to redefined a value"
+                f (Just (FrameValue {}))       = failure "attempt to redefined a value"
         
         walk (k1 :| k2 : ks) = Map.alterF f k1
             where
@@ -160,7 +158,7 @@ addSection kind kvs = walk
                 f Nothing                       = Just . FrameTable Open      <$> walk' Map.empty
                 f (Just (FrameTable tk t))      = Just . FrameTable tk        <$> walk' t
                 f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> walk' t
-                f (Just (FrameValue _))         = Left "attempt to redefine a value"
+                f (Just (FrameValue _))         = failure "attempt to redefine a value"
 
 -- | Close all of the tables that were implicitly defined with
 -- dotted prefixes.
@@ -175,20 +173,19 @@ assignKeyVals t kvs = closeDots <$> foldM f t kvs
     where
         f m (ln,k,v) =
             updateError (\e -> e ++ " while assigning " ++ prettyKey k ++ " on line " ++ show ln)
-             do value <- valToValue v
-                assign k value m
+                (assign k v m)
 
 -- | Assign a single dotted key in a frame.
-assign :: Key -> Value -> Map String Frame -> Either String (Map String Frame)
+assign :: Key -> Val -> Map String Frame -> Either String (Map String Frame)
 
-assign (key :| []) val acc = Map.alterF f key acc
+assign (key :| []) val = Map.alterF f key
     where
-        f Nothing = Right (Just (FrameValue val))
+        f Nothing = Just . FrameValue <$> valToValue val
         f Just{}  = Left "key already assigned"
 
-assign (key:| k1:keys) val acc = Map.alterF f key acc
+assign (key:| k1:keys) val = Map.alterF f key
     where
-        go t = Just . FrameTable Dotted <$> assign (k1:|keys) val t
+        go t = Just . FrameTable Dotted <$> assign (k1 :| keys) val t
 
         f Nothing                        = go Map.empty
         f (Just (FrameTable Open     t)) = go t
@@ -196,3 +193,7 @@ assign (key:| k1:keys) val acc = Map.alterF f key acc
         f (Just (FrameTable Closed   _)) = Left "attempt to extend through a closed table"
         f (Just (FrameArray          _)) = Left "attempt to extend through an array of tables"
         f (Just (FrameValue          _)) = Left "attempted to overwrite a value"
+
+updateError :: (e -> e') -> Either e a -> Either e' a
+updateError f (Left  e) = Left (f e)
+updateError _ (Right a) = Right a
