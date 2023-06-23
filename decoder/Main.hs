@@ -15,14 +15,14 @@ module Main (main) where
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
 import System.Exit (exitFailure)
-import Toml qualified
+import Toml (Value(..), parse)
 import Toml.Pretty (prettyValue)
 
 main :: IO ()
 main =
  do txt <- getContents
-    case Toml.parse txt of
-        Left{}  -> exitFailure
+    case parse txt of
+        Left e  -> fail e
         Right t -> BS.putStr (Aeson.encode t)
 
 simple :: Aeson.Key -> String -> Aeson.Value
@@ -31,13 +31,13 @@ simple ty value = Aeson.object ["type" Aeson..= ty, "value" Aeson..= value]
 instance Aeson.ToJSON Toml.Value where
     toJSON v =
         case v of
-            Toml.Table     t -> Aeson.toJSON t
-            Toml.Array     a -> Aeson.toJSON a
-            Toml.String    s -> simple "string"         s
-            Toml.Integer   _ -> simple "integer"        (show (prettyValue v))
-            Toml.Float     _ -> simple "float"          (show (prettyValue v))
-            Toml.Bool      _ -> simple "bool"           (show (prettyValue v))
-            Toml.TimeOfDay _ -> simple "time-local"     (show (prettyValue v))
-            Toml.ZonedTime _ -> simple "datetime"       (show (prettyValue v))
-            Toml.LocalTime _ -> simple "datetime-local" (show (prettyValue v))
-            Toml.Day       _ -> simple "date-local"     (show (prettyValue v))
+            Table     t -> Aeson.toJSON t
+            Array     a -> Aeson.toJSON a
+            String    s -> simple "string"         s
+            Integer   _ -> simple "integer"        (show (prettyValue v))
+            Float     _ -> simple "float"          (show (prettyValue v))
+            Bool      _ -> simple "bool"           (show (prettyValue v))
+            TimeOfDay _ -> simple "time-local"     (show (prettyValue v))
+            ZonedTime _ -> simple "datetime"       (show (prettyValue v))
+            LocalTime _ -> simple "datetime-local" (show (prettyValue v))
+            Day       _ -> simple "date-local"     (show (prettyValue v))
