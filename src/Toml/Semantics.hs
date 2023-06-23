@@ -20,7 +20,6 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-
 import Toml.Pretty (prettyKey, prettySectionKind)
 import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Value(..))

@@ -1,3 +1,4 @@
+{-# Language OverloadedStrings #-}
 {-|
 Module      : Toml.Pretty
 Description : Human-readable representations for error messages
@@ -139,13 +140,13 @@ prettyVal :: Val -> TomlDoc
 prettyVal = \case
     ValInteger i       -> annotate NumberClass (pretty i)
     ValFloat   f
-        | isNaN f      -> annotate NumberClass (fromString "nan")
-        | isInfinite f -> annotate NumberClass (fromString (if f > 0 then "inf" else "-inf"))
+        | isNaN f      -> annotate NumberClass "nan"
+        | isInfinite f -> annotate NumberClass (if f > 0 then "inf" else "-inf")
         | otherwise    -> annotate NumberClass (pretty f)
-    ValArray a         -> lbracket <> fold (intersperse (fromString ", ") [prettyVal v | v <- a]) <> rbracket
-    ValTable t         -> lbrace <> fold (intersperse (fromString ", ") [prettyAssignment k v | (k,v) <- t]) <> rbrace
-    ValBool True       -> annotate BoolClass (fromString "true")
-    ValBool False      -> annotate BoolClass (fromString "false")
+    ValArray a         -> list [prettyVal v | v <- a]
+    ValTable t         -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,v) <- t] <> rbrace
+    ValBool True       -> annotate BoolClass "true"
+    ValBool False      -> annotate BoolClass "false"
     ValString str      -> annotate StringClass (fromString (quoteString str))
     ValTimeOfDay tod   -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
     ValZonedTime zt
@@ -157,25 +158,25 @@ prettyVal = \case
 
 isAlwaysSimple :: Val -> Bool
 isAlwaysSimple = \case
-    ValInteger   {} -> True
-    ValFloat     {} -> True
-    ValBool      {} -> True
-    ValString    {} -> True
-    ValTimeOfDay {} -> True
-    ValZonedTime {} -> True
-    ValLocalTime {} -> True
-    ValDay       {} -> True
-    ValTable     t  -> isSingularTable t
-    ValArray     xs -> null xs || not (all isTable xs)
+    ValInteger   _ -> True
+    ValFloat     _ -> True
+    ValBool      _ -> True
+    ValString    _ -> True
+    ValTimeOfDay _ -> True
+    ValZonedTime _ -> True
+    ValLocalTime _ -> True
+    ValDay       _ -> True
+    ValTable     x -> isSingularTable x
+    ValArray     x -> null x || not (all isTable x)
 
 isTable :: Val -> Bool
-isTable ValTable{} = True
-isTable _       = False
+isTable ValTable {} = True
+isTable _           = False
 
 isSingularTable :: [(Key, Val)] -> Bool
 isSingularTable [(_, ValTable v)] = isSingularTable v
-isSingularTable [(_, v)] = isAlwaysSimple v
-isSingularTable _ = False
+isSingularTable [(_,          v)] = isAlwaysSimple v
+isSingularTable _                 = False
 
 -- | Render a complete TOML document using top-level table
 -- and array of table sections where appropriate.

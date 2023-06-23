@@ -27,16 +27,16 @@ type Table = Map String Value
 
 -- | Semantic TOML value with all table assignments resolved.
 data Value
-    = Integer Integer
-    | Float Double
-    | Array [Value]
-    | Table Table
-    | Bool Bool
-    | String String
+    = Integer   Integer
+    | Float     Double
+    | Array     [Value]
+    | Table     Table
+    | Bool      Bool
+    | String    String
     | TimeOfDay TimeOfDay
     | ZonedTime ZonedTime
     | LocalTime LocalTime
-    | Day Day
+    | Day       Day
     deriving (Show, Read)
 
 instance Eq Value where
@@ -66,9 +66,9 @@ valueToVal = \case
     TimeOfDay x    -> ValTimeOfDay x
     ZonedTime x    -> ValZonedTime x
     LocalTime x    -> ValLocalTime x
-    Day x          -> ValDay       x
-    Array xs       -> ValArray (valueToVal <$> xs)
-    Table t        -> ValTable (tableToVal t)
+    Day       x    -> ValDay       x
+    Array     x    -> ValArray (valueToVal <$> x)
+    Table     x    -> ValTable (tableToVal     x)
 
 tableToVal :: Table -> [(Key, Val)]
 tableToVal t = [assign (pure k) v | (k,v) <- Map.assocs t]

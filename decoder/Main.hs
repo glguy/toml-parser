@@ -34,10 +34,10 @@ instance Aeson.ToJSON Toml.Value where
             Toml.Table     t -> Aeson.toJSON t
             Toml.Array     a -> Aeson.toJSON a
             Toml.String    s -> simple "string"         s
-            Toml.Integer   _ -> simple "integer"        (prettyValue v)
-            Toml.Float     _ -> simple "float"          (prettyValue v)
-            Toml.Bool      _ -> simple "bool"           (prettyValue v)
-            Toml.TimeOfDay _ -> simple "time-local"     (prettyValue v)
-            Toml.ZonedTime _ -> simple "datetime"       (prettyValue v)
-            Toml.LocalTime _ -> simple "datetime-local" (prettyValue v)
-            Toml.Day       _ -> simple "date-local"     (prettyValue v)
+            Toml.Integer   _ -> simple "integer"        (show (prettyValue v))
+            Toml.Float     _ -> simple "float"          (show (prettyValue v))
+            Toml.Bool      _ -> simple "bool"           (show (prettyValue v))
+            Toml.TimeOfDay _ -> simple "time-local"     (show (prettyValue v))
+            Toml.ZonedTime _ -> simple "datetime"       (show (prettyValue v))
+            Toml.LocalTime _ -> simple "datetime-local" (show (prettyValue v))
+            Toml.Day       _ -> simple "date-local"     (show (prettyValue v))
