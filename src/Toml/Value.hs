@@ -18,9 +18,9 @@ module Toml.Value (
 
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
-
-import Toml.Raw(Val(..))
+import Toml.Raw(Val(..), Key)
 
 type Table = Map String Value
 
@@ -67,4 +67,8 @@ valueToVal = \case
     LocalTime x    -> ValLocalTime x
     Day x          -> ValDay       x
     Array xs       -> ValArray (valueToVal <$> xs)
-    Table kvs      -> ValTable [(pure k, valueToVal v) | (k,v) <- Map.assocs kvs]
+    Table kvs      -> ValTable [assign (pure k) v | (k,v) <- Map.assocs kvs]
+    where
+        assign :: Key -> Value -> (Key, Val)
+        assign ks (Table (Map.assocs -> [(k,v)])) = assign (NonEmpty.cons k ks) v
+        assign ks v                               = (NonEmpty.reverse ks, valueToVal v)

@@ -188,7 +188,6 @@ prettyToml_ kind prefix t = unlines (headers ++ assignments) +++ subtables
         subtables = intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
 
 prettyAssignment :: Key -> Val -> String
-prettyAssignment k (ValTable [(k',v)]) = prettyAssignment (k <> k') v
 prettyAssignment k v = prettyKey k ++ " = " ++ prettyVal v
 
 prettySection :: Key -> Value -> String
