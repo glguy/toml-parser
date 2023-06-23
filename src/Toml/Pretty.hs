@@ -143,7 +143,7 @@ prettyVal = \case
         | isNaN f      -> annotate NumberClass "nan"
         | isInfinite f -> annotate NumberClass (if f > 0 then "inf" else "-inf")
         | otherwise    -> annotate NumberClass (pretty f)
-    ValArray a         -> list [prettyVal v | v <- a]
+    ValArray a         -> align (list [prettyVal v | v <- a])
     ValTable t         -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,v) <- t] <> rbrace
     ValBool True       -> annotate BoolClass "true"
     ValBool False      -> annotate BoolClass "false"
