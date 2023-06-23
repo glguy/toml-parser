@@ -733,33 +733,36 @@ main = hspec do
   describe "deserialization" deserializationTests
   describe "pretty-printing" prettyTests
 
+tomlString :: Table -> String
+tomlString = show . prettyToml
+
 prettyTests :: Spec
 prettyTests =
  do it "renders example 1" $
-      fmap prettyToml (parse "x=1")
+      fmap tomlString (parse "x=1")
         `shouldBe` Right [quoteStr|
         x = 1|]
 
     it "renders example 2" $
-      fmap prettyToml (parse "x=1\ny=2")
+      fmap tomlString (parse "x=1\ny=2")
         `shouldBe` Right [quoteStr|
         x = 1
         y = 2|]
 
     it "renders example lists" $
-      fmap prettyToml (parse "x=[1,'two', [true]]")
+      fmap tomlString (parse "x=[1,'two', [true]]")
         `shouldBe` Right [quoteStr|
         x = [1, "two", [true]]|]
 
     it "renders empty tables" $
-      fmap prettyToml (parse "x.y.z={}\nz.y.w=false")
+      fmap tomlString (parse "x.y.z={}\nz.y.w=false")
         `shouldBe` Right [quoteStr|
         z.y.w = false
 
         [x.y.z]|]
 
     it "renders empty tables in array of tables" $
-      fmap prettyToml (parse "ex=[{},{},{a=9}]")
+      fmap tomlString (parse "ex=[{},{},{a=9}]")
         `shouldBe` Right [quoteStr|
         [[ex]]
 
@@ -769,7 +772,7 @@ prettyTests =
         a = 9|]
 
     it "renders multiple tables" $
-      fmap prettyToml (parse "a.x=1\nb.x=3\na.y=2\nb.y=4")
+      fmap tomlString (parse "a.x=1\nb.x=3\na.y=2\nb.y=4")
         `shouldBe` Right [quoteStr|
         [a]
         x = 1
@@ -780,12 +783,12 @@ prettyTests =
         y = 4|]
 
     it "renders escapes in strings" $
-      fmap prettyToml (parse "a=\"\\b\\t\\r\\f\\\"\\u007f\\U0001000c\"")
+      fmap tomlString (parse "a=\"\\b\\t\\r\\f\\\"\\u007f\\U0001000c\"")
         `shouldBe` Right [quoteStr|
         a = "\b\t\r\f\"\u007F\U0001000C"|]
 
     it "renders floats" $
-      fmap prettyToml (parse "a=0.0\nb=-0.1\nc=0.1\nd=3.141592653589793\ne=4e123")
+      fmap tomlString (parse "a=0.0\nb=-0.1\nc=0.1\nd=3.141592653589793\ne=4e123")
         `shouldBe` Right [quoteStr|
         a = 0.0
         b = -0.1
@@ -794,18 +797,18 @@ prettyTests =
         e = 4.0e123|]
 
     it "renders special floats" $
-      fmap prettyToml (parse "a=inf\nb=-inf\nc=nan")
+      fmap tomlString (parse "a=inf\nb=-inf\nc=nan")
         `shouldBe` Right [quoteStr|
         a = inf
         b = -inf
         c = nan|]
 
     it "renders empty documents" $
-      fmap prettyToml (parse "")
+      fmap tomlString (parse "")
         `shouldBe` Right ""
 
     it "renders dates and time" $
-      fmap prettyToml (parse [quoteStr|
+      fmap tomlString (parse [quoteStr|
         a = 2020-05-07
         b = 15:16:17.990
         c = 2020-05-07T15:16:17.990
@@ -821,7 +824,7 @@ prettyTests =
         f = 2021-09-06T14:15:19+08:00|]
 
     it "renders quoted keys" $
-      fmap prettyToml (parse "''.'a b'.'\"' = 10")
+      fmap tomlString (parse "''.'a b'.'\"' = 10")
         `shouldBe` Right [quoteStr|
         ""."a b"."\"" = 10|]
 

@@ -46,6 +46,7 @@ library
         array           ^>= 0.5,
         base            >= 4.17.1.0,
         containers      ^>= 0.6,
+        prettyprinter   ^>= 1.7,
         time            ^>= 1.12,
         transformers    ^>= 0.5 || ^>= 0.6,
 
@@ -94,3 +95,13 @@ executable TomlEncoder
         base,
         bytestring,
         time,
+
+executable TomlHighlighter
+    import:             extensions, test-driver
+    hs-source-dirs:     highlighter
+    main-is:            Main.hs
+    build-depends:
+        toml,
+        base,
+        prettyprinter,
+        prettyprinter-ansi-terminal,

@@ -44,7 +44,7 @@ defaultTableFromValue (Table t) = fromTable t
 defaultTableFromValue v = typeError "table" v
 
 typeError :: String -> Value -> Either String a
-typeError wanted got = Left ("Type error. wanted: " ++ wanted ++ " got: " ++ prettyValue got)
+typeError wanted got = Left ("Type error. wanted: " ++ wanted ++ " got: " ++ show (prettyValue got))
 
 instance FromValue Integer where
     fromValue (Integer x) = Right x
@@ -132,21 +132,21 @@ runParseTable (ParseTable p) t =
     if Map.null t' then
         Right r
     else
-        Left ("Unmatched keys: " ++ intercalate ", " (map prettySimpleKey (Map.keys t')))
+        Left ("Unmatched keys: " ++ intercalate ", " (map (show . prettySimpleKey) (Map.keys t')))
 
 optKey :: FromValue a => String -> ParseTable (Maybe a)
 optKey key = ParseTable $ StateT \t ->
     case Map.lookup key t of
         Nothing -> Right (Nothing, t)
         Just v ->
-         do r <- fromValue v `backtrace` ('.' : prettySimpleKey key)
+         do r <- fromValue v `backtrace` ('.' : show (prettySimpleKey key))
             pure (Just r, Map.delete key t)
 
 reqKey :: FromValue a => String -> ParseTable a
 reqKey key =
  do mb <- optKey key
     case mb of
-        Nothing -> fail ("Missing key: " ++ prettyValue (String key))
+        Nothing -> fail ("Missing key: " ++ show (prettyValue (String key)))
         Just v -> pure v
 
 -- | Discard the remainder of the table to ignore any unused keys

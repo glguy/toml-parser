@@ -93,7 +93,7 @@ frameToValue = \case
 constructTable :: [(Key, Value)] -> Either String (Map String Value)
 constructTable entries =
     case findBadKey (map fst entries) of
-        Just bad -> Left ("Overlapping key: " ++ prettyKey bad)
+        Just bad -> Left ("Overlapping key: " ++ show (prettyKey bad))
         Nothing -> Right (Map.unionsWith merge [singleValue k ks v | (k:|ks, v) <- entries])
     where
         merge (Table x) (Table y) = Table (Map.unionWith merge x y)
@@ -122,7 +122,7 @@ addSection ::
 
 addSection kind kvs ln topkey = walk topkey
     where
-        failure e = Left (e ++ " in " ++ prettySectionKind kind topkey ++ " on line " ++ show ln)
+        failure e = Left (e ++ " in " ++ show (prettySectionKind kind topkey) ++ " on line " ++ show ln)
 
         walk (key :| []) = Map.alterF f key
             where
@@ -172,7 +172,7 @@ assignKeyVals :: Map String Frame -> KeyVals -> Either String (Map String Frame)
 assignKeyVals t kvs = closeDots <$> foldM f t kvs
     where
         f m (ln,k,v) =
-            updateError (\e -> e ++ " while assigning " ++ prettyKey k ++ " on line " ++ show ln)
+            updateError (\e -> e ++ " while assigning " ++ show (prettyKey k) ++ " on line " ++ show ln)
                 (assign k v m)
 
 -- | Assign a single dotted key in a frame.

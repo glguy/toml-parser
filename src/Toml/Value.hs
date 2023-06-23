@@ -14,6 +14,7 @@ module Toml.Value (
     Value(..),
     Table,
     valueToVal,
+    tableToVal,
     ) where
 
 import Data.Map (Map)
@@ -67,7 +68,10 @@ valueToVal = \case
     LocalTime x    -> ValLocalTime x
     Day x          -> ValDay       x
     Array xs       -> ValArray (valueToVal <$> xs)
-    Table kvs      -> ValTable [assign (pure k) v | (k,v) <- Map.assocs kvs]
+    Table t        -> ValTable (tableToVal t)
+
+tableToVal :: Table -> [(Key, Val)]
+tableToVal t = [assign (pure k) v | (k,v) <- Map.assocs t]
     where
         assign :: Key -> Value -> (Key, Val)
         assign ks (Table (Map.assocs -> [(k,v)])) = assign (NonEmpty.cons k ks) v

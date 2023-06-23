@@ -10,8 +10,13 @@ in this package to assist error message production.
 
 -}
 module Toml.Pretty (
+    -- * Types
+    Doc',
+    DocClass(..),
+
     -- * semantic values
     prettyToml,
+    prettyToml_,
     prettyValue,
 
     -- * syntactic components
@@ -38,16 +43,31 @@ import Data.Time.Format (formatTime, defaultTimeLocale)
 import Toml.Position (Position(..))
 import Toml.Raw (Key, SectionKind(..), Expr (..), Val(..))
 import Toml.Token (Token(..))
-import Toml.Value (Value(..), valueToVal)
+import Toml.Value (Value(..), valueToVal, tableToVal)
 import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
+import Prettyprinter
+import Data.Foldable (fold)
+import Data.String (fromString)
+import Data.List (intersperse)
 
-prettyKey :: Key -> String
-prettyKey = concat . NonEmpty.intersperse "." . fmap prettySimpleKey
+data DocClass
+    = TableClass
+    | KeyClass
+    | StringClass
+    | NumberClass
+    | DateClass
+    | BoolClass
+    deriving (Read, Show, Eq, Ord)
 
-prettySimpleKey :: String -> String
+type Doc' = Doc DocClass
+
+prettyKey :: Key -> Doc'
+prettyKey = annotate KeyClass . fold . NonEmpty.intersperse dot . fmap prettySimpleKey
+
+prettySimpleKey :: String -> Doc a
 prettySimpleKey str
-    | not (null str), all isBareKey str = str
-    | otherwise                         = quoteString str
+    | not (null str), all isBareKey str = fromString str
+    | otherwise                         = fromString (quoteString str)
 
 isBareKey :: Char -> Bool
 isBareKey x = isAsciiLower x || isAsciiUpper x || isDigit x || x == '-' || x == '_'
@@ -69,9 +89,11 @@ quoteString = ('"':) . go
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
-prettySectionKind :: SectionKind -> Key -> String
-prettySectionKind TableKind      key = "[" ++ prettyKey key ++ "]"
-prettySectionKind ArrayTableKind key = "[[" ++ prettyKey key ++ "]]"
+prettySectionKind :: SectionKind -> Key -> Doc'
+prettySectionKind TableKind      key =
+    annotate TableClass (lbracket <> prettyKey key <> rbracket)
+prettySectionKind ArrayTableKind key =
+    annotate TableClass (lbracket <> lbracket <> prettyKey key <> rbracket <> rbracket)
 
 prettyPosition :: Position -> String
 prettyPosition Position { posIndex = _, posLine = l, posColumn = c } =
@@ -104,64 +126,65 @@ prettyToken = \case
     TokError e          -> "lexical error: " ++ e
     TokEOF              -> "end-of-input"
 
-prettyExpr :: Expr -> String
-prettyExpr (KeyValExpr _ k v) = prettyKey k ++ " = " ++ prettyVal v
-prettyExpr (TableExpr      _ k) = "["  ++ prettyKey k ++ "]"
-prettyExpr (ArrayTableExpr _ k) = "[[" ++ prettyKey k ++ "]]"
+prettyExpr :: Expr -> Doc'
+prettyExpr (KeyValExpr _ k v  ) = prettyAssignment k v
+prettyExpr (TableExpr      _ k) = prettySectionKind TableKind k
+prettyExpr (ArrayTableExpr _ k) = prettySectionKind ArrayTableKind k
+
+prettyAssignment :: Key -> Val -> Doc'
+prettyAssignment k v = prettyKey k <+> equals <+> prettyVal v
 
 -- | Render a value suitable for assignment on the right-hand side
 -- of an equals sign. This value will always occupy a single line.
-prettyValue :: Value -> String
+prettyValue :: Value -> Doc'
 prettyValue = prettyVal . valueToVal
 
-prettyVal :: Val -> String
+prettyVal :: Val -> Doc'
 prettyVal = \case
-    ValInteger i       -> show i
+    ValInteger i       -> annotate NumberClass (pretty i)
     ValFloat   f
-        | isNaN f      -> "nan"
-        | isInfinite f -> if f > 0 then "inf" else "-inf"
-        | otherwise    -> show f
-    ValArray a         -> "[" ++ intercalate ", " [prettyVal          v | v     <- a] ++ "]"
-    ValTable t         -> "{" ++ intercalate ", " [prettyAssignment k v | (k,v) <- t] ++ "}"
-    ValBool True       -> "true"
-    ValBool False      -> "false"
-    ValString str      -> quoteString str
-    ValTimeOfDay tod   -> formatTime defaultTimeLocale "%H:%M:%S%Q" tod
+        | isNaN f      -> annotate NumberClass (fromString "nan")
+        | isInfinite f -> annotate NumberClass (fromString (if f > 0 then "inf" else "-inf"))
+        | otherwise    -> annotate NumberClass (pretty f)
+    ValArray a         -> lbracket <> fold (intersperse (fromString ", ") [prettyVal v | v <- a]) <> rbracket
+    ValTable t         -> lbrace <> fold (intersperse (fromString ", ") [prettyAssignment k v | (k,v) <- t]) <> rbrace
+    ValBool True       -> annotate BoolClass (fromString "true")
+    ValBool False      -> annotate BoolClass (fromString "false")
+    ValString str      -> annotate StringClass (fromString (quoteString str))
+    ValTimeOfDay tod   -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
     ValZonedTime zt
       | timeZoneMinutes (zonedTimeZone zt) == 0 ->
-                          formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt
-      | otherwise      -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt
-    ValLocalTime lt    -> formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt
-    ValDay d           -> formatTime defaultTimeLocale "%Y-%m-%d" d
+                          annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt))
+      | otherwise      -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt))
+    ValLocalTime lt    -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
+    ValDay d           -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
 
-isAlwaysSimple :: Value -> Bool
+isAlwaysSimple :: Val -> Bool
 isAlwaysSimple = \case
-    Integer   {} -> True
-    Float     {} -> True
-    Bool      {} -> True
-    String    {} -> True
-    TimeOfDay {} -> True
-    ZonedTime {} -> True
-    LocalTime {} -> True
-    Day       {} -> True
-    Table     t  -> isSingularTable t
-    Array     xs -> null xs || not (all isTable xs)
+    ValInteger   {} -> True
+    ValFloat     {} -> True
+    ValBool      {} -> True
+    ValString    {} -> True
+    ValTimeOfDay {} -> True
+    ValZonedTime {} -> True
+    ValLocalTime {} -> True
+    ValDay       {} -> True
+    ValTable     t  -> isSingularTable t
+    ValArray     xs -> null xs || not (all isTable xs)
 
-isTable :: Value -> Bool
-isTable Table{} = True
+isTable :: Val -> Bool
+isTable ValTable{} = True
 isTable _       = False
 
-isSingularTable :: Map String Value -> Bool
-isSingularTable t =
-    case Map.elems t of
-        [Table v] -> isSingularTable v
-        [v]       -> isAlwaysSimple v
-        _         -> False
+isSingularTable :: [(Key, Val)] -> Bool
+isSingularTable [(_, ValTable v)] = isSingularTable v
+isSingularTable [(_, v)] = isAlwaysSimple v
+isSingularTable _ = False
 
 -- | Render a complete TOML document using top-level table
 -- and array of table sections where appropriate.
-prettyToml :: Map String Value -> String
-prettyToml = prettyToml_ TableKind []
+prettyToml :: Map String Value -> Doc'
+prettyToml t = prettyToml_ TableKind [] (tableToVal t)
 
 (+++) :: String -> String -> String
 "" +++ x = x
@@ -169,31 +192,32 @@ x +++ "" = x
 x +++ y = x ++ "\n" ++ y
 infix 5 +++
 
-prettyToml_ :: SectionKind -> [String] -> Map String Value -> String
-prettyToml_ kind prefix t = unlines (headers ++ assignments) +++ subtables
+prettyToml_ :: SectionKind -> [String] -> [(Key, Val)] -> Doc'
+prettyToml_ kind prefix t = vcat (topLines ++ subtables)
     where
         snoc []     y = y :| []
         snoc (x:xs) y = x :| xs ++ [y]
 
-        (simple, sections) = partition (isAlwaysSimple . snd) (Map.assocs t)
+        (simple, sections) = partition (isAlwaysSimple . snd) t
+
+        topLines
+            | null headers, null assignments = []
+            | otherwise = [fold (headers ++ assignments)]
 
         headers =
             case NonEmpty.nonEmpty prefix of
                 Just key | not (null simple) || null sections || kind == ArrayTableKind ->
-                    [prettySectionKind kind key]
+                    [prettySectionKind kind key <> line']
                 _ -> []
 
-        assignments = [prettyAssignment (pure k) (valueToVal v) | (k,v) <- simple]
+        assignments = [prettyAssignment k v <> line' | (k,v) <- simple]
 
-        subtables = intercalate "\n" [prettySection (snoc prefix k) v | (k,v) <- sections]
+        subtables = [prettySection (foldr NonEmpty.cons k prefix) v | (k,v) <- sections]
 
-prettyAssignment :: Key -> Val -> String
-prettyAssignment k v = prettyKey k ++ " = " ++ prettyVal v
-
-prettySection :: Key -> Value -> String
-prettySection key (Table t) =
+prettySection :: Key -> Val -> Doc'
+prettySection key (ValTable t) =
     prettyToml_ TableKind (NonEmpty.toList key) t
-prettySection key (Array a) =
-    intercalate "\n"
-    [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | Table t <- a]
+prettySection key (ValArray a) =
+    vcat
+    [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | ValTable t <- a]
 prettySection _ _ = error "prettySection applied to simple value"
