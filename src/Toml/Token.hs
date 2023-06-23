@@ -43,30 +43,30 @@ import Numeric (readBin, readHex, readOct)
 
 -- | Lexical token
 data Token
-  = TokTrue                       -- ^ @true@
-  | TokFalse                      -- ^ @false@
-  | TokComma                      -- ^ @','@
-  | TokEquals                     -- ^ @'='@
-  | TokNewline                    -- ^ @'\\n'@
-  | TokPeriod                     -- ^ @'.'@
-  | TokSquareO                    -- ^ @'['@
-  | TokSquareC                    -- ^ @']'@
-  | Tok2SquareO                   -- ^ @'[['@
-  | Tok2SquareC                   -- ^ @']]'@
-  | TokCurlyO                     -- ^ @'{'@
-  | TokCurlyC                     -- ^ @'}'@
-  | TokBareKey String             -- ^ bare key
-  | TokString String              -- ^ string literal
-  | TokMlString String            -- ^ multiline string literal
-  | TokInteger !Integer           -- ^ integer literal
-  | TokFloat !Double              -- ^ floating-point literal
-  | TokOffsetDateTime !ZonedTime  -- ^ date-time with timezone offset
-  | TokLocalDateTime !LocalTime   -- ^ local date-time
-  | TokLocalDate !Day             -- ^ local date
-  | TokLocalTime !TimeOfDay       -- ^ local time
-  | TokError String               -- ^ lexical error
-  | TokEOF                        -- ^ end of file
-  deriving (Read, Show)
+    = TokTrue                       -- ^ @true@
+    | TokFalse                      -- ^ @false@
+    | TokComma                      -- ^ @','@
+    | TokEquals                     -- ^ @'='@
+    | TokNewline                    -- ^ @'\\n'@
+    | TokPeriod                     -- ^ @'.'@
+    | TokSquareO                    -- ^ @'['@
+    | TokSquareC                    -- ^ @']'@
+    | Tok2SquareO                   -- ^ @'[['@
+    | Tok2SquareC                   -- ^ @']]'@
+    | TokCurlyO                     -- ^ @'{'@
+    | TokCurlyC                     -- ^ @'}'@
+    | TokBareKey String             -- ^ bare key
+    | TokString String              -- ^ string literal
+    | TokMlString String            -- ^ multiline string literal
+    | TokInteger !Integer           -- ^ integer literal
+    | TokFloat !Double              -- ^ floating-point literal
+    | TokOffsetDateTime !ZonedTime  -- ^ date-time with timezone offset
+    | TokLocalDateTime !LocalTime   -- ^ local date-time
+    | TokLocalDate !Day             -- ^ local date
+    | TokLocalTime !TimeOfDay       -- ^ local time
+    | TokError String               -- ^ lexical error
+    | TokEOF                        -- ^ end of file
+    deriving (Read, Show)
 
 -- | Remove underscores from number literals
 scrub :: String -> String
@@ -104,58 +104,58 @@ mkLiteralString = TokString . tail . init
 mkBasicString :: String -> Token
 mkBasicString "" = error "processBasic: missing initializer"
 mkBasicString (_:start) = enforceScalar TokString (go start)
-  where
-    go [] = error "processBasic: missing terminator"
-    go "\"" = ""
-    go ('\\':'"':xs) = '"' : go xs
-    go ('\\':'\\':xs) = '\\' : go xs
-    go ('\\':'b':xs) = '\b' : go xs
-    go ('\\':'f':xs) = '\f' : go xs
-    go ('\\':'n':xs) = '\n' : go xs
-    go ('\\':'r':xs) = '\r' : go xs
-    go ('\\':'t':xs) = '\t' : go xs
-    go ('\\':'u':a:b:c:d:xs) = chr (fst (head (readHex [a,b,c,d]))) : go xs
-    go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
-    go (x:xs) = x : go xs
+    where
+        go [] = error "processBasic: missing terminator"
+        go "\"" = ""
+        go ('\\':'"':xs) = '"' : go xs
+        go ('\\':'\\':xs) = '\\' : go xs
+        go ('\\':'b':xs) = '\b' : go xs
+        go ('\\':'f':xs) = '\f' : go xs
+        go ('\\':'n':xs) = '\n' : go xs
+        go ('\\':'r':xs) = '\r' : go xs
+        go ('\\':'t':xs) = '\t' : go xs
+        go ('\\':'u':a:b:c:d:xs) = chr (fst (head (readHex [a,b,c,d]))) : go xs
+        go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
+        go (x:xs) = x : go xs
 
 mkMlBasicString :: String -> Token
 mkMlBasicString str =
-  enforceScalar TokMlString
-  case str of
-    '"':'"':'"':'\r':'\n':start -> go start
-    '"':'"':'"':'\n':start -> go start
-    '"':'"':'"':start -> go start
-    _ -> error "processMlBasic: missing initializer"
-  where
-    go "\"\"\"" = ""
-    go ('\\':'"':xs) = '"' : go xs
-    go ('\\':'\\':xs) = '\\' : go xs
-    go ('\\':'b':xs) = '\b' : go xs
-    go ('\\':'f':xs) = '\f' : go xs
-    go ('\\':'n':xs) = '\n' : go xs
-    go ('\\':'r':xs) = '\r' : go xs
-    go ('\\':'t':xs) = '\t' : go xs
-    go ('\\':'u':a:b:c:d:xs) = chr (fst (head (readHex [a,b,c,d]))) : go xs
-    go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
-    go ('\\':'\r':xs) = go (dropWhile isSpace xs)
-    go ('\\':'\n':xs) = go (dropWhile isSpace xs)
-    go ('\\':' ':xs)  = go (dropWhile isSpace xs)
-    go ('\\':'\t':xs) = go (dropWhile isSpace xs)
-    go (x:xs) = x : go xs
-    go [] = error "processMlBasic: missing terminator"
+    enforceScalar TokMlString
+    case str of
+        '"':'"':'"':'\r':'\n':start -> go start
+        '"':'"':'"':'\n':start -> go start
+        '"':'"':'"':start -> go start
+        _ -> error "processMlBasic: missing initializer"
+    where
+      go "\"\"\"" = ""
+      go ('\\':'"':xs) = '"' : go xs
+      go ('\\':'\\':xs) = '\\' : go xs
+      go ('\\':'b':xs) = '\b' : go xs
+      go ('\\':'f':xs) = '\f' : go xs
+      go ('\\':'n':xs) = '\n' : go xs
+      go ('\\':'r':xs) = '\r' : go xs
+      go ('\\':'t':xs) = '\t' : go xs
+      go ('\\':'u':a:b:c:d:xs) = chr (fst (head (readHex [a,b,c,d]))) : go xs
+      go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
+      go ('\\':'\r':xs) = go (dropWhile isSpace xs)
+      go ('\\':'\n':xs) = go (dropWhile isSpace xs)
+      go ('\\':' ':xs)  = go (dropWhile isSpace xs)
+      go ('\\':'\t':xs) = go (dropWhile isSpace xs)
+      go (x:xs) = x : go xs
+      go [] = error "processMlBasic: missing terminator"
 
 mkMlLiteralString :: String -> Token
 mkMlLiteralString str =
-  TokMlString
-  case str of
-    '\'':'\'':'\'':'\r':'\n':start -> go start
-    '\'':'\'':'\'':'\n':start -> go start
-    '\'':'\'':'\'':start -> go start
-    _ -> error "processMlLiteral: mising initializer"
-  where
-    go "'''" = ""
-    go (x:xs) = x : go xs
-    go "" = error "processMlLiteral: missing terminator"
+    TokMlString
+    case str of
+        '\'':'\'':'\'':'\r':'\n':start -> go start
+        '\'':'\'':'\'':'\n':start -> go start
+        '\'':'\'':'\'':start -> go start
+        _ -> error "processMlLiteral: mising initializer"
+    where
+        go "'''" = ""
+        go (x:xs) = x : go xs
+        go "" = error "processMlLiteral: missing terminator"
 
 enforceScalar :: (String -> Token) -> String -> Token
 enforceScalar f str
@@ -175,10 +175,10 @@ localTimePatterns = ["%H:%M:%S%Q"]
 
 localDateTimePatterns :: [String]
 localDateTimePatterns =
-  ["%Y-%m-%dT%H:%M:%S%Q",
-   "%Y-%m-%d %H:%M:%S%Q"]
+    ["%Y-%m-%dT%H:%M:%S%Q",
+    "%Y-%m-%d %H:%M:%S%Q"]
 
 offsetDateTimePatterns :: [String]
 offsetDateTimePatterns =
-  ["%Y-%m-%dT%H:%M:%S%Q%Ez","%Y-%m-%dT%H:%M:%S%QZ",
-   "%Y-%m-%d %H:%M:%S%Q%Ez","%Y-%m-%d %H:%M:%S%QZ"]
+    ["%Y-%m-%dT%H:%M:%S%Q%Ez","%Y-%m-%dT%H:%M:%S%QZ",
+    "%Y-%m-%d %H:%M:%S%Q%Ez","%Y-%m-%d %H:%M:%S%QZ"]

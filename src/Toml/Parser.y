@@ -55,26 +55,23 @@ EOF             { Located _ TokEOF                  }
 
 %%
 
-toml ::                       { [Expr]        }
-  : sepBy1(line, NEWLINE) EOF { concat $1     }
+toml ::                             { [Expr]        }
+  : sepBy1(expression, NEWLINE) EOF { concat $1     }
 
-line ::                   { [Expr]              }
-  :                       { []                  }
-  | expression            { [$1]                }
+expression ::                 { [Expr]                            }
+  :                           { []                                }
+  | getLineNo keyval          { [KeyValExpr $1 (fst $2) (snd $2)] }
+  | getLineNo '['  key ']'    { [TableExpr      $1 $3           ] }
+  | getLineNo '[[' key ']]'   { [ArrayTableExpr $1 $3           ] }
 
-expression ::                 { Expr                            }
-  : getLineNo keyval          { KeyValExpr $1 (fst $2) (snd $2) }
-  | getLineNo '['  key ']'    { TableExpr      $1 $3            }
-  | getLineNo '[[' key ']]'   { ArrayTableExpr $1 $3            }
-
-getLineNo ::        { Int }
-  :                 {%^ Right . posLine . locPosition }
+getLineNo ::        { Int                     }
+  :                 {%^ getLineNo             }
 
 keyval ::           { (Key, Val)              }
   : key '=' val     { ($1,$3)                 }
 
 key ::              { Key                     }
-  : sepBy1(simplekey, '.') { $1 }
+  : sepBy1(simplekey, '.') { $1               }
 
 simplekey ::        { String                  }
   : BAREKEY         { $1                      }
@@ -126,5 +123,8 @@ sepBy1_(p,q) ::       { NonEmpty p            }
 errorP :: [Located Token] -> Either (Located Token) a
 errorP (t:_) = Left t
 errorP []    = error "Parser.errorP: unterminated token stream"
+
+getLineNo :: Located Token -> Either e Int
+getLineNo = Right . posLine . locPosition
 
 }
