@@ -11,7 +11,7 @@ in this package to assist error message production.
 -}
 module Toml.Pretty (
     -- * Types
-    Doc',
+    TomlDoc,
     DocClass(..),
 
     -- * semantic values
@@ -32,36 +32,32 @@ module Toml.Pretty (
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
-import Data.List (intercalate, partition)
+import Data.Foldable (fold)
+import Data.List (intersperse, partition)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Text.Printf (printf)
+import Data.String (fromString)
+import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
-
+import Prettyprinter
+import Text.Printf (printf)
 import Toml.Position (Position(..))
 import Toml.Raw (Key, SectionKind(..), Expr (..), Val(..))
 import Toml.Token (Token(..))
-import Toml.Value (Value(..), valueToVal, tableToVal)
-import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
-import Prettyprinter
-import Data.Foldable (fold)
-import Data.String (fromString)
-import Data.List (intersperse)
+import Toml.Value (Value(..), valueToVal, tableToVal, Table)
 
+-- | Annotation used to enable styling pretty-printed TOML
 data DocClass
-    = TableClass
-    | KeyClass
-    | StringClass
-    | NumberClass
-    | DateClass
-    | BoolClass
+    = TableClass  -- ^ top-level @[key]@ and @[[key]]@
+    | KeyClass    -- ^ dotted keys, left-hand side of assignments
+    | StringClass -- ^ string literals
+    | NumberClass -- ^ number literals
+    | DateClass   -- ^ date and time literals
+    | BoolClass   -- ^ boolean literals
     deriving (Read, Show, Eq, Ord)
 
-type Doc' = Doc DocClass
+type TomlDoc = Doc DocClass
 
-prettyKey :: Key -> Doc'
+prettyKey :: Key -> TomlDoc
 prettyKey = annotate KeyClass . fold . NonEmpty.intersperse dot . fmap prettySimpleKey
 
 prettySimpleKey :: String -> Doc a
@@ -89,11 +85,11 @@ quoteString = ('"':) . go
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
-prettySectionKind :: SectionKind -> Key -> Doc'
+prettySectionKind :: SectionKind -> Key -> TomlDoc
 prettySectionKind TableKind      key =
-    annotate TableClass (lbracket <> prettyKey key <> rbracket)
+    annotate TableClass (unAnnotate (lbracket <> prettyKey key <> rbracket))
 prettySectionKind ArrayTableKind key =
-    annotate TableClass (lbracket <> lbracket <> prettyKey key <> rbracket <> rbracket)
+    annotate TableClass (unAnnotate (lbracket <> lbracket <> prettyKey key <> rbracket <> rbracket))
 
 prettyPosition :: Position -> String
 prettyPosition Position { posIndex = _, posLine = l, posColumn = c } =
@@ -126,20 +122,20 @@ prettyToken = \case
     TokError e          -> "lexical error: " ++ e
     TokEOF              -> "end-of-input"
 
-prettyExpr :: Expr -> Doc'
+prettyExpr :: Expr -> TomlDoc
 prettyExpr (KeyValExpr _ k v  ) = prettyAssignment k v
 prettyExpr (TableExpr      _ k) = prettySectionKind TableKind k
 prettyExpr (ArrayTableExpr _ k) = prettySectionKind ArrayTableKind k
 
-prettyAssignment :: Key -> Val -> Doc'
+prettyAssignment :: Key -> Val -> TomlDoc
 prettyAssignment k v = prettyKey k <+> equals <+> prettyVal v
 
 -- | Render a value suitable for assignment on the right-hand side
 -- of an equals sign. This value will always occupy a single line.
-prettyValue :: Value -> Doc'
+prettyValue :: Value -> TomlDoc
 prettyValue = prettyVal . valueToVal
 
-prettyVal :: Val -> Doc'
+prettyVal :: Val -> TomlDoc
 prettyVal = \case
     ValInteger i       -> annotate NumberClass (pretty i)
     ValFloat   f
@@ -183,41 +179,29 @@ isSingularTable _ = False
 
 -- | Render a complete TOML document using top-level table
 -- and array of table sections where appropriate.
-prettyToml :: Map String Value -> Doc'
+prettyToml :: Table -> TomlDoc
 prettyToml t = prettyToml_ TableKind [] (tableToVal t)
 
-(+++) :: String -> String -> String
-"" +++ x = x
-x +++ "" = x
-x +++ y = x ++ "\n" ++ y
-infix 5 +++
-
-prettyToml_ :: SectionKind -> [String] -> [(Key, Val)] -> Doc'
+prettyToml_ :: SectionKind -> [String] -> [(Key, Val)] -> TomlDoc
 prettyToml_ kind prefix t = vcat (topLines ++ subtables)
     where
-        snoc []     y = y :| []
-        snoc (x:xs) y = x :| xs ++ [y]
-
         (simple, sections) = partition (isAlwaysSimple . snd) t
 
-        topLines
-            | null headers, null assignments = []
-            | otherwise = [fold (headers ++ assignments)]
+        topLines = [fold topElts | let topElts = headers ++ assignments, not (null topElts)]
 
         headers =
             case NonEmpty.nonEmpty prefix of
                 Just key | not (null simple) || null sections || kind == ArrayTableKind ->
-                    [prettySectionKind kind key <> line']
+                    [prettySectionKind kind key <> hardline]
                 _ -> []
 
-        assignments = [prettyAssignment k v <> line' | (k,v) <- simple]
+        assignments = [prettyAssignment k v <> hardline | (k,v) <- simple]
 
-        subtables = [prettySection (foldr NonEmpty.cons k prefix) v | (k,v) <- sections]
+        subtables = [prettySection (prefix `NonEmpty.prependList` k) v | (k,v) <- sections]
 
-prettySection :: Key -> Val -> Doc'
+prettySection :: Key -> Val -> TomlDoc
 prettySection key (ValTable t) =
     prettyToml_ TableKind (NonEmpty.toList key) t
 prettySection key (ValArray a) =
-    vcat
-    [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | ValTable t <- a]
+    vcat [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | ValTable t <- a]
 prettySection _ _ = error "prettySection applied to simple value"

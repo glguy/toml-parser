@@ -19,31 +19,34 @@ module Toml.FromValue (
     discardKeys,
     ) where
 
-import Toml.Value (Value(..), Table)
-import Toml.Pretty (prettySimpleKey, prettyValue)
-import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.Int ( Int8, Int16, Int32, Int64 )
-import Numeric.Natural (Natural)
-import Data.Word ( Word8, Word16, Word32, Word64 )
-import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
-import Control.Monad.Trans.State (StateT(..), put)
-import Data.List (intercalate)
 import Control.Monad (zipWithM)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State (StateT(..), put)
+import Data.Int (Int8, Int16, Int32, Int64)
+import Data.List (intercalate)
+import Data.Map qualified as Map
+import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
+import Data.Word (Word8, Word16, Word32, Word64)
+import Numeric.Natural (Natural)
+import Toml.Pretty (prettySimpleKey, prettyValue)
+import Toml.Value (Value(..), Table)
 
 class FromValue a where
     fromValue     :: Value -> Either String a
     listFromValue :: Value -> Either String [a]
     listFromValue (Array xs) = zipWithM (\i v -> fromValue v `backtrace` ("[" ++ show i ++ "]")) [0::Int ..] xs
+    listFromValue v = typeError "array" v
 
 class FromValue a => FromTable a where
     fromTable :: Table -> Either String a
 
+-- | Derive 'fromValue' implementation from 'fromTable'
+defaultTableFromValue :: FromTable a => Value -> Either String a
 defaultTableFromValue (Table t) = fromTable t
 defaultTableFromValue v = typeError "table" v
 
-typeError :: String -> Value -> Either String a
+-- | Report a type error
+typeError :: String {- ^ expected type -} -> Value {- ^ actual value -} -> Either String a
 typeError wanted got = Left ("Type error. wanted: " ++ wanted ++ " got: " ++ show (prettyValue got))
 
 instance FromValue Integer where
@@ -134,6 +137,7 @@ runParseTable (ParseTable p) t =
     else
         Left ("Unmatched keys: " ++ intercalate ", " (map (show . prettySimpleKey) (Map.keys t')))
 
+-- | Match a table entry by key if it exists or return 'Nothing' if not.
 optKey :: FromValue a => String -> ParseTable (Maybe a)
 optKey key = ParseTable $ StateT \t ->
     case Map.lookup key t of
@@ -142,6 +146,7 @@ optKey key = ParseTable $ StateT \t ->
          do r <- fromValue v `backtrace` ('.' : show (prettySimpleKey key))
             pure (Just r, Map.delete key t)
 
+-- | Match a table entry by key or report an error if missing.
 reqKey :: FromValue a => String -> ParseTable a
 reqKey key =
  do mb <- optKey key

@@ -27,7 +27,7 @@ import Toml.FromValue (FromTable (fromTable))
 import Toml.Lexer (scanTokens)
 import Toml.Located (Located(locPosition, locThing))
 import Toml.Parser (parseRawToml)
-import Toml.Pretty (Doc', prettyPosition, prettyToken, prettyToml)
+import Toml.Pretty (TomlDoc, prettyPosition, prettyToken, prettyToml)
 import Toml.Semantics (semantics)
 import Toml.ToValue (ToTable (toTable))
 import Toml.Value (Value(..))
@@ -43,5 +43,5 @@ parse str =
 decode :: FromTable a => String -> Either String a
 decode = fromTable <=< parse
 
-encode :: ToTable a => a -> Doc'
+encode :: ToTable a => a -> TomlDoc
 encode = prettyToml . toTable

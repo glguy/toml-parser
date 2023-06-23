@@ -27,9 +27,10 @@ main =
         Left{}  -> exitFailure
         Right t -> putDoc (fmap style (prettyToml t))
 
-style TableClass = color Yellow
-style NumberClass = color Cyan
-style DateClass = color Green
-style StringClass = color Red
-style KeyClass = color Blue
-style BoolClass = color Magenta
+style :: DocClass -> AnsiStyle
+style TableClass  = colorDull Yellow <> bold
+style NumberClass = colorDull Cyan
+style DateClass   = colorDull Green
+style StringClass = colorDull Red
+style KeyClass    = colorDull Blue
+style BoolClass   = colorDull Magenta
