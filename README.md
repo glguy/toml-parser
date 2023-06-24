@@ -7,6 +7,34 @@ lexer and [happy](https://haskell-happy.readthedocs.io/en/latest/)-generated par
 
 It also provides a pair of classes for serializing into and out of TOML.
 
+## Package Structure
+
+```mermaid
+---
+title: Package Structure
+---
+stateDiagram-v2
+    classDef important font-weight:bold;
+
+    TOML:::important --> ApplicationTypes:::important : decode
+    ApplicationTypes --> TOML : encode
+    TOML --> [Token]: Toml.Lexer
+    [Token] --> [Expr]: Toml.Parser
+    [Expr] --> Table : Toml.Semantics
+    Table --> ApplicationTypes : Toml.FromTable
+    ApplicationTypes --> Table : Toml.ToTable
+    Table --> TOML : Toml.Pretty
+
+```
+
+The highest-level interface to this package is to define `FromTable` and `ToTable`
+instances for your application-specific datatypes. These can be used with `encode`
+and `decode` to convert to and from TOML.
+
+For low-level access to the TOML format, the lexer, parser, and validator are available
+for direct use. The diagram above shows how the different modules enable you to
+advance through the increasingly high-level TOML representations.
+
 ## Example
 
 Consider this sample TOML text from the specification.
