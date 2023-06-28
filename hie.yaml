@@ -9,7 +9,7 @@ cradle:
     - path: "./highlighter"
       component: "toml:exe:TomlHighlighter"
     - path: "./test"
-      component: "toml:test:unittest"
+      component: "toml:test:unittests"
 dependencies:
   - src/Toml/Lexer.x
   - src/Toml/Parser.y
