@@ -37,6 +37,7 @@ library
         Toml.Parser
         Toml.Position
         Toml.Pretty
+        Toml.Result
         Toml.Raw
         Toml.Semantics
         Toml.Token

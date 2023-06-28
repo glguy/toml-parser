@@ -93,7 +93,7 @@ findBadKey :: [Key] -> Maybe Key
 findBadKey = check . sortOn (fmap locThing)
     where
         check (x:y:_)
-          | NonEmpty.toList (fmap locThing x) `NonEmpty.isPrefixOf` (fmap locThing y) = Just x
+          | NonEmpty.toList (fmap locThing x) `NonEmpty.isPrefixOf` fmap locThing y = Just x
         check (_:xs) = check xs
         check [] = Nothing
 

@@ -1,0 +1,15 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "toml:lib:toml"
+    - path: "./encoder"
+      component: "toml:exe:TomlEncoder"
+    - path: "./decoder"
+      component: "toml:exe:TomlDecoder"
+    - path: "./highlighter"
+      component: "toml:exe:TomlHighlighter"
+    - path: "./test"
+      component: "toml:test:unittest"
+dependencies:
+  - src/Toml/Lexer.x
+  - src/Toml/Parser.y

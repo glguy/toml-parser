@@ -19,8 +19,9 @@ import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse, decode)
-import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable))
+import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable), rejectUnusedKeys)
 import Toml.Pretty (prettyToml)
+import Toml.Result (Result(Success))
 import Toml.ToValue (table, (.=))
 import Toml.Value (Table)
 
@@ -841,16 +842,16 @@ newtype Variety = Variety String
     deriving (Eq, Show)
 
 instance FromTable Fruits where
-    fromTable = runParseTable (Fruits <$> reqKey "fruits")
+    fromTable = runParseTable (Fruits <$> reqKey "fruits" <* rejectUnusedKeys)
 
 instance FromTable Fruit where
-    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties" <* rejectUnusedKeys)
 
 instance FromTable Physical where
-    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
+    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape" <* rejectUnusedKeys)
 
 instance FromTable Variety where
-    fromTable = runParseTable (Variety <$> reqKey "name")
+    fromTable = runParseTable (Variety <$> reqKey "name" <* rejectUnusedKeys)
 
 instance FromValue Fruits   where fromValue = defaultTableFromValue
 instance FromValue Fruit    where fromValue = defaultTableFromValue
@@ -873,7 +874,7 @@ deserializationTests =
 
               [[fruits.varieties]]
               name = "granny smith"
-
+              z = 1
 
               [[fruits]]
               name = "banana"
@@ -881,6 +882,6 @@ deserializationTests =
               [[fruits.varieties]]
               name = "plantain"|]
           `shouldBe`
-          Right (Fruits [
-              Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
-              Fruit "banana" Nothing [Variety "plantain"]])
+            Success mempty (Fruits [
+                Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
+                Fruit "banana" Nothing [Variety "plantain"]])
