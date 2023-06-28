@@ -15,15 +15,17 @@ key assignments.
 module Toml.Semantics (semantics) where
 
 import Control.Monad (foldM)
-import Data.List (sort)
+import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Toml.Pretty (prettyKey, prettySectionKind)
+import Text.Printf (printf)
+import Toml.Located (locThing, Located, locPosition)
 import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table, Value(..))
-import Data.Maybe (fromMaybe)
+import Toml.Position (Position(..))
+import Toml.Pretty (prettySimpleKey)
 
 -- | Extract semantic value from sequence of raw TOML expressions
 -- or report an error string.
@@ -31,27 +33,27 @@ semantics :: [Expr] -> Either String Table
 semantics exprs =
  do let (topKVs, tables) = gather exprs
     m1 <- assignKeyVals topKVs Map.empty
-    m2 <- foldM (\m (ln, kind, key, kvs) ->
-        addSection kind kvs ln key m) m1 tables
+    m2 <- foldM (\m (kind, key, kvs) ->
+        addSection kind kvs key m) m1 tables
     pure (fmap frameToValue m2)
 
 -- | Line number, key, value
-type KeyVals = [(Int, Key, Val)]
+type KeyVals = [(Key, Val)]
 
 -- | Arrange the expressions in a TOML file into the top-level key-value pairs
 -- and then all the key-value pairs for each subtable.
-gather :: [Expr] -> (KeyVals, [(Int, SectionKind, Key, KeyVals)])
+gather :: [Expr] -> (KeyVals, [(SectionKind, Key, KeyVals)])
 gather = goTop []
     where
-        goTop acc []                              = (reverse acc, [])
-        goTop acc (ArrayTableExpr ln key : exprs) = (reverse acc, goTable ln ArrayTableKind key [] exprs)
-        goTop acc (TableExpr      ln key : exprs) = (reverse acc, goTable ln TableKind      key [] exprs)
-        goTop acc (KeyValExpr     ln k v : exprs) = goTop ((ln,k,v):acc) exprs
+        goTop acc []                           = (reverse acc, [])
+        goTop acc (ArrayTableExpr key : exprs) = (reverse acc, goTable ArrayTableKind key [] exprs)
+        goTop acc (TableExpr      key : exprs) = (reverse acc, goTable TableKind      key [] exprs)
+        goTop acc (KeyValExpr     k v : exprs) = goTop ((k,v):acc) exprs
 
-        goTable ln kind key acc []                               = (ln, kind, key, reverse acc) : []
-        goTable ln kind key acc (TableExpr      ln' k   : exprs) = (ln, kind, key, reverse acc) : goTable ln' TableKind k [] exprs
-        goTable ln kind key acc (ArrayTableExpr ln' k   : exprs) = (ln, kind, key, reverse acc) : goTable ln' ArrayTableKind k [] exprs
-        goTable ln kind key acc (KeyValExpr     ln' k v : exprs) = goTable ln kind key ((ln',k,v):acc) exprs
+        goTable kind key acc []                           = (kind, key, reverse acc) : []
+        goTable kind key acc (TableExpr      k   : exprs) = (kind, key, reverse acc) : goTable TableKind k [] exprs
+        goTable kind key acc (ArrayTableExpr k   : exprs) = (kind, key, reverse acc) : goTable ArrayTableKind k [] exprs
+        goTable kind key acc (KeyValExpr     k v : exprs) = goTable kind key ((k,v):acc) exprs
 
 -- | Frames help distinguish tables and arrays written in block and inline
 -- syntax. This allows us to enforce that inline tables and arrays can not
@@ -77,8 +79,8 @@ frameToValue = \case
 constructTable :: [(Key, Value)] -> Either String Table
 constructTable entries =
     case findBadKey (map fst entries) of
-        Just bad -> Left ("Overlapping key: " ++ show (prettyKey bad))
-        Nothing -> Right (Map.unionsWith merge [singleValue k ks v | (k:|ks, v) <- entries])
+        Just bad -> invalidKey (NonEmpty.last bad) "is overlapped"
+        Nothing -> Right (Map.unionsWith merge [singleValue (locThing k) (locThing <$> ks) v | (k:|ks, v) <- entries])
     where
         merge (Table x) (Table y) = Table (Map.unionWith merge x y)
         merge _ _ = error "constructFrame:merge: panic"
@@ -88,26 +90,22 @@ constructTable entries =
 
 -- | Finds a key that overlaps with another in the same list
 findBadKey :: [Key] -> Maybe Key
-findBadKey = check . sort
+findBadKey = check . sortOn (fmap locThing)
     where
-        check :: [Key] -> Maybe Key
         check (x:y:_)
-          | NonEmpty.toList x `NonEmpty.isPrefixOf` y = Just y
+          | NonEmpty.toList (fmap locThing x) `NonEmpty.isPrefixOf` (fmap locThing y) = Just x
         check (_:xs) = check xs
         check [] = Nothing
 
 addSection ::
     SectionKind                      {- ^ section kind        -} ->
     KeyVals                          {- ^ values to install   -} ->
-    Int                              {- ^ section line number -} ->
     Key                              {- ^ section key         -} ->
     Map String Frame                 {- ^ local frame map     -} ->
     Either String (Map String Frame) {- ^ error message or updated local frame map -}
-addSection kind kvs ln topkey = walk topkey
+addSection kind kvs = walk
     where
-        failure e = Left (e ++ " in " ++ show (prettySectionKind kind topkey) ++ " on line " ++ show ln)
-
-        walk (k1 :| []) = flip Map.alterF k1 \case
+        walk (k1 :| []) = flip Map.alterF (locThing k1) \case
             -- defining a new table
             Nothing ->
                 case kind of
@@ -118,26 +116,26 @@ addSection kind kvs ln topkey = walk topkey
             Just (FrameTable Open t) ->
                 case kind of
                     TableKind      -> go (FrameTable Closed) t
-                    ArrayTableKind -> failure "attempt to redefine table as array table"
+                    ArrayTableKind -> invalidKey k1 "is already a table"
 
             -- Add a new array element to an existing table array
             Just (FrameArray a) ->
                 case kind of
                     ArrayTableKind -> go (FrameArray . (`NonEmpty.cons` a)) Map.empty
-                    TableKind      -> failure "attempt to open array table as table"
+                    TableKind      -> invalidKey k1 "is already an array of tables"
 
             -- failure cases
-            Just (FrameTable Closed _) -> failure "attempt to redefine top-level defined table"
+            Just (FrameTable Closed _) -> invalidKey k1 "is a closed table"
             Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
-            Just (FrameValue {})       -> failure "attempt to redefined a value"
+            Just (FrameValue {})       -> invalidKey k1 "is assigned"
             where
                 go g t = Just . g . closeDots <$> assignKeyVals kvs t
 
-        walk (k1 :| k2 : ks) = flip Map.alterF k1 \case
+        walk (k1 :| k2 : ks) = flip Map.alterF (locThing k1) \case
             Nothing                     -> go (FrameTable Open     ) Map.empty
             Just (FrameTable tk t)      -> go (FrameTable tk       ) t
             Just (FrameArray (t :| ts)) -> go (FrameArray . (:| ts)) t
-            Just (FrameValue _)         -> failure "attempt to redefine a value"
+            Just (FrameValue _)         -> invalidKey k1 "is assigned"
             where
                 go g t = Just . g <$> walk (k2 :| ks) t
 
@@ -152,24 +150,22 @@ closeDots =
 assignKeyVals :: KeyVals -> Map String Frame -> Either String (Map String Frame)
 assignKeyVals kvs t = closeDots <$> foldM f t kvs
     where
-        f m (ln,k,v) =
-            updateError (\e -> e ++ " while assigning " ++ show (prettyKey k) ++ " on line " ++ show ln)
-                (assign k v m)
+        f m (k,v) = assign k v m
 
 -- | Assign a single dotted key in a frame.
 assign :: Key -> Val -> Map String Frame -> Either String (Map String Frame)
 
-assign (key :| []) val = flip Map.alterF key \case
+assign (key :| []) val = flip Map.alterF (locThing key) \case
     Nothing -> Just . FrameValue <$> valToValue val
-    Just{}  -> Left "key already assigned"
+    Just{}  -> invalidKey key "is assigned"
 
-assign (key:| k1:keys) val = flip Map.alterF key \case
+assign (key :| k1 : keys) val = flip Map.alterF (locThing key) \case
     Nothing                    -> go Map.empty
     Just (FrameTable Open   t) -> go t
     Just (FrameTable Dotted t) -> go t
-    Just (FrameTable Closed _) -> Left "attempt to extend through a closed table"
-    Just (FrameArray        _) -> Left "attempt to extend through an array of tables"
-    Just (FrameValue        _) -> Left "attempted to overwrite a value"
+    Just (FrameTable Closed _) -> invalidKey key "is closed"
+    Just (FrameArray        _) -> invalidKey key "is closed"
+    Just (FrameValue        _) -> invalidKey key "is assigned"
     where
         go t = Just . FrameTable Dotted <$> assign (k1 :| keys) val t
 
@@ -189,6 +185,9 @@ valToValue = \case
     ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
                             Table <$> constructTable entries
 
-updateError :: (e -> e') -> Either e a -> Either e' a
-updateError f (Left  e) = Left (f e)
-updateError _ (Right a) = Right a
+invalidKey :: Located String -> String -> Either String a
+invalidKey k msg = Left (printf "%d:%d: key error: %s %s"
+    (posLine (locPosition k))
+    (posColumn (locPosition k))
+    (show (prettySimpleKey (locThing k)))
+    msg)

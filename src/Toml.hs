@@ -23,21 +23,26 @@ module Toml (
 
 import Control.Monad ((<=<))
 import Data.Map (Map)
+import Text.Printf (printf)
 import Toml.FromValue (FromTable (fromTable))
 import Toml.Lexer (scanTokens)
 import Toml.Located (Located(locPosition, locThing))
 import Toml.Parser (parseRawToml)
-import Toml.Pretty (TomlDoc, prettyPosition, prettyToken, prettyToml)
+import Toml.Pretty (TomlDoc, prettyToken, prettyToml)
 import Toml.Semantics (semantics)
 import Toml.ToValue (ToTable (toTable))
 import Toml.Value (Value(..))
+import Toml.Position (Position(posColumn, posLine))
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse :: String -> Either String (Map String Value)
 parse str =
     case parseRawToml (scanTokens str) of
         Left le ->
-            Left ("Unexpected " ++ prettyToken (locThing le) ++ " at " ++ prettyPosition (locPosition le))
+            Left (printf "%d:%d: parser error: unexpected %s"
+                (posLine (locPosition le))
+                (posColumn (locPosition le))
+                (prettyToken (locThing le)))
         Right exprs -> semantics exprs
 
 decode :: FromTable a => String -> Either String a

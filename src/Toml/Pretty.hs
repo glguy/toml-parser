@@ -32,7 +32,8 @@ module Toml.Pretty (
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
 import Data.Foldable (fold)
-import Data.List (intersperse, partition)
+import Data.List (partition)
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.String (fromString)
@@ -41,7 +42,7 @@ import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
 import Text.Printf (printf)
 import Toml.Position (Position(..))
-import Toml.Raw (Key, SectionKind(..), Expr (..), Val(..))
+import Toml.Raw (SectionKind(..))
 import Toml.Token (Token(..))
 import Toml.Value (Value(..), Table)
 
@@ -57,7 +58,7 @@ data DocClass
 
 type TomlDoc = Doc DocClass
 
-prettyKey :: Key -> TomlDoc
+prettyKey :: NonEmpty String -> TomlDoc
 prettyKey = annotate KeyClass . fold . NonEmpty.intersperse dot . fmap prettySimpleKey
 
 prettySimpleKey :: String -> Doc a
@@ -85,7 +86,7 @@ quoteString = ('"':) . go
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
-prettySectionKind :: SectionKind -> Key -> TomlDoc
+prettySectionKind :: SectionKind -> NonEmpty String -> TomlDoc
 prettySectionKind TableKind      key =
     annotate TableClass (unAnnotate (lbracket <> prettyKey key <> rbracket))
 prettySectionKind ArrayTableKind key =
@@ -104,26 +105,26 @@ prettyToken = \case
     TokSquareO          -> "'['"
     TokSquareC          -> "']'"
     Tok2SquareO         -> "'[['"
-    Tok2SquareC         -> "']]]"
+    Tok2SquareC         -> "']]'"
     TokCurlyO           -> "'{'"
     TokCurlyC           -> "'}'"
     TokNewline          -> "newline"
-    TokBareKey key      -> "bare key: " ++ key
+    TokBareKey        _ -> "bare key"
     TokTrue             -> "true literal"
     TokFalse            -> "false literal"
-    TokString str       -> "string: " ++ show str
-    TokMlString str     -> "multi-line string: " ++ show str
-    TokInteger str      -> "integer: " ++ show str
-    TokFloat str        -> "float: " ++ show str
+    TokString         _ -> "string"
+    TokMlString       _ -> "multi-line string"
+    TokInteger        _ -> "integer"
+    TokFloat          _ -> "float"
     TokOffsetDateTime _ -> "offset date-time"
-    TokLocalDateTime _  -> "local date-time"
-    TokLocalDate _      -> "local date"
-    TokLocalTime _      -> "local time"
-    TokError e          -> "lexical error: " ++ e
+    TokLocalDateTime  _ -> "local date-time"
+    TokLocalDate      _ -> "local date"
+    TokLocalTime      _ -> "local time"
+    TokError          e -> "lexical error: " ++ e
     TokEOF              -> "end-of-input"
 
 prettyAssignment :: String -> Value -> TomlDoc
-prettyAssignment k = go (pure k)
+prettyAssignment = go . NonEmpty.singleton
     where
         go ks (Table (Map.assocs -> [(k,v)])) = go (NonEmpty.cons k ks) v
         go ks v = prettyKey (NonEmpty.reverse ks) <+> equals <+> prettyValue v
@@ -194,31 +195,9 @@ prettyToml_ kind prefix t = vcat (topLines ++ subtables)
 
         subtables = [prettySection (prefix `NonEmpty.prependList` pure k) v | (k,v) <- sections]
 
-prettySection :: Key -> Value -> TomlDoc
+prettySection :: NonEmpty String -> Value -> TomlDoc
 prettySection key (Table t) =
     prettyToml_ TableKind (NonEmpty.toList key) t
 prettySection key (Array a) =
     vcat [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | Table t <- a]
 prettySection _ _ = error "prettySection applied to simple value"
-
-
--- | Transform the semantic value back into the simpler syntactic value.
-valueToVal :: Value -> Val
-valueToVal = \case
-    Integer   x    -> ValInteger   x
-    Float     x    -> ValFloat     x
-    Bool      x    -> ValBool      x
-    String    x    -> ValString    x
-    TimeOfDay x    -> ValTimeOfDay x
-    ZonedTime x    -> ValZonedTime x
-    LocalTime x    -> ValLocalTime x
-    Day       x    -> ValDay       x
-    Array     x    -> ValArray (valueToVal <$> x)
-    Table     x    -> ValTable (tableToVal     x)
-
-tableToVal :: Table -> [(Key, Val)]
-tableToVal t = [assign (pure k) v | (k,v) <- Map.assocs t]
-    where
-        assign :: Key -> Value -> (Key, Val)
-        assign ks (Table (Map.assocs -> [(k,v)])) = assign (NonEmpty.cons k ks) v
-        assign ks v                               = (NonEmpty.reverse ks, valueToVal v)

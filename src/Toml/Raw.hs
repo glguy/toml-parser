@@ -23,15 +23,16 @@ module Toml.Raw (
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
+import Toml.Located (Located)
 
 -- | Non-empty sequence of dotted simple keys
-type Key = NonEmpty String
+type Key = NonEmpty (Located String)
 
 -- | Headers and assignments corresponding to lines of a TOML file
 data Expr
-    = KeyValExpr     Int Key Val -- ^ line-no key value
-    | TableExpr      Int Key     -- ^ line-no table-header
-    | ArrayTableExpr Int Key     -- ^ line-no array-table-header
+    = KeyValExpr     Key Val -- ^ line-no key value
+    | TableExpr      Key     -- ^ line-no table-header
+    | ArrayTableExpr Key     -- ^ line-no array-table-header
     deriving (Read, Show)
 
 -- | Unvalidated TOML values. Table are represented as a list of

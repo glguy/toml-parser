@@ -16,10 +16,7 @@ module Toml.Value (
     ) where
 
 import Data.Map (Map)
-import Data.Map qualified as Map
-import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
-import Toml.Raw(Val(..), Key)
 
 type Table = Map String Value
 

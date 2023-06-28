@@ -16,7 +16,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 
-import Toml.Located (Located(Located, locPosition))
+import Toml.Located (Located(Located, locPosition, locThing))
 import Toml.Position (posLine)
 import Toml.Raw
 import Toml.Token
@@ -37,8 +37,8 @@ NEWLINE         { Located _ TokNewline              }
 ']]'            { Located _ Tok2SquareC             }
 '{'             { Located _ TokCurlyO               }
 '}'             { Located _ TokCurlyC               }
-BAREKEY         { Located _ (TokBareKey        $$)  }
-STRING          { Located _ (TokString         $$)  }
+BAREKEY         { Located _ (TokBareKey        _ )  }
+STRING          { Located _ (TokString         _ )  }
 MLSTRING        { Located _ (TokMlString       $$)  }
 INTEGER         { Located _ (TokInteger        $$)  }
 FLOAT           { Located _ (TokFloat          $$)  }
@@ -55,17 +55,14 @@ EOF             { Located _ TokEOF                  }
 
 %%
 
-toml ::                             { [Expr]        }
-  : sepBy1(expression, NEWLINE) EOF { concat $1     }
+toml ::                             { [Expr]    }
+  : sepBy1(expression, NEWLINE) EOF { concat $1 }
 
-expression ::                 { [Expr]                            }
-  :                           { []                                }
-  | getLineNo keyval          { [KeyValExpr $1 (fst $2) (snd $2)] }
-  | getLineNo '['  key ']'    { [TableExpr      $1 $3           ] }
-  | getLineNo '[[' key ']]'   { [ArrayTableExpr $1 $3           ] }
-
-getLineNo ::        { Int                     }
-  :                 {%^ getLineNo             }
+expression ::       { [Expr]                  }
+  :                 { []                      }
+  | keyval          { [KeyValExpr (fst $1) (snd $1)] }
+  | '['  key ']'    { [TableExpr      $2    ] }
+  | '[[' key ']]'   { [ArrayTableExpr $2    ] }
 
 keyval ::           { (Key, Val)              }
   : key '=' val     { ($1,$3)                 }
@@ -73,16 +70,16 @@ keyval ::           { (Key, Val)              }
 key ::              { Key                     }
   : sepBy1(simplekey, '.') { $1               }
 
-simplekey ::        { String                  }
-  : BAREKEY         { $1                      }
-  | STRING          { $1                      }
+simplekey ::        { Located String          }
+  : BAREKEY         { fmap asString $1        }
+  | STRING          { fmap asString $1        }
 
 val ::              { Val                     }
   : INTEGER         { ValInteger    $1        }
   | FLOAT           { ValFloat      $1        }
   | 'true'          { ValBool       True      }
   | 'false'         { ValBool       False     }
-  | STRING          { ValString     $1        }
+  | STRING          { ValString (asString (locThing $1)) }
   | MLSTRING        { ValString     $1        }
   | LOCALDATE       { ValDay        $1        }
   | LOCALTIME       { ValTimeOfDay  $1        }
@@ -124,7 +121,9 @@ errorP :: [Located Token] -> Either (Located Token) a
 errorP (t:_) = Left t
 errorP []    = error "Parser.errorP: unterminated token stream"
 
-getLineNo :: Located Token -> Either e Int
-getLineNo = Right . posLine . locPosition
+asString :: Token -> String
+asString (TokString x) = x
+asString (TokBareKey x) = x
+asString _ = error "simpleKeyLexeme: panic"
 
 }
