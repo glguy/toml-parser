@@ -535,7 +535,7 @@ main = hspec do
 
     describe "array of tables"
      do it "supports array of tables syntax" $
-          parse [quoteStr|
+          decode [quoteStr|
             [[products]]
             name = "Hammer"
             sku = 738594937
@@ -548,16 +548,15 @@ main = hspec do
 
             color = "gray"|]
           `shouldBe`
-          Right (Map.fromList [
-            "products" .= [
-                table [
-                    "name" .= "Hammer",
-                    "sku"  .= Integer 738594937],
-                table [],
-                table [
-                    "color" .= "gray",
-                    "name"  .= "Nail",
-                    "sku"   .= Integer 284758393]]])
+          Success mempty (Map.singleton "products" [
+            Map.fromList [
+              "name" .= "Hammer",
+              "sku"  .= Integer 738594937],
+            Map.empty,
+            Map.fromList [
+                "color" .= "gray",
+                "name"  .= "Nail",
+                "sku"   .= Integer 284758393]])
 
         it "handles subtables under array of tables" $
           parse [quoteStr|
