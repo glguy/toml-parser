@@ -13,8 +13,6 @@ is a Map with a single level of keys.
 module Toml.Value (
     Value(..),
     Table,
-    valueToVal,
-    tableToVal,
     ) where
 
 import Data.Map (Map)
@@ -55,24 +53,3 @@ instance Eq Value where
 -- Extract the relevant parts to build an Eq instance
 projectZT :: ZonedTime -> (LocalTime, Int)
 projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
-
--- | Transform the semantic value back into the simpler syntactic value.
-valueToVal :: Value -> Val
-valueToVal = \case
-    Integer   x    -> ValInteger   x
-    Float     x    -> ValFloat     x
-    Bool      x    -> ValBool      x
-    String    x    -> ValString    x
-    TimeOfDay x    -> ValTimeOfDay x
-    ZonedTime x    -> ValZonedTime x
-    LocalTime x    -> ValLocalTime x
-    Day       x    -> ValDay       x
-    Array     x    -> ValArray (valueToVal <$> x)
-    Table     x    -> ValTable (tableToVal     x)
-
-tableToVal :: Table -> [(Key, Val)]
-tableToVal t = [assign (pure k) v | (k,v) <- Map.assocs t]
-    where
-        assign :: Key -> Value -> (Key, Val)
-        assign ks (Table (Map.assocs -> [(k,v)])) = assign (NonEmpty.cons k ks) v
-        assign ks v                               = (NonEmpty.reverse ks, valueToVal v)

@@ -22,14 +22,15 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Toml.Pretty (prettyKey, prettySectionKind)
 import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
-import Toml.Value (Value(..))
+import Toml.Value (Table, Value(..))
+import Data.Maybe (fromMaybe)
 
 -- | Extract semantic value from sequence of raw TOML expressions
 -- or report an error string.
-semantics :: [Expr] -> Either String (Map String Value)
+semantics :: [Expr] -> Either String Table
 semantics exprs =
  do let (topKVs, tables) = gather exprs
-    m1 <- assignKeyVals Map.empty topKVs
+    m1 <- assignKeyVals topKVs Map.empty
     m2 <- foldM (\m (ln, kind, key, kvs) ->
         addSection kind kvs ln key m) m1 tables
     pure (fmap frameToValue m2)
@@ -52,22 +53,6 @@ gather = goTop []
         goTable ln kind key acc (ArrayTableExpr ln' k   : exprs) = (ln, kind, key, reverse acc) : goTable ln' ArrayTableKind k [] exprs
         goTable ln kind key acc (KeyValExpr     ln' k v : exprs) = goTable ln kind key ((ln',k,v):acc) exprs
 
--- | Convert 'Val' to 'Value' potentially raising an error if
--- it has inline tables with key-conflicts.
-valToValue :: Val -> Either String Value
-valToValue = \case
-    ValInteger   x    -> Right (Integer   x)
-    ValFloat     x    -> Right (Float     x)
-    ValBool      x    -> Right (Bool      x)
-    ValString    x    -> Right (String    x)
-    ValTimeOfDay x    -> Right (TimeOfDay x)
-    ValZonedTime x    -> Right (ZonedTime x)
-    ValLocalTime x    -> Right (LocalTime x)
-    ValDay       x    -> Right (Day       x)
-    ValArray xs       -> Array <$> traverse valToValue xs
-    ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
-                            Table <$> constructTable entries
-
 -- | Frames help distinguish tables and arrays written in block and inline
 -- syntax. This allows us to enforce that inline tables and arrays can not
 -- be extended by block syntax.
@@ -89,7 +74,7 @@ frameToValue = \case
     FrameArray a   -> Array (reverse (Table . fmap frameToValue <$> NonEmpty.toList a))
     FrameValue v   -> v
 
-constructTable :: [(Key, Value)] -> Either String (Map String Value)
+constructTable :: [(Key, Value)] -> Either String Table
 constructTable entries =
     case findBadKey (map fst entries) of
         Just bad -> Left ("Overlapping key: " ++ show (prettyKey bad))
@@ -118,46 +103,43 @@ addSection ::
     Key                              {- ^ section key         -} ->
     Map String Frame                 {- ^ local frame map     -} ->
     Either String (Map String Frame) {- ^ error message or updated local frame map -}
-
 addSection kind kvs ln topkey = walk topkey
     where
         failure e = Left (e ++ " in " ++ show (prettySectionKind kind topkey) ++ " on line " ++ show ln)
 
-        walk (key :| []) = Map.alterF f key
+        walk (k1 :| []) = flip Map.alterF k1 \case
+            -- defining a new table
+            Nothing ->
+                case kind of
+                    TableKind      -> go (FrameTable Closed) Map.empty
+                    ArrayTableKind -> go (FrameArray . NonEmpty.singleton) Map.empty
+
+            -- defining a super table of a previously defined subtable
+            Just (FrameTable Open t) ->
+                case kind of
+                    TableKind      -> go (FrameTable Closed) t
+                    ArrayTableKind -> failure "attempt to redefine table as array table"
+
+            -- Add a new array element to an existing table array
+            Just (FrameArray a) ->
+                case kind of
+                    ArrayTableKind -> go (FrameArray . (`NonEmpty.cons` a)) Map.empty
+                    TableKind      -> failure "attempt to open array table as table"
+
+            -- failure cases
+            Just (FrameTable Closed _) -> failure "attempt to redefine top-level defined table"
+            Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
+            Just (FrameValue {})       -> failure "attempt to redefined a value"
             where
-                update t = closeDots <$> assignKeyVals t kvs
+                go g t = Just . g . closeDots <$> assignKeyVals kvs t
 
-                -- defining a new table
-                f Nothing =
-                    case kind of
-                        TableKind      -> Just . FrameTable Closed    <$> update Map.empty
-                        ArrayTableKind -> Just . FrameArray . (:| []) <$> update Map.empty
-
-                -- defining a super table of a previously defined subtable
-                f (Just (FrameTable Open t)) =
-                    case kind of
-                        TableKind      -> Just . FrameTable Closed <$> update t
-                        ArrayTableKind -> failure "attempt to redefine table as array table"
-
-                -- Add a new array element to an existing table array
-                f (Just (FrameArray a)) =
-                    case kind of
-                        ArrayTableKind -> Just . FrameArray . (`NonEmpty.cons` a) <$> update Map.empty
-                        TableKind      -> failure "attempt to open array table as table"
-
-                -- failure cases
-                f (Just (FrameTable Closed _)) = failure "attempt to redefine top-level defined table"
-                f (Just (FrameTable Dotted _)) = error "addSection: dotted table left unclosed"
-                f (Just (FrameValue {}))       = failure "attempt to redefined a value"
-        
-        walk (k1 :| k2 : ks) = Map.alterF f k1
+        walk (k1 :| k2 : ks) = flip Map.alterF k1 \case
+            Nothing                     -> go (FrameTable Open     ) Map.empty
+            Just (FrameTable tk t)      -> go (FrameTable tk       ) t
+            Just (FrameArray (t :| ts)) -> go (FrameArray . (:| ts)) t
+            Just (FrameValue _)         -> failure "attempt to redefine a value"
             where
-                walk' = walk (k2 :| ks)
-
-                f Nothing                       = Just . FrameTable Open      <$> walk' Map.empty
-                f (Just (FrameTable tk t))      = Just . FrameTable tk        <$> walk' t
-                f (Just (FrameArray (t :| ts))) = Just . FrameArray . (:| ts) <$> walk' t
-                f (Just (FrameValue _))         = failure "attempt to redefine a value"
+                go g t = Just . g <$> walk (k2 :| ks) t
 
 -- | Close all of the tables that were implicitly defined with
 -- dotted prefixes.
@@ -167,8 +149,8 @@ closeDots =
         FrameTable Dotted t -> FrameTable Closed (closeDots t)
         frame               -> frame
 
-assignKeyVals :: Map String Frame -> KeyVals -> Either String (Map String Frame)
-assignKeyVals t kvs = closeDots <$> foldM f t kvs
+assignKeyVals :: KeyVals -> Map String Frame -> Either String (Map String Frame)
+assignKeyVals kvs t = closeDots <$> foldM f t kvs
     where
         f m (ln,k,v) =
             updateError (\e -> e ++ " while assigning " ++ show (prettyKey k) ++ " on line " ++ show ln)
@@ -177,21 +159,35 @@ assignKeyVals t kvs = closeDots <$> foldM f t kvs
 -- | Assign a single dotted key in a frame.
 assign :: Key -> Val -> Map String Frame -> Either String (Map String Frame)
 
-assign (key :| []) val = Map.alterF f key
-    where
-        f Nothing = Just . FrameValue <$> valToValue val
-        f Just{}  = Left "key already assigned"
+assign (key :| []) val = flip Map.alterF key \case
+    Nothing -> Just . FrameValue <$> valToValue val
+    Just{}  -> Left "key already assigned"
 
-assign (key:| k1:keys) val = Map.alterF f key
+assign (key:| k1:keys) val = flip Map.alterF key \case
+    Nothing                    -> go Map.empty
+    Just (FrameTable Open   t) -> go t
+    Just (FrameTable Dotted t) -> go t
+    Just (FrameTable Closed _) -> Left "attempt to extend through a closed table"
+    Just (FrameArray        _) -> Left "attempt to extend through an array of tables"
+    Just (FrameValue        _) -> Left "attempted to overwrite a value"
     where
         go t = Just . FrameTable Dotted <$> assign (k1 :| keys) val t
 
-        f Nothing                        = go Map.empty
-        f (Just (FrameTable Open     t)) = go t
-        f (Just (FrameTable Dotted   t)) = go t
-        f (Just (FrameTable Closed   _)) = Left "attempt to extend through a closed table"
-        f (Just (FrameArray          _)) = Left "attempt to extend through an array of tables"
-        f (Just (FrameValue          _)) = Left "attempted to overwrite a value"
+-- | Convert 'Val' to 'Value' potentially raising an error if
+-- it has inline tables with key-conflicts.
+valToValue :: Val -> Either String Value
+valToValue = \case
+    ValInteger   x    -> Right (Integer   x)
+    ValFloat     x    -> Right (Float     x)
+    ValBool      x    -> Right (Bool      x)
+    ValString    x    -> Right (String    x)
+    ValTimeOfDay x    -> Right (TimeOfDay x)
+    ValZonedTime x    -> Right (ZonedTime x)
+    ValLocalTime x    -> Right (LocalTime x)
+    ValDay       x    -> Right (Day       x)
+    ValArray xs       -> Array <$> traverse valToValue xs
+    ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
+                            Table <$> constructTable entries
 
 updateError :: (e -> e') -> Either e a -> Either e' a
 updateError f (Left  e) = Left (f e)
