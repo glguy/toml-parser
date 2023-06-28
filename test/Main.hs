@@ -874,7 +874,6 @@ deserializationTests =
 
               [[fruits.varieties]]
               name = "granny smith"
-              z = 1
 
               [[fruits]]
               name = "banana"
