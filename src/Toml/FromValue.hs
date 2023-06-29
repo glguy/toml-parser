@@ -10,6 +10,12 @@ module Toml.FromValue (
     FromValue(..),
     FromTable(..),
 
+    -- * matcher
+    Matcher,
+    runMatcher,
+    matchContext,
+    warning,
+
     -- * table matching
     ParseTable,
     defaultTableFromValue,
@@ -18,11 +24,13 @@ module Toml.FromValue (
     reqKey,
     warnUnusedKeys,
     rejectUnusedKeys,
+    warnTable,
     getTable,
     setTable,
     ) where
 
-import Control.Monad (zipWithM, unless)
+import Control.Monad (zipWithM, unless, MonadPlus)
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State (StateT(..), evalStateT, put, get)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.List (intercalate)
@@ -33,37 +41,61 @@ import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Pretty (prettySimpleKey, prettyValue)
-import Toml.Value (Value(..), Table)
 import Toml.Result
+import Toml.Value (Value(..), Table)
+import Control.Applicative (Alternative)
+import Control.Monad.Trans.Class (lift)
 
+newtype Matcher a = Matcher (ReaderT [String] Result a)
+    deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
+
+runMatcher :: Matcher a -> Result a
+runMatcher (Matcher m) = runReaderT m ["top"]
+
+matchContext :: String -> Matcher a -> Matcher a
+matchContext ctx (Matcher m) = Matcher (local (ctx:) m)
+
+getContext :: Matcher [String]
+getContext = Matcher (asks reverse)
+
+warning :: String -> Matcher ()
+warning w =
+ do loc <- getContext
+    Matcher (lift (warn (w ++ " in " ++ concat loc)))
+
+-- | Fail with an error message annotated to the current location.
+instance MonadFail Matcher where
+    fail e =
+     do loc <- getContext
+        Matcher (fail (e ++ " in " ++ concat loc))
 class FromValue a where
     -- | Convert a 'Value' or report an error message
-    fromValue :: Value -> Result a
+    fromValue :: Value -> Matcher a
     
     -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
-    listFromValue :: Value -> Result [a]
-    listFromValue (Array xs) = zipWithM (\i v -> fromValue v `backtrace` ("[" ++ show i ++ "]")) [0::Int ..] xs
+    listFromValue :: Value -> Matcher [a]
+    listFromValue (Array xs) = zipWithM (\i v -> matchContext ("[" ++ show i ++ "]") (fromValue v)) [0::Int ..] xs
     listFromValue v = typeError "array" v
 
 class FromValue a => FromTable a where
     -- | Convert a 'Table' or report an error message
-    fromTable :: Table -> Result a
+    fromTable :: Table -> Matcher a
 
 instance (Ord k, IsString k, FromValue v) => FromTable (Map k v) where
     fromTable t = Map.fromList <$> traverse f (Map.assocs t)
         where
-            f (k,v) = (,) (fromString k) <$> fromValue v
+            f (k,v) = (,) (fromString k) <$> matchContext ('.':show (prettySimpleKey k)) (fromValue v)
 
 instance (Ord k, IsString k, FromValue v) => FromValue (Map k v) where
     fromValue = defaultTableFromValue
 
 -- | Derive 'fromValue' implementation from 'fromTable'
-defaultTableFromValue :: FromTable a => Value -> Result a
+defaultTableFromValue :: FromTable a => Value -> Matcher a
 defaultTableFromValue (Table t) = fromTable t
 defaultTableFromValue v = typeError "table" v
 
 -- | Report a type error
-typeError :: String {- ^ expected type -} -> Value {- ^ actual value -} -> Result a
+typeError :: String {- ^ expected type -} -> Value {- ^ actual value -} -> Matcher a
 typeError wanted got = fail ("Type error. wanted: " ++ wanted ++ " got: " ++ show (prettyValue got))
 
 instance FromValue Integer where
@@ -78,7 +110,7 @@ instance FromValue Natural where
         else
             fail "integer out of range for Natural"
 
-fromValueSized :: forall a. (Bounded a, Integral a) => String -> Value -> Result a
+fromValueSized :: forall a. (Bounded a, Integral a) => String -> Value -> Matcher a
 fromValueSized name v =
  do i <- fromValue v
     if fromIntegral (minBound :: a) <= i && i <= fromIntegral (maxBound :: a) then
@@ -140,17 +172,13 @@ instance FromValue LocalTime where
 instance FromValue Value where
     fromValue = pure
 
-newtype ParseTable a = ParseTable (StateT Table Result a)
+newtype ParseTable a = ParseTable (StateT Table Matcher a)
     deriving (Functor, Applicative, Monad)
 
 instance MonadFail ParseTable where
     fail = ParseTable . fail
 
-backtrace :: Result a -> String -> Result a
-Failure e `backtrace` l = Failure (e ++ " in " ++ l)
-r         `backtrace` _ = r
-
-runParseTable :: ParseTable a -> Table -> Result a
+runParseTable :: ParseTable a -> Table -> Matcher a
 runParseTable (ParseTable p) = evalStateT p
 
 getTable :: ParseTable Table
@@ -159,13 +187,16 @@ getTable = ParseTable get
 setTable :: Table -> ParseTable ()
 setTable = ParseTable . put
 
+warnTable :: String -> ParseTable ()
+warnTable = ParseTable . lift . warning
+
 -- | Match a table entry by key if it exists or return 'Nothing' if not.
 optKey :: FromValue a => String -> ParseTable (Maybe a)
 optKey key = ParseTable $ StateT \t ->
     case Map.lookup key t of
         Nothing -> pure (Nothing, t)
         Just v ->
-         do r <- fromValue v `backtrace` ('.' : show (prettySimpleKey key))
+         do r <- matchContext ('.' : show (prettySimpleKey key)) (fromValue v)
             pure (Just r, Map.delete key t)
 
 -- | Match a table entry by key or report an error if missing.
@@ -180,12 +211,16 @@ reqKey key =
 rejectUnusedKeys :: ParseTable ()
 rejectUnusedKeys =
  do t <- getTable
-    unless (Map.null t)
-        (fail ("Unmatched keys: " ++ intercalate ", " (map (show . prettySimpleKey) (Map.keys t))))
+    case Map.keys t of
+        []  -> pure ()
+        [k] -> fail ("Unexpected key: " ++ show (prettySimpleKey k))
+        ks  -> fail ("Unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
 
 -- | Discard the remainder of the table to ignore any unused keys
 warnUnusedKeys :: ParseTable ()
 warnUnusedKeys =
  do t <- getTable
-    unless (Map.null t)
-        (fail ("Unmatched keys: " ++ intercalate ", " (map (show . prettySimpleKey) (Map.keys t))))
+    case Map.keys t of
+        []  -> pure ()
+        [k] -> warnTable ("Unexpected key: " ++ show (prettySimpleKey k))
+        ks  -> warnTable ("Unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))

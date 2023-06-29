@@ -23,7 +23,7 @@ module Toml (
 
 import Data.Map (Map)
 import Text.Printf (printf)
-import Toml.FromValue (FromTable (fromTable))
+import Toml.FromValue (FromTable (fromTable), runMatcher)
 import Toml.Lexer (scanTokens)
 import Toml.Located (Located(Located))
 import Toml.Parser (parseRawToml)
@@ -47,7 +47,7 @@ parse str =
 
 -- | Use the 'FromTable' instance to decode a value from a TOML string.
 decode :: FromTable a => String -> Result a
-decode = either fail fromTable . parse
+decode = either fail (runMatcher . fromTable) . parse
 
 -- | Use the 'ToTable' instance to encode a value to a TOML string.
 encode :: ToTable a => a -> TomlDoc
