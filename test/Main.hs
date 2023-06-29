@@ -19,7 +19,7 @@ import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse, decode, Result(Success), prettyToml, Table)
-import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable), rejectUnusedKeys)
+import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable))
 import Toml.ToValue (table, (.=))
 
 main :: IO ()
@@ -838,16 +838,16 @@ newtype Variety = Variety String
     deriving (Eq, Show)
 
 instance FromTable Fruits where
-    fromTable = runParseTable (Fruits <$> reqKey "fruits" <* rejectUnusedKeys)
+    fromTable = runParseTable (Fruits <$> reqKey "fruits")
 
 instance FromTable Fruit where
-    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties" <* rejectUnusedKeys)
+    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
 
 instance FromTable Physical where
-    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape" <* rejectUnusedKeys)
+    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
 
 instance FromTable Variety where
-    fromTable = runParseTable (Variety <$> reqKey "name" <* rejectUnusedKeys)
+    fromTable = runParseTable (Variety <$> reqKey "name")
 
 instance FromValue Fruits   where fromValue = defaultTableFromValue
 instance FromValue Fruit    where fromValue = defaultTableFromValue

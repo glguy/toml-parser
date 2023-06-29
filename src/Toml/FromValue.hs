@@ -41,8 +41,6 @@ module Toml.FromValue (
     runParseTable,
     optKey,
     reqKey,
-    warnUnusedKeys,
-    rejectUnusedKeys,
     warnTable,
 
     -- * table matching primitives
@@ -184,10 +182,16 @@ instance MonadFail ParseTable where
     fail = ParseTable . fail
 
 -- | Run a 'ParseTable' computation with a given starting 'Table'.
--- The final table is discarded. Use 'getTable' at the end of the
--- computation to retrieve it, if needed.
+-- Unused tables will generate a warning. To change this behavior
+-- 'getTable' and 'setTable' can be used to discard or generate
+-- error messages.
 runParseTable :: ParseTable a -> Table -> Matcher a
-runParseTable (ParseTable p) = evalStateT p
+runParseTable (ParseTable p) t =
+ do (x, t') <- runStateT p t
+    case Map.keys t' of
+        []  -> pure x
+        [k] -> x <$ warning ("Unexpected key: " ++ show (prettySimpleKey k))
+        ks  -> x <$ warning ("Unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
 
 -- | Return the remaining portion of the table being matched.
 getTable :: ParseTable Table
@@ -217,21 +221,3 @@ reqKey key =
     case mb of
         Nothing -> fail ("Missing key: " ++ show (prettySimpleKey key))
         Just v -> pure v
-
--- | Discard the remainder of the table to ignore any unused keys
-rejectUnusedKeys :: ParseTable ()
-rejectUnusedKeys =
- do t <- getTable
-    case Map.keys t of
-        []  -> pure ()
-        [k] -> fail ("Unexpected key: " ++ show (prettySimpleKey k))
-        ks  -> fail ("Unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
-
--- | Discard the remainder of the table to ignore any unused keys
-warnUnusedKeys :: ParseTable ()
-warnUnusedKeys =
- do t <- getTable
-    case Map.keys t of
-        []  -> pure ()
-        [k] -> warnTable ("Unexpected key: " ++ show (prettySimpleKey k))
-        ks  -> warnTable ("Unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
