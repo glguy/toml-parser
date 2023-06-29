@@ -10,7 +10,16 @@ This module parses TOML tokens into a list of raw,
 uninterpreted sections and assignments.
 
 -}
-module Toml.Parser (parseRawToml) where
+module Toml.Parser (
+  -- * types
+  Expr(..),
+  SectionKind(..),
+  Val(..),
+  Key,
+
+  -- * parser
+  parseRawToml,
+  ) where
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -18,8 +27,8 @@ import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 
 import Toml.Located (Located(Located, locPosition, locThing))
 import Toml.Position (posLine)
-import Toml.Raw
-import Toml.Token
+import Toml.Parser.Types
+import Toml.Lexer (Token(..))
 
 }
 

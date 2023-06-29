@@ -33,6 +33,9 @@ module Toml.FromValue (
     withScope,
     warning,
 
+    -- * results
+    Result(..),
+
     -- * table matching
     ParseTable,
     runParseTable,
@@ -47,11 +50,9 @@ module Toml.FromValue (
     setTable,
     ) where
 
-import Control.Applicative (Alternative)
-import Control.Monad (zipWithM, unless, MonadPlus)
+import Control.Monad (zipWithM)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State (StateT(..), evalStateT, put, get)
+import Control.Monad.Trans.State.Strict (StateT(..), evalStateT, put, get)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.List (intercalate)
 import Data.Map (Map)
@@ -60,41 +61,11 @@ import Data.String (IsString (fromString))
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
+import Toml.FromValue.Matcher (Matcher, runMatcher, withScope, warning)
+import Toml.FromValue.Result (Result(..))
 import Toml.Pretty (prettySimpleKey, prettyValue)
-import Toml.Result
 import Toml.Value (Value(..), Table)
 
--- | Computations that result in a 'Result' and which track a list
--- of nested contexts to assist in generating warnings and error
--- messages.
---
--- Use 'withScope' to run a 'Matcher' in a new, nested scope.
-newtype Matcher a = Matcher (ReaderT [String] Result a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
-
--- | Run a 'Matcher' with an empty scope.
-runMatcher :: Matcher a -> Result a
-runMatcher (Matcher m) = runReaderT m []
-
--- | Run a 'Matcher' with a locally extended scope.
-withScope :: String -> Matcher a -> Matcher a
-withScope ctx (Matcher m) = Matcher (local (ctx:) m)
-
--- | Get the current list of scopes.
-getScope :: Matcher [String]
-getScope = Matcher (asks reverse)
-
--- | Emit a warning mentioning the current scope.
-warning :: String -> Matcher ()
-warning w =
- do loc <- getScope
-    Matcher (lift (warn (w ++ " in top" ++ concat loc)))
-
--- | Fail with an error message annotated to the current location.
-instance MonadFail Matcher where
-    fail e =
-     do loc <- getScope
-        Matcher (fail (e ++ " in " ++ concat loc))
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where

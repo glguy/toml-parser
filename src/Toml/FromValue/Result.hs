@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Result
+Module      : Toml.FromValue.Result
 Description : Computation result tracking warnings and failure
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -13,7 +13,7 @@ Emit error messages using 'fail'.
 Emit warning messages using 'warn'.
 
 -}
-module Toml.Result (
+module Toml.FromValue.Result (
     Result(..),
     warn,
 
@@ -24,7 +24,7 @@ module Toml.Result (
 
 import Control.Monad (ap, MonadPlus (mzero, mplus), liftM)
 import Control.Applicative (Alternative (empty, (<|>)))
-import Data.Foldable (Foldable(toList))
+import Toml.FromValue.List
 
 -- | Computations that can fail with an error message or succeed with zero
 -- or more warning messages.
@@ -64,39 +64,3 @@ instance MonadPlus Result where
 -- | @'fail' = 'Failure'@
 instance MonadFail Result where
     fail = Failure
-
--- | A list type that deals with appends well on the left and right side
-data List a
-    = Nil
-    | One a
-    | App (List a) (List a)
-
-instance Eq a => Eq (List a) where
-    x == y = toList x == toList y
-
-instance Ord a => Ord (List a) where
-    compare x y = compare (toList x) (toList y)
-
-instance Show a => Show (List a) where
-    showsPrec p x = showParen (p >= 11) (showString "fromList " . shows (toList x))
-
-instance Monoid (List a) where
-    mempty = Nil
-
-instance Semigroup (List a) where
-    Nil <> t = t
-    t <> Nil = t
-    a <> b = App a b
-
-instance Foldable List where
-    foldr _ z Nil       = z
-    foldr f z (One a  ) = f a z
-    foldr f z (App a b) = foldr f (foldr f z b) a
-
--- | Construct an abstract 'List' from a normal '[]'.
-fromList :: [a] -> List a
-fromList [] = Nil
-fromList (x:xs) = go x xs
-    where
-        go y []     = One y
-        go y (z:zs) = App (One y) (go z zs)

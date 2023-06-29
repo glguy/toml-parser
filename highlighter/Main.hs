@@ -12,12 +12,7 @@ Decode TOML into JSON for use with <https://github.com/BurntSushi/toml-test>
 module Main (main) where
 
 import Prettyprinter.Render.Terminal
-import System.Exit (exitFailure)
-import Toml (parse)
-import Toml.Lexer (scanTokens)
-import Toml.Parser (parseRawToml)
-import Toml.Pretty (prettyToml, DocClass(..))
-import Toml.Raw (SectionKind(..))
+import Toml (parse, prettyToml, DocClass(..))
 
 main :: IO ()
 main =

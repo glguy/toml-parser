@@ -39,9 +39,8 @@ import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
 import Text.Printf (printf)
-import Toml.Position (Position(..))
-import Toml.Raw (SectionKind(..))
-import Toml.Token (Token(..))
+import Toml.Parser (SectionKind(..))
+import Toml.Lexer (Token(..))
 import Toml.Value (Value(..), Table)
 
 -- | Annotation used to enable styling pretty-printed TOML

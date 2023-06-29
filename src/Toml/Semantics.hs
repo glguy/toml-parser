@@ -22,7 +22,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Text.Printf (printf)
 import Toml.Located (locThing, Located, locPosition)
-import Toml.Raw (SectionKind(..), Key, Val(..), Expr(..))
+import Toml.Parser (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table, Value(..))
 import Toml.Position (Position(..))
 import Toml.Pretty (prettySimpleKey)

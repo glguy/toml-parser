@@ -17,13 +17,13 @@ This module uses actions and lexical hooks defined in
 "LexerUtils".
 
 -}
-module Toml.Lexer (scanTokens, lexValue) where
+module Toml.Lexer (scanTokens, lexValue, Token(..)) where
 
-import Control.Monad.Trans.State (runState)
-import Toml.LexerUtils
+import Control.Monad.Trans.State.Strict (runState)
+import Toml.Lexer.Token
+import Toml.Lexer.Utils
 import Toml.Located
 import Toml.Position
-import Toml.Token
 
 }
 $non_ascii        = \x1

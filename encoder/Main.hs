@@ -18,10 +18,8 @@ import Data.Aeson.Types qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
 import Data.Foldable (toList)
 import System.Exit (exitFailure)
-import Toml qualified
-import Toml.Lexer (lexValue)
-import Toml.Pretty (prettyToml)
-import Toml.Token (Token(..))
+import Toml (prettyToml, Value(..))
+import Toml.Lexer (lexValue, Token(..))
 
 main :: IO ()
 main =

@@ -14,7 +14,7 @@ for overlapping assignments.
 Further processing will happen in the "Semantics" module.
 
 -}
-module Toml.Raw (
+module Toml.Parser.Types (
     Key,
     Expr(..),
     Val(..),

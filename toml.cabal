@@ -31,16 +31,18 @@ library
     exposed-modules:
         Toml
         Toml.FromValue
+        Toml.FromValue.List
+        Toml.FromValue.Matcher
+        Toml.FromValue.Result
         Toml.Lexer
-        Toml.LexerUtils
+        Toml.Lexer.Token
+        Toml.Lexer.Utils
         Toml.Located
         Toml.Parser
+        Toml.Parser.Types
         Toml.Position
         Toml.Pretty
-        Toml.Result
-        Toml.Raw
         Toml.Semantics
-        Toml.Token
         Toml.ToValue
         Toml.Value
     build-depends:

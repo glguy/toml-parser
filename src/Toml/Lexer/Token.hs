@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Token
+Module      : Toml.Lexer.Token
 Description : Lexical tokens
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,7 +10,7 @@ syntax of TOML files. These tokens will drive the
 parser in the "Parser" module.
 
 -}
-module Toml.Token (
+module Toml.Lexer.Token (
     Token(..),
     
     mkBasicString,

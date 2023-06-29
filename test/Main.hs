@@ -18,12 +18,9 @@ import Data.Map qualified as Map
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
-import Toml (Value(..), parse, decode)
+import Toml (Value(..), parse, decode, Result(Success), prettyToml, Table)
 import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable), rejectUnusedKeys)
-import Toml.Pretty (prettyToml)
-import Toml.Result (Result(Success))
 import Toml.ToValue (table, (.=))
-import Toml.Value (Table)
 
 main :: IO ()
 main = hspec do

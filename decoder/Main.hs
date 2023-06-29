@@ -14,7 +14,6 @@ module Main (main) where
 
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
-import System.Exit (exitFailure)
 import Toml (Value(..), parse)
 import Toml.Pretty (prettyValue)
 

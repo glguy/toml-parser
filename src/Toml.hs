@@ -12,31 +12,37 @@ as carefully as possible.
 
 -}
 module Toml (
+
+    -- * types
+    Table,
     Value(..),
+
+    -- * parsing
     parse,
+
+    -- * printing
     prettyToml,
+    DocClass(..),
 
     -- * Serialization
     decode,
     encode,
+    Result(..),
     ) where
 
-import Data.Map (Map)
 import Text.Printf (printf)
-import Toml.FromValue (FromTable (fromTable), runMatcher)
-import Toml.Lexer (scanTokens)
+import Toml.FromValue (FromTable (fromTable), runMatcher, Result(..))
+import Toml.Lexer (scanTokens, Token(TokError))
 import Toml.Located (Located(Located))
 import Toml.Parser (parseRawToml)
-import Toml.Pretty (TomlDoc, prettyToken, prettyToml)
+import Toml.Position (Position(posColumn, posLine))
+import Toml.Pretty (TomlDoc, DocClass(..), prettyToken, prettyToml)
 import Toml.Semantics (semantics)
 import Toml.ToValue (ToTable (toTable))
-import Toml.Value (Value(..))
-import Toml.Position (Position(posColumn, posLine))
-import Toml.Token (Token(TokError))
-import Toml.Result (Result)
+import Toml.Value (Table, Value(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.
-parse :: String -> Either String (Map String Value)
+parse :: String -> Either String Table
 parse str =
     case parseRawToml (scanTokens str) of
         Left (Located p (TokError e)) ->
