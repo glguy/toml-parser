@@ -1,3 +1,18 @@
+{-|
+Module      : Toml.Result
+Description : Computation result tracking warnings and failure
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+This type functions like a more elaborate @'Either' 'String'@ extended
+to also track warning messages, in addition to error messages.
+
+Emit error messages using 'fail'.
+
+Emit warning messages using 'warn'.
+
+-}
 module Toml.Result (
     Result(..),
     warn,

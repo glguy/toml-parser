@@ -5,10 +5,27 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
+Use 'FromValue' to define a transformation from some 'Value' to an application
+domain type.
+
+Use 'FromTable' to define transformations specifically from 'Table'. These
+instances are interesting because all top-level TOML values are tables,
+so these are the types that work for top-level deserialization.
+
+Use 'ParseTable' to help build 'FromTable' instances. It will make it easy to
+track which table keys have been used and which are left over.
+
+Warnings can be emitted using 'warning' and 'warnTable' (depending on what)
+context you're in. These warnings can provide useful feedback about
+problematic decodings or keys that might be unused now but were perhaps
+meaningful in an old version of a configuration file.
+
 -}
 module Toml.FromValue (
+    -- * deserialization classes
     FromValue(..),
     FromTable(..),
+    defaultTableFromValue,
 
     -- * matcher
     Matcher,
@@ -18,18 +35,21 @@ module Toml.FromValue (
 
     -- * table matching
     ParseTable,
-    defaultTableFromValue,
     runParseTable,
     optKey,
     reqKey,
     warnUnusedKeys,
     rejectUnusedKeys,
     warnTable,
+
+    -- * table matching primitives
     getTable,
     setTable,
     ) where
 
+import Control.Applicative (Alternative)
 import Control.Monad (zipWithM, unless, MonadPlus)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State (StateT(..), evalStateT, put, get)
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -43,8 +63,6 @@ import Numeric.Natural (Natural)
 import Toml.Pretty (prettySimpleKey, prettyValue)
 import Toml.Result
 import Toml.Value (Value(..), Table)
-import Control.Applicative (Alternative)
-import Control.Monad.Trans.Class (lift)
 
 newtype Matcher a = Matcher (ReaderT [String] Result a)
     deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
@@ -71,7 +89,7 @@ instance MonadFail Matcher where
 class FromValue a where
     -- | Convert a 'Value' or report an error message
     fromValue :: Value -> Matcher a
-    
+
     -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
     listFromValue :: Value -> Matcher [a]
     listFromValue (Array xs) = zipWithM (\i v -> matchContext ("[" ++ show i ++ "]") (fromValue v)) [0::Int ..] xs
