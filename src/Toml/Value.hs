@@ -18,6 +18,7 @@ module Toml.Value (
 import Data.Map (Map)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 
+-- | Representation of a TOML key-value table.
 type Table = Map String Value
 
 -- | Semantic TOML value with all table assignments resolved.

@@ -30,9 +30,9 @@ type Key = NonEmpty (Located String)
 
 -- | Headers and assignments corresponding to lines of a TOML file
 data Expr
-    = KeyValExpr     Key Val -- ^ line-no key value
-    | TableExpr      Key     -- ^ line-no table-header
-    | ArrayTableExpr Key     -- ^ line-no array-table-header
+    = KeyValExpr     Key Val -- ^ key value assignment: @key = value@
+    | TableExpr      Key     -- ^ table: @[key]@
+    | ArrayTableExpr Key     -- ^ array of tables: @[[key]]@
     deriving (Read, Show)
 
 -- | Unvalidated TOML values. Table are represented as a list of

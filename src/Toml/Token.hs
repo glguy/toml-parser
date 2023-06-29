@@ -72,22 +72,27 @@ data Token
 scrub :: String -> String
 scrub = filter ('_' /=)
 
+-- | Construct a 'TokInteger' from a decimal integer literal lexeme.
 mkDecInteger :: String -> Token
 mkDecInteger ('+':xs) = TokInteger (read (scrub xs))
 mkDecInteger xs = TokInteger (read (scrub xs))
 
+-- | Construct a 'TokInteger' from a hexadecimal integer literal lexeme.
 mkHexInteger :: String -> Token
 mkHexInteger ('0':'x':xs) = TokInteger (fst (head (readHex (scrub xs))))
 mkHexInteger _ = error "processHex: bad input"
 
+-- | Construct a 'TokInteger' from a octal integer literal lexeme.
 mkOctInteger :: String -> Token
 mkOctInteger ('0':'o':xs) = TokInteger (fst (head (readOct (scrub xs))))
 mkOctInteger _ = error "processHex: bad input"
 
+-- | Construct a 'TokInteger' from a binary integer literal lexeme.
 mkBinInteger :: String -> Token
 mkBinInteger ('0':'b':xs) = TokInteger (fst (head (readBin (scrub xs))))
 mkBinInteger _ = error "processHex: bad input"
 
+-- | Construct a 'TokFloat' from a floating-point literal lexeme.
 mkFloat :: String -> Token
 mkFloat "nan"   = TokFloat (0/0)
 mkFloat "+nan"  = TokFloat (0/0)
@@ -98,9 +103,11 @@ mkFloat "-inf"  = TokFloat (-1/0)
 mkFloat ('+':x) = TokFloat (read (scrub x))
 mkFloat x       = TokFloat (read (scrub x))
 
+-- | Construct a 'TokString' from a literal string lexeme.
 mkLiteralString :: String -> Token
 mkLiteralString = TokString . tail . init
 
+-- | Construct a 'TokString' from a basic string lexeme.
 mkBasicString :: String -> Token
 mkBasicString "" = error "processBasic: missing initializer"
 mkBasicString (_:start) = enforceScalar TokString (go start)
@@ -118,6 +125,7 @@ mkBasicString (_:start) = enforceScalar TokString (go start)
         go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
         go (x:xs) = x : go xs
 
+-- | Construct a 'TokMlString' from a basic multi-line string lexeme.
 mkMlBasicString :: String -> Token
 mkMlBasicString str =
     enforceScalar TokMlString
@@ -144,6 +152,7 @@ mkMlBasicString str =
       go (x:xs) = x : go xs
       go [] = error "processMlBasic: missing terminator"
 
+-- | Construct a 'TokMlString' from a literal multi-line string lexeme.
 mkMlLiteralString :: String -> Token
 mkMlLiteralString str =
     TokMlString
@@ -164,20 +173,25 @@ enforceScalar f str
     where
         isInvalid x = '\xd800' <= x && x < '\xe000'
 
+-- | Make a 'TokError' from a lexical error message.
 mkError :: String -> Token
 mkError str = TokError ("Lexical error: " ++ show (head str))
 
+-- | Format strings for local date lexemes.
 localDatePatterns :: [String]
 localDatePatterns = ["%Y-%m-%d"]
 
+-- | Format strings for local time lexemes.
 localTimePatterns :: [String]
 localTimePatterns = ["%H:%M:%S%Q"]
 
+-- | Format strings for local datetime lexemes.
 localDateTimePatterns :: [String]
 localDateTimePatterns =
     ["%Y-%m-%dT%H:%M:%S%Q",
     "%Y-%m-%d %H:%M:%S%Q"]
 
+-- | Format strings for offset datetime lexemes.
 offsetDateTimePatterns :: [String]
 offsetDateTimePatterns =
     ["%Y-%m-%dT%H:%M:%S%Q%Ez","%Y-%m-%dT%H:%M:%S%QZ",

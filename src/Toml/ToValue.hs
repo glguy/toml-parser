@@ -23,26 +23,46 @@ import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Value (Value(..), Table)
 
+-- | Build a 'Table' from a list of key-value pairs.
+--
+-- Use '.=' for a convenient way to build the pairs.
 table :: [(String, Value)] -> Value
 table = Table . Map.fromList
 
+-- | Convenience function for building key-value pairs while
+-- constructing a 'Table'.
+--
+-- @'table' [a '.=' b, c '.=' d]@
 (.=) :: ToValue a => String -> a -> (String, Value)
 k .= v = (k, toValue v)
 
+-- | Class for types that can be embedded into 'Value'
 class ToValue a where
+
+    -- | Embed a single thing into a TOML value.
     toValue :: a -> Value
 
+    -- | Helper for converting a list of things into a value. This is typically
+    -- left to be defined by its default implementation and exists to help define
+    -- the encoding for TOML arrays.
     toValueList :: [a] -> Value
     toValueList = Array . map toValue
 
+-- | Class for things that can be embedded into a TOML table.
+--
+-- Implement this for things that embed into a 'Table' and then
+-- the 'ToValue' instance can be derived with 'defaultTableToValue'.
 class ToValue a => ToTable a where
+
+    -- | Convert a single value into a table
     toTable :: a -> Table
 
+-- | Convenience function for building 'ToValue' instances.
 defaultTableToValue :: ToTable a => a -> Value
 defaultTableToValue = Table . toTable
 
 instance ToValue Value where
-    toValue v = v
+    toValue = id
 
 -- | Single characters are encoded as singleton strings. Lists of characters
 -- are encoded as a single string value.

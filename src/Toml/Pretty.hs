@@ -17,12 +17,10 @@ module Toml.Pretty (
 
     -- * semantic values
     prettyToml,
-    prettyToml_,
     prettyValue,
 
     -- * syntactic components
     prettyToken,
-    prettyPosition,
     prettySectionKind,
 
     -- * keys
@@ -56,19 +54,26 @@ data DocClass
     | BoolClass   -- ^ boolean literals
     deriving (Read, Show, Eq, Ord)
 
+-- | Pretty-printer document with TOML class attributes to aid
+-- in syntax-highlighting.
 type TomlDoc = Doc DocClass
 
+-- | Renders a dotted-key using quotes where necessary and annotated
+-- as a 'KeyClass'.
 prettyKey :: NonEmpty String -> TomlDoc
 prettyKey = annotate KeyClass . fold . NonEmpty.intersperse dot . fmap prettySimpleKey
 
+-- | Renders a simple-key using quotes where necessary.
 prettySimpleKey :: String -> Doc a
 prettySimpleKey str
     | not (null str), all isBareKey str = fromString str
     | otherwise                         = fromString (quoteString str)
 
+-- | Predicate for the character-class that is allowed in bare keys
 isBareKey :: Char -> Bool
 isBareKey x = isAsciiLower x || isAsciiUpper x || isDigit x || x == '-' || x == '_'
 
+-- | Quote a string using basic string literal syntax.
 quoteString :: String -> String
 quoteString = ('"':) . go
     where
@@ -86,15 +91,12 @@ quoteString = ('"':) . go
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
+-- | Pretty-print a section heading. The result is annotated as a 'TableClass'.
 prettySectionKind :: SectionKind -> NonEmpty String -> TomlDoc
 prettySectionKind TableKind      key =
     annotate TableClass (unAnnotate (lbracket <> prettyKey key <> rbracket))
 prettySectionKind ArrayTableKind key =
     annotate TableClass (unAnnotate (lbracket <> lbracket <> prettyKey key <> rbracket <> rbracket))
-
-prettyPosition :: Position -> String
-prettyPosition Position { posIndex = _, posLine = l, posColumn = c } =
-    "line " ++ show l ++ " column " ++ show c
 
 -- | Render token for human-readable error messages.
 prettyToken :: Token -> String

@@ -30,7 +30,7 @@ module Toml.FromValue (
     -- * matcher
     Matcher,
     runMatcher,
-    matchContext,
+    withScope,
     warning,
 
     -- * table matching
@@ -64,37 +64,49 @@ import Toml.Pretty (prettySimpleKey, prettyValue)
 import Toml.Result
 import Toml.Value (Value(..), Table)
 
+-- | Computations that result in a 'Result' and which track a list
+-- of nested contexts to assist in generating warnings and error
+-- messages.
+--
+-- Use 'withScope' to run a 'Matcher' in a new, nested scope.
 newtype Matcher a = Matcher (ReaderT [String] Result a)
     deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
 
+-- | Run a 'Matcher' with an empty scope.
 runMatcher :: Matcher a -> Result a
-runMatcher (Matcher m) = runReaderT m ["top"]
+runMatcher (Matcher m) = runReaderT m []
 
-matchContext :: String -> Matcher a -> Matcher a
-matchContext ctx (Matcher m) = Matcher (local (ctx:) m)
+-- | Run a 'Matcher' with a locally extended scope.
+withScope :: String -> Matcher a -> Matcher a
+withScope ctx (Matcher m) = Matcher (local (ctx:) m)
 
-getContext :: Matcher [String]
-getContext = Matcher (asks reverse)
+-- | Get the current list of scopes.
+getScope :: Matcher [String]
+getScope = Matcher (asks reverse)
 
+-- | Emit a warning mentioning the current scope.
 warning :: String -> Matcher ()
 warning w =
- do loc <- getContext
-    Matcher (lift (warn (w ++ " in " ++ concat loc)))
+ do loc <- getScope
+    Matcher (lift (warn (w ++ " in top" ++ concat loc)))
 
 -- | Fail with an error message annotated to the current location.
 instance MonadFail Matcher where
     fail e =
-     do loc <- getContext
+     do loc <- getScope
         Matcher (fail (e ++ " in " ++ concat loc))
+
+-- | Class for types that can be decoded from a TOML value.
 class FromValue a where
     -- | Convert a 'Value' or report an error message
     fromValue :: Value -> Matcher a
 
     -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
     listFromValue :: Value -> Matcher [a]
-    listFromValue (Array xs) = zipWithM (\i v -> matchContext ("[" ++ show i ++ "]") (fromValue v)) [0::Int ..] xs
+    listFromValue (Array xs) = zipWithM (\i v -> withScope ("[" ++ show i ++ "]") (fromValue v)) [0::Int ..] xs
     listFromValue v = typeError "array" v
 
+-- | Class for types that can be decoded from a TOML table.
 class FromValue a => FromTable a where
     -- | Convert a 'Table' or report an error message
     fromTable :: Table -> Matcher a
@@ -102,7 +114,7 @@ class FromValue a => FromTable a where
 instance (Ord k, IsString k, FromValue v) => FromTable (Map k v) where
     fromTable t = Map.fromList <$> traverse f (Map.assocs t)
         where
-            f (k,v) = (,) (fromString k) <$> matchContext ('.':show (prettySimpleKey k)) (fromValue v)
+            f (k,v) = (,) (fromString k) <$> withScope ('.':show (prettySimpleKey k)) (fromValue v)
 
 instance (Ord k, IsString k, FromValue v) => FromValue (Map k v) where
     fromValue = defaultTableFromValue
@@ -190,21 +202,31 @@ instance FromValue LocalTime where
 instance FromValue Value where
     fromValue = pure
 
+-- | A 'Matcher' that tracks a current set of unmatched key-value
+-- pairs from a table.
+--
+-- Use 'optKey', 'reqKey', 'rej
 newtype ParseTable a = ParseTable (StateT Table Matcher a)
     deriving (Functor, Applicative, Monad)
 
 instance MonadFail ParseTable where
     fail = ParseTable . fail
 
+-- | Run a 'ParseTable' computation with a given starting 'Table'.
+-- The final table is discarded. Use 'getTable' at the end of the
+-- computation to retrieve it, if needed.
 runParseTable :: ParseTable a -> Table -> Matcher a
 runParseTable (ParseTable p) = evalStateT p
 
+-- | Return the remaining portion of the table being matched.
 getTable :: ParseTable Table
 getTable = ParseTable get
 
+-- | Replace the remaining portion of the table being matched.
 setTable :: Table -> ParseTable ()
 setTable = ParseTable . put
 
+-- | Emit a warning at the current location.
 warnTable :: String -> ParseTable ()
 warnTable = ParseTable . lift . warning
 
@@ -214,7 +236,7 @@ optKey key = ParseTable $ StateT \t ->
     case Map.lookup key t of
         Nothing -> pure (Nothing, t)
         Just v ->
-         do r <- matchContext ('.' : show (prettySimpleKey key)) (fromValue v)
+         do r <- withScope ('.' : show (prettySimpleKey key)) (fromValue v)
             pure (Just r, Map.delete key t)
 
 -- | Match a table entry by key or report an error if missing.

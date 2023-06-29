@@ -33,6 +33,7 @@ data Result a
     | Success !(List String) a -- warnings and result
     deriving (Show, Eq, Ord)
 
+-- | Emit a single warning message and succeed returning @()@.
 warn :: String -> Result ()
 warn w = Success (One w) ()
 
@@ -92,6 +93,7 @@ instance Foldable List where
     foldr f z (One a  ) = f a z
     foldr f z (App a b) = foldr f (foldr f z b) a
 
+-- | Construct an abstract 'List' from a normal '[]'.
 fromList :: [a] -> List a
 fromList [] = Nil
 fromList (x:xs) = go x xs
