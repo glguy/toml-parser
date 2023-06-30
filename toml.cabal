@@ -31,9 +31,7 @@ library
     exposed-modules:
         Toml
         Toml.FromValue
-        Toml.FromValue.List
         Toml.FromValue.Matcher
-        Toml.FromValue.Result
         Toml.Lexer
         Toml.Lexer.Token
         Toml.Lexer.Utils

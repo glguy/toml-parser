@@ -53,7 +53,7 @@ parse str =
 
 -- | Use the 'FromTable' instance to decode a value from a TOML string.
 decode :: FromTable a => String -> Result a
-decode = either fail (runMatcher . fromTable) . parse
+decode = either Failure (runMatcher . fromTable) . parse
 
 -- | Use the 'ToTable' instance to encode a value to a TOML string.
 encode :: ToTable a => a -> TomlDoc

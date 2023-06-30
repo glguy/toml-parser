@@ -12,25 +12,38 @@ module Toml.FromValue.Matcher (
     withScope,
     getScope,
     warning,
+
+    Result(..),
     ) where
 
 import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus(..))
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader (asks, local, ReaderT(..))
-import Toml.FromValue.Result (Result, warn)
+import Control.Monad.Trans.Writer.CPS (runWriterT, tell, WriterT)
 
 -- | Computations that result in a 'Result' and which track a list
 -- of nested contexts to assist in generating warnings and error
 -- messages.
 --
 -- Use 'withScope' to run a 'Matcher' in a new, nested scope.
-newtype Matcher a = Matcher (ReaderT [String] Result a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
+newtype Matcher a = Matcher (ReaderT [String] (WriterT (DList String) (Either String)) a)
+    deriving (Functor, Applicative, Monad)
+
+type DList a = [a] -> [a]
+
+-- | Computation outcome with error and warning messages.
+data Result a
+    = Failure String -- error message
+    | Success [String] a -- warnings and result
+    deriving (Read, Show, Eq, Ord)
 
 -- | Run a 'Matcher' with an empty scope.
 runMatcher :: Matcher a -> Result a
-runMatcher (Matcher m) = runReaderT m []
+runMatcher (Matcher m) =
+    case runWriterT (runReaderT m []) of
+        Left e -> Failure e
+        Right (x,w) -> Success (w []) x
 
 -- | Run a 'Matcher' with a locally extended scope.
 withScope :: String -> Matcher a -> Matcher a
@@ -44,10 +57,10 @@ getScope = Matcher (asks reverse)
 warning :: String -> Matcher ()
 warning w =
  do loc <- getScope
-    Matcher (lift (warn (w ++ " in top" ++ concat loc)))
+    Matcher (lift (tell ((w ++ " in top" ++ concat loc):)))
 
 -- | Fail with an error message annotated to the current location.
 instance MonadFail Matcher where
     fail e =
      do loc <- getScope
-        Matcher (fail (e ++ " in " ++ concat loc))
+        Matcher (lift (lift (Left (e ++ " in top" ++ concat loc))))
