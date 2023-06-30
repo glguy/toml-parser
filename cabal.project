@@ -1,0 +1,3 @@
+packages:
+  ./toml-parser.cabal
+  test-drivers/toml-test-drivers.cabal
