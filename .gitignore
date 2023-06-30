@@ -33,6 +33,7 @@ cabal.sandbox.config
 codex.tags
 docs
 stack.yaml
+stack.yaml.lock
 tags
 wiki
 wip

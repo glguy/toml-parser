@@ -1,7 +1,7 @@
 cradle:
   cabal:
     - path: "./src"
-      component: "toml-parser:lib:toml"
+      component: "toml-parser:lib:toml-parser"
     - path: "./test"
       component: "toml-parser:test:unittests"
     - path: "./test-drivers/encoder"
