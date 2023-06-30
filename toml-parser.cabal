@@ -15,6 +15,10 @@ category:           Text
 build-type:         Simple
 tested-with:        GHC == 9.2.8, GHC == 9.4.5, GHC == 9.6.2
 
+extra-doc-files:
+    ChangeLog.md
+    README.md
+
 source-repository head
     type: git
     location: https://github.com/glguy/toml-parser
