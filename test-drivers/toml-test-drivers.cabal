@@ -34,7 +34,7 @@ executable TomlDecoder
     hs-source-dirs:     decoder
     main-is:            Main.hs
     build-depends:
-        aeson ^>= 2.2.0,
+        aeson >= 2.1 && < 2.3,
         base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
         bytestring ^>= 0.11,
         toml-parser ^>= 1.0.0,
@@ -44,7 +44,7 @@ executable TomlEncoder
     hs-source-dirs:     encoder
     main-is:            Main.hs
     build-depends:
-        aeson ^>= 2.2.0,
+        aeson >= 2.1 && < 2.3,
         base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
         bytestring ^>= 0.11,
         toml-parser ^>= 1.0.0,

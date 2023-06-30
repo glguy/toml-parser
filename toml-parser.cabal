@@ -73,7 +73,7 @@ test-suite unittests
     build-depends:
         base,
         containers,
-        hspec           ^>= 2.11,
+        hspec           >= 2.10 && < 2.12,
         template-haskell ^>= 2.18 || ^>= 2.19 || ^>= 2.20,
         time,
         toml-parser,
