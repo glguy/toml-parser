@@ -19,7 +19,7 @@ import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse, decode, encode, Result(Success), prettyToml, Table)
 import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable))
-import Toml.ToValue (table, (.=))
+import Toml.ToValue (table, (.=), toValue)
 
 main :: IO ()
 main = hspec do
@@ -50,6 +50,16 @@ main = hspec do
         parse "x\t=\t="
         `shouldBe`
         Left "1:17: parse error: unexpected '='"
+
+      it "detects non-scalars in strings" $
+        parse "x = \"\\udfff\""
+        `shouldBe`
+        Left "1:6: lexical error: non-scalar unicode escape"
+
+  describe "ToValue"
+   do
+    it "converts characters as singleton strings" $
+      toValue '!' `shouldBe` String "!"
 
   describe "parse" do
     describe "comment"
@@ -262,7 +272,7 @@ main = hspec do
         it "rejects out of range unicode escapes" $
           parse [quoteStr|
             x = "\U11111111"|]
-          `shouldBe` Left "1:8: lexical error: unexpected '1'"
+          `shouldBe` Left "1:6: lexical error: unicode escape too large"
 
     describe "integer"
      do it "parses literals correctly" $
@@ -817,9 +827,9 @@ prettyTests =
         y = 4|]
 
     it "renders escapes in strings" $
-      fmap tomlString (parse "a=\"\\b\\t\\r\\f\\\"\\u007f\\U0001000c\"")
+      fmap tomlString (parse "a=\"\\\\\\b\\t\\r\\n\\f\\\"\\u007f\\U0001000c\"")
         `shouldBe` Right [quoteStr|
-        a = "\b\t\r\f\"\u007F\U0001000C"|]
+        a = "\\\b\t\r\n\f\"\u007F\U0001000C"|]
 
     it "renders floats" $
       fmap tomlString (parse "a=0.0\nb=-0.1\nc=0.1\nd=3.141592653589793\ne=4e123")
@@ -861,6 +871,13 @@ prettyTests =
       fmap tomlString (parse "''.'a b'.'\"' = 10")
         `shouldBe` Right [quoteStr|
         ""."a b"."\"" = 10|]
+
+    it "renders inline tables" $
+      fmap tomlString (parse [quoteStr|
+        x = [[{a = 'this is a longer example', b = 'and it will linewrap'},{c = 'all on its own'}]]|])
+        `shouldBe` Right [quoteStr|
+          x = [ [ {a = "this is a longer example", b = "and it will linewrap"}
+                , {c = "all on its own"} ] ]|]
 
 newtype Fruits = Fruits [Fruit]
     deriving (Eq, Show)

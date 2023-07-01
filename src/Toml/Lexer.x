@@ -19,7 +19,7 @@ This module uses actions and lexical hooks defined in
 -}
 module Toml.Lexer (scanTokens, lexValue, Token(..)) where
 
-import Control.Monad.Trans.State.Strict (runState)
+import Control.Monad.Trans.State.Strict (evalState, runState)
 import Toml.Lexer.Token
 import Toml.Lexer.Utils
 import Toml.Located
@@ -41,12 +41,6 @@ $comment_start_symbol = \#
 
 @barekey = [0-9 A-Z a-z \- _]+
 
-@escape_seq_char  = [\x22 \x5C \x62 \x66 \x6E \x72 \x74] | "u" $hexdig{4}
-                  | "U0010" $hexdig{4}
-                  | "U000"  $hexdig{5}
-@escaped          = \\ @escape_seq_char
-@basic_char       = $basic_unescaped | @escaped
-
 @unsigned_dec_int = $digit | [1-9] ($digit | _ $digit)+
 @dec_int = [\-\+]? @unsigned_dec_int
 @zero_prefixable_int = $digit ($digit | _ $digit)*
@@ -64,8 +58,7 @@ $comment_start_symbol = \#
 $non_eol = [\x09 \x20-\x7E $non_ascii]
 @comment = $comment_start_symbol $non_eol*
 
-$literal_char = [ \x09 \x20-\x26 \x28-\x7E $non_ascii ]
-@basic_string = \" @basic_char* \"
+$literal_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
 @literal_string = "'" $literal_char* "'"
 
 @ml_literal_string_delim = "'''"
@@ -75,25 +68,19 @@ $mll_char = [\x09 \x20-\x26 \x28-\x7E]
 @ml_literal_body = @mll_content* (@mll_quotes @mll_content+)* @mll_quotes?
 @ml_literal_string = @ml_literal_string_delim @newline? @ml_literal_body @ml_literal_string_delim
 
-@ml_basic_string_delim = \" \" \"
-@mlb_quotes = \" \"?
 @mlb_escaped_nl = \\ @ws @newline ($wschar | @newline)*
-$mlb_unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
-@mlb_char = $mlb_unescaped | @escaped
-@mlb_content = @mlb_char | @newline | @mlb_escaped_nl
-@ml_basic_body = @mlb_content* (@mlb_quotes @mlb_content+)* @mlb_quotes?
-@ml_basic_string = @ml_basic_string_delim @newline? @ml_basic_body @ml_basic_string_delim
+$unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
 
-@date_fullyear = $digit {4}
-@date_month = $digit {2}
-@date_mday = $digit {2}
-$time_delim = [Tt\ ]
-@time_hour = $digit {2}
-@time_minute = $digit {2}
-@time_second = $digit {2}
-@time_secfrac = "." $digit+
+@date_fullyear  = $digit {4}
+@date_month     = $digit {2}
+@date_mday      = $digit {2}
+$time_delim     = [Tt\ ]
+@time_hour      = $digit {2}
+@time_minute    = $digit {2}
+@time_second    = $digit {2}
+@time_secfrac   = "." $digit+
 @time_numoffset = [\+\-] @time_hour ":" @time_minute
-@time_offset = [Zz] | @time_numoffset
+@time_offset    = [Zz] | @time_numoffset
 
 @partial_time = @time_hour ":" @time_minute ":" @time_second @time_secfrac?
 @full_date = @date_fullyear "-" @date_month "-" @date_mday
@@ -128,15 +115,14 @@ toml :-
 "]]"                { token_ Tok2SquareC                }
 }
 
+<0,val> {
 @newline            { token_ TokNewline                 }
 @comment;
 $wschar+;
 
-@basic_string       { value mkBasicString               }
 @literal_string     { value mkLiteralString             }
 
 @ml_literal_string  { value mkMlLiteralString           }
-@ml_basic_string    { value mkMlBasicString             }
 
 "="                 { equals                            }
 "."                 { token_ TokPeriod                  }
@@ -147,7 +133,36 @@ $wschar+;
 "{"                 { curlyO                            }
 "}"                 { curlyC                            }
 
-@barekey            { token  TokBareKey                 }
+@barekey            { token TokBareKey                  }
+
+\"{3} @newline?     { startMlStr                        }
+\"                  { startStr                          }
+
+}
+
+<str> {
+  $unescaped+       { strFrag                           }
+  \"                { endStr . fmap (drop 1)            }
+}
+
+<mlstr> {
+  @mlb_escaped_nl;
+  ($unescaped | @newline)+ { strFrag                    }
+  \" {1,2}          { strFrag                           }
+  \" {3,5}          { endStr . fmap (drop 3)            }
+}
+
+<mlstr, str> {
+  \\ U $hexdig{8}   { unicodeEscape                     }
+  \\ u $hexdig{4}   { unicodeEscape                     }
+  \\ n              { strFrag . ("\n" <$)               }
+  \\ t              { strFrag . ("\t" <$)               }
+  \\ r              { strFrag . ("\r" <$)               }
+  \\ f              { strFrag . ("\f" <$)               }
+  \\ b              { strFrag . ("\b" <$)               }
+  \\ \\             { strFrag . ("\\" <$)               }
+  \\ \"             { strFrag . ("\"" <$)               }
+}
 
 {
 
@@ -160,21 +175,30 @@ scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str
 scanTokens' :: [Context] -> AlexInput -> [Located Token]
 scanTokens' st str =
   case alexScan str (stateInt st) of
-    AlexEOF          -> [TokEOF <$ str]
+    AlexEOF          -> [eofToken st str]
     AlexError str'   -> [mkError <$> str']
     AlexSkip  str' _ -> scanTokens' st str'
     AlexToken str' n action ->
-      case runState (traverse (action . take n) str) st of
-        (t, st') -> t : scanTokens' st' str'
+      case runState (action (take n <$> str)) st of
+        (t, st') -> t ++ scanTokens' st' str'
+
+eofToken :: [Context] -> Located String -> Located Token
+eofToken (MlStrContext p _ : _) _ = Located p (TokError "unterminated multi-line string literal")
+eofToken (StrContext   p _ : _) _ = Located p (TokError "unterminated string literal")
+eofToken (ListContext  p   : _) _ = Located p (TokError "unterminated '['")
+eofToken (TableContext p   : _) _ = Located p (TokError "unterminated '{'")
+eofToken _                       s = TokEOF <$ s
 
 stateInt :: [Context] -> Int
-stateInt (ValueContext : _) = val
-stateInt (ListContext  : _) = val
-stateInt _                  = 0
+stateInt (ValueContext   : _) = val
+stateInt (ListContext {} : _) = val
+stateInt (StrContext  {} : _) = str
+stateInt (MlStrContext{} : _) = mlstr
+stateInt _                    = 0
 
 -- | Lex a single token in a value context. This is mostly useful for testing.
 lexValue :: String -> Token
-lexValue str = lexValue_ Located { locPosition = startPos, locThing = str } 
+lexValue str = lexValue_ Located { locPosition = startPos, locThing = str }
 
 lexValue_ :: Located String -> Token
 lexValue_ str =
@@ -182,6 +206,9 @@ lexValue_ str =
     AlexEOF              -> TokError "end of input"
     AlexError{}          -> TokError "lexer error"
     AlexSkip str' _      -> lexValue_ str'
-    AlexToken _ n action -> fst (runState (action (take n (locThing str))) [ValueContext])
+    AlexToken _ n action ->
+      case evalState (action (take n <$> str)) [ValueContext] of
+        t:_ -> locThing t
+        []  -> TokError "lexer error"
 
 }

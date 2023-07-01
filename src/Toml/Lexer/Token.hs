@@ -12,12 +12,10 @@ parser in the "Parser" module.
 -}
 module Toml.Lexer.Token (
     Token(..),
-    
-    mkBasicString,
+
     mkLiteralString,
-    mkMlBasicString,
     mkMlLiteralString,
-    
+
     -- * integer literals
     mkBinInteger,
     mkDecInteger,
@@ -107,51 +105,6 @@ mkFloat x       = TokFloat (read (scrub x))
 mkLiteralString :: String -> Token
 mkLiteralString = TokString . tail . init
 
--- | Construct a 'TokString' from a basic string lexeme.
-mkBasicString :: String -> Token
-mkBasicString "" = error "processBasic: missing initializer"
-mkBasicString (_:start) = enforceScalar TokString (go start)
-    where
-        go [] = error "processBasic: missing terminator"
-        go "\"" = ""
-        go ('\\':'"':xs) = '"' : go xs
-        go ('\\':'\\':xs) = '\\' : go xs
-        go ('\\':'b':xs) = '\b' : go xs
-        go ('\\':'f':xs) = '\f' : go xs
-        go ('\\':'n':xs) = '\n' : go xs
-        go ('\\':'r':xs) = '\r' : go xs
-        go ('\\':'t':xs) = '\t' : go xs
-        go ('\\':'u':a:b:c:d:xs) = chr (fst (head (readHex [a,b,c,d]))) : go xs
-        go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
-        go (x:xs) = x : go xs
-
--- | Construct a 'TokMlString' from a basic multi-line string lexeme.
-mkMlBasicString :: String -> Token
-mkMlBasicString str =
-    enforceScalar TokMlString
-    case str of
-        '"':'"':'"':'\r':'\n':start -> go start
-        '"':'"':'"':'\n':start -> go start
-        '"':'"':'"':start -> go start
-        _ -> error "processMlBasic: missing initializer"
-    where
-      go "\"\"\"" = ""
-      go ('\\':'"':xs) = '"' : go xs
-      go ('\\':'\\':xs) = '\\' : go xs
-      go ('\\':'b':xs) = '\b' : go xs
-      go ('\\':'f':xs) = '\f' : go xs
-      go ('\\':'n':xs) = '\n' : go xs
-      go ('\\':'r':xs) = '\r' : go xs
-      go ('\\':'t':xs) = '\t' : go xs
-      go ('\\':'u':a:b:c:d:xs) = chr (fst (head (readHex [a,b,c,d]))) : go xs
-      go ('\\':'U':a:b:c:d:e:f:g:h:xs) = chr (fst (head (readHex [a,b,c,d,e,f,g,h]))) : go xs
-      go ('\\':'\r':xs) = go (dropWhile isSpace xs)
-      go ('\\':'\n':xs) = go (dropWhile isSpace xs)
-      go ('\\':' ':xs)  = go (dropWhile isSpace xs)
-      go ('\\':'\t':xs) = go (dropWhile isSpace xs)
-      go (x:xs) = x : go xs
-      go [] = error "processMlBasic: missing terminator"
-
 -- | Construct a 'TokMlString' from a literal multi-line string lexeme.
 mkMlLiteralString :: String -> Token
 mkMlLiteralString str =
@@ -166,16 +119,10 @@ mkMlLiteralString str =
         go (x:xs) = x : go xs
         go "" = error "processMlLiteral: missing terminator"
 
-enforceScalar :: (String -> Token) -> String -> Token
-enforceScalar f str
-    | any isInvalid str = TokError "string literal contains non-scalar value"
-    | otherwise = f str
-    where
-        isInvalid x = '\xd800' <= x && x < '\xe000'
-
 -- | Make a 'TokError' from a lexical error message.
 mkError :: String -> Token
-mkError str = TokError ("unexpected " ++ show (head str))
+mkError ""    = TokError "unexpected end-of-input"
+mkError (x:_) = TokError ("unexpected " ++ show x)
 
 -- | Format strings for local date lexemes.
 localDatePatterns :: [String]
