@@ -108,9 +108,6 @@ toml :-
 
 <val> {
 
-"["                 { enterList                         }
-"]"                 { exitList                          }
-"{"                 { enterTable                        }
 @dec_int            { value mkDecInteger                }
 @hex_int            { value mkHexInteger                }
 @oct_int            { value mkOctInteger                }
@@ -141,14 +138,14 @@ $wschar+;
 @ml_literal_string  { value mkMlLiteralString           }
 @ml_basic_string    { value mkMlBasicString             }
 
-"}"                 { exitTable                         }
 "="                 { equals                            }
 "."                 { token_ TokPeriod                  }
 ","                 { token_ TokComma                   }
 
-"["                 { token_ TokSquareO                 }
-"]"                 { token_ TokSquareC                 }
-"{"                 { token_ TokCurlyO                  }
+"["                 { squareO                           }
+"]"                 { squareC                           }
+"{"                 { curlyO                            }
+"}"                 { curlyC                            }
 
 @barekey            { token  TokBareKey                 }
 

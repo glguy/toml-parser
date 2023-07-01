@@ -21,10 +21,12 @@ module Toml.Lexer.Utils (
     value_,
     token,
     token_,
-    enterList,
-    exitList,
-    enterTable,
-    exitTable,
+
+    squareO,
+    squareC,
+    curlyO,
+    curlyC,
+
     equals,
     timeValue,
 
@@ -53,31 +55,32 @@ data Context
   | ValueContext -- ^ processing after an equals, lex one value
   deriving Show
 
-pushContext :: Context -> M ()
-pushContext cxt = modify \st ->
-  case st of
-    ValueContext : st' -> cxt : st'
-    _                  -> cxt : st
-
 equals :: Action
-equals _ = TokEquals <$ pushContext ValueContext
+equals _ = state \case
+  st -> (TokEquals, ValueContext : st)
 
-enterList :: Action
-enterList _ = TokSquareO <$ pushContext ListContext
+squareO :: Action
+squareO _ = state \case
+  ValueContext : st -> (TokSquareO, ListContext : st)
+  ListContext  : st -> (TokSquareO, ListContext : ListContext : st)
+  st                -> (TokSquareO, st)
 
-enterTable :: Action
-enterTable _ = TokCurlyO <$ pushContext TableContext
+squareC :: Action
+squareC _ = state \case
+  ListContext : st -> (TokSquareC, st)
+  st               -> (TokSquareC, st)
 
-exitTable :: Action
-exitTable _ = state \case
-  TableContext : st -> (TokCurlyC             , st)
-  st                -> (TokError "Unmatched }", st)
+curlyO :: Action
+curlyO _ = state \case
+  ValueContext : st -> (TokCurlyO, TableContext : st)
+  ListContext  : st -> (TokCurlyO, TableContext : ListContext : st)
+  st                -> (TokCurlyO, st)
 
-exitList :: Action
-exitList _ = state \case
-  ListContext : st -> (TokSquareC            , st)
-  []               -> (TokSquareC            , [])
-  st               -> (TokError "Unmatched ]", st)
+curlyC :: Action
+curlyC _ = state \case
+  TableContext : st -> (TokCurlyC, st)
+  st                -> (TokCurlyC, st)
+
 
 token_ :: Token -> Action
 token_ t _ = pure t
@@ -100,7 +103,7 @@ emitValue v = state \st ->
 timeValue :: ParseTime a => String -> [String] -> (a -> Token) -> Action
 timeValue description patterns constructor = value \str ->
   case asum [parseTimeM False defaultTimeLocale pattern str | pattern <- patterns] of
-    Nothing -> TokError ("Malformed " ++ description)
+    Nothing -> TokError ("malformed " ++ description)
     Just t  -> constructor t
 
 type AlexInput = Located String

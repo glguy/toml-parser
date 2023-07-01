@@ -26,6 +26,7 @@ import Toml.Parser (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table, Value(..))
 import Toml.Position (Position(..))
 import Toml.Pretty (prettySimpleKey)
+import Control.Applicative ((<|>))
 
 -- | Extract semantic value from sequence of raw TOML expressions
 -- or report an error string.
@@ -79,7 +80,7 @@ frameToValue = \case
 constructTable :: [(Key, Value)] -> Either String Table
 constructTable entries =
     case findBadKey (map fst entries) of
-        Just bad -> invalidKey (NonEmpty.last bad) "is overlapped"
+        Just bad -> invalidKey bad "is already assigned"
         Nothing -> Right (Map.unionsWith merge [singleValue (locThing k) (locThing <$> ks) v | (k:|ks, v) <- entries])
     where
         merge (Table x) (Table y) = Table (Map.unionWith merge x y)
@@ -89,13 +90,22 @@ constructTable entries =
         singleValue k (k1:ks) v = Map.singleton k (Table (singleValue k1 ks v))
 
 -- | Finds a key that overlaps with another in the same list
-findBadKey :: [Key] -> Maybe Key
+findBadKey :: [Key] -> Maybe (Located String)
 findBadKey = check . sortOn (fmap locThing)
     where
-        check (x:y:_)
-          | NonEmpty.toList (fmap locThing x) `NonEmpty.isPrefixOf` fmap locThing y = Just x
-        check (_:xs) = check xs
-        check [] = Nothing
+        check :: [Key] -> Maybe (Located String)
+        check (x:y:z) = check1 x y <|> check (y:z)
+        check _ = Nothing
+
+        check1 (x :| xs) (y1 :| y2 : ys)
+            | locThing x == locThing y1 =
+                case xs of
+                    [] -> Just y1
+                    x' : xs' -> check1 (x' :| xs') (y2 :| ys)
+        check1 _ _ = Nothing
+            
+
+
 
 addSection ::
     SectionKind                      {- ^ section kind        -} ->
@@ -127,7 +137,7 @@ addSection kind kvs = walk
             -- failure cases
             Just (FrameTable Closed _) -> invalidKey k1 "is a closed table"
             Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
-            Just (FrameValue {})       -> invalidKey k1 "is assigned"
+            Just (FrameValue {})       -> invalidKey k1 "is already assigned"
             where
                 go g t = Just . g . closeDots <$> assignKeyVals kvs t
 
@@ -135,7 +145,7 @@ addSection kind kvs = walk
             Nothing                     -> go (FrameTable Open     ) Map.empty
             Just (FrameTable tk t)      -> go (FrameTable tk       ) t
             Just (FrameArray (t :| ts)) -> go (FrameArray . (:| ts)) t
-            Just (FrameValue _)         -> invalidKey k1 "is assigned"
+            Just (FrameValue _)         -> invalidKey k1 "is already assigned"
             where
                 go g t = Just . g <$> walk (k2 :| ks) t
 
@@ -157,15 +167,15 @@ assign :: Key -> Val -> Map String Frame -> Either String (Map String Frame)
 
 assign (key :| []) val = flip Map.alterF (locThing key) \case
     Nothing -> Just . FrameValue <$> valToValue val
-    Just{}  -> invalidKey key "is assigned"
+    Just{}  -> invalidKey key "is already assigned"
 
 assign (key :| k1 : keys) val = flip Map.alterF (locThing key) \case
     Nothing                    -> go Map.empty
     Just (FrameTable Open   t) -> go t
     Just (FrameTable Dotted t) -> go t
-    Just (FrameTable Closed _) -> invalidKey key "is closed"
-    Just (FrameArray        _) -> invalidKey key "is closed"
-    Just (FrameValue        _) -> invalidKey key "is assigned"
+    Just (FrameTable Closed _) -> invalidKey key "is a closed table"
+    Just (FrameArray        _) -> invalidKey key "is a closed table"
+    Just (FrameValue        _) -> invalidKey key "is already assigned"
     where
         go t = Just . FrameTable Dotted <$> assign (k1 :| keys) val t
 

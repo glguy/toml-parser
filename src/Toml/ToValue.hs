@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeOperators #-}
 {-|
 Module      : Toml.ToValue
 Description : Automation for converting application values to TOML.
@@ -17,7 +18,9 @@ module Toml.ToValue (
     ) where
 
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.String (IsString, fromString)
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
@@ -56,6 +59,12 @@ class ToValue a => ToTable a where
 
     -- | Convert a single value into a table
     toTable :: a -> Table
+
+instance (k ~ String, ToValue v) => ToTable (Map k v) where
+    toTable m = Map.fromList [(k, toValue v) | (k,v) <- Map.assocs m]
+
+instance (k ~ String, ToValue v) => ToValue (Map k v) where
+    toValue = defaultTableToValue
 
 -- | Convenience function for building 'ToValue' instances.
 defaultTableToValue :: ToTable a => a -> Value

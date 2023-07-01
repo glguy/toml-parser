@@ -1,5 +1,11 @@
 # Revision history for toml-parser
 
+## 1.0.1.0  --
+
+* Add ToTable and ToValue instances for Map
+* Refine error messages
+* More test coverage
+
 ## 1.0.0.0  -- 2023-06-29
 
 * Complete rewrite including 1.0.0 compliance and pretty-printing.

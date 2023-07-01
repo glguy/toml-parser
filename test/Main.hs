@@ -12,18 +12,45 @@ specification document).
 -}
 module Main (main) where
 
-import Data.Either (isLeft)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
-import Toml (Value(..), parse, decode, Result(Success), prettyToml, Table)
+import Toml (Value(..), parse, decode, encode, Result(Success), prettyToml, Table)
 import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable))
 import Toml.ToValue (table, (.=))
 
 main :: IO ()
 main = hspec do
+
+  describe "lexer"
+   do it "handles special cased control character" $
+        parse "x = '\SOH'"
+        `shouldBe`
+        Left "1:6: lexical error: unexpected '\\SOH'"
+
+      -- These seem boring, but they provide test coverage of an error case in the state machine
+      it "handles unexpected '}'" $
+        parse "}"
+        `shouldBe`
+        Left "1:1: parse error: unexpected '}'"
+
+      it "handles unexpected '{'" $
+        parse "{"
+        `shouldBe`
+        Left "1:1: parse error: unexpected '{'"
+
+      it "accepts tabs" $
+        parse "x\t=\t1"
+        `shouldBe`
+        Right (Map.singleton "x" (Integer 1))
+
+      it "computes columns correctly with tabs" $
+        parse "x\t=\t="
+        `shouldBe`
+        Left "1:17: parse error: unexpected '='"
+
   describe "parse" do
     describe "comment"
      do it "ignores comments" $
@@ -39,10 +66,14 @@ main = hspec do
           parse "key = \"value\"" `shouldBe` Right (Map.singleton "key" (String "value"))
 
         it "requires a value after equals" $
-          parse "key = # INVALID" `shouldSatisfy` isLeft
+          parse "key = # INVALID"
+          `shouldBe`
+          Left "1:16: parse error: unexpected end-of-input"
 
         it "requires newlines between assignments" $
-          parse "first = \"Tom\" last = \"Preston-Werner\" # INVALID" `shouldSatisfy` isLeft
+          parse "first = \"Tom\" last = \"Preston-Werner\" # INVALID"
+          `shouldBe`
+          Left "1:15: parse error: unexpected bare key"
 
     describe "keys"
      do it "allows bare keys" $
@@ -89,13 +120,13 @@ main = hspec do
           parse [quoteStr|
             name = "Tom"
             name = "Pradyun"|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "2:1: key error: name is already assigned"
 
         it "prevents duplicate keys even between bare and quoted" $
           parse [quoteStr|
             spelling = "favorite"
             "spelling" = "favourite"|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "2:1: key error: spelling is already assigned"
 
         it "allows out of order definitions" $
           parse [quoteStr|
@@ -189,7 +220,7 @@ main = hspec do
         it "disallows triple quotes inside a multiline string" $
           parse [quoteStr|
             str5 = """Here are three quotation marks: """."""  # INVALID|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "1:46: parse error: unexpected '.'"
 
         it "ignores escapes in literal strings" $
           parse [quoteStr|
@@ -231,7 +262,7 @@ main = hspec do
         it "rejects out of range unicode escapes" $
           parse [quoteStr|
             x = "\U11111111"|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "1:8: lexical error: unexpected '1'"
 
     describe "integer"
      do it "parses literals correctly" $
@@ -354,6 +385,12 @@ main = hspec do
             "ldt1" .= LocalTime (read "1979-05-27 07:32:00"),
             "ldt2" .= LocalTime (read "1979-05-27 00:32:00.999999"),
             "ldt3" .= LocalTime (read "1979-05-28 00:32:00.999999")])
+
+        it "catches invalid date-times" $
+          parse [quoteStr|
+            ldt = 9999-99-99T99:99:99|]
+          `shouldBe`
+          Left "1:7: lexical error: malformed local date-time"
 
     describe "local date"
      do it "parses dates" $
@@ -485,7 +522,7 @@ main = hspec do
             apple.color = 'red'
             apple.taste.sweet = true
             [fruit.apple]|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "4:8: key error: apple is a closed table"
 
         it "can add subtables" $
           parse [quoteStr|
@@ -521,14 +558,14 @@ main = hspec do
             [product]
             type = { name = "Nail" }
             type.edible = false  # INVALID|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "3:1: key error: type is already assigned"
 
         it "prevents using inline tables to add keys to existing tables" $
           parse [quoteStr|
             [product]
             type.name = "Nail"
             type = { edible = false }  # INVALID|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "3:1: key error: type is already assigned"
 
     describe "array of tables"
      do it "supports array of tables syntax" $
@@ -602,7 +639,7 @@ main = hspec do
             [[fruit]]  # parser must throw an error upon discovering that "fruit" is
                     # an array rather than a table
             name = "apple"|]
-            `shouldSatisfy` isLeft
+            `shouldBe` Left "6:3: key error: fruit is already a table"
 
         it "prevents redefining an inline array" $
           parse [quoteStr|
@@ -610,7 +647,7 @@ main = hspec do
             fruits = []
 
             [[fruits]] # Not allowed|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "4:3: key error: fruits is already assigned"
 
     -- these cases are needed to complete coverage checking on Semantics module
     describe "corner cases"
@@ -626,7 +663,7 @@ main = hspec do
           parse [quoteStr|
             [x.y]
             [x]
-            [x.y]|] `shouldSatisfy` isLeft
+            [x.y]|] `shouldBe` Left "3:4: key error: y is a closed table"
 
         it "super tables of array tables preserve array tables" $
           parse [quoteStr|
@@ -647,7 +684,7 @@ main = hspec do
         it "detects conflicting inline keys" $
           parse [quoteStr|
             x = { y = 1, y.z = 2}|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "1:14: key error: y is already assigned"
 
         it "handles merging dotted inline table keys" $
           parse [quoteStr|
@@ -665,7 +702,7 @@ main = hspec do
           parse [quoteStr|
             x = 1
             [x.y]|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "2:2: key error: x is already assigned"
 
         it "handles super super tables" $
           parse [quoteStr|
@@ -689,14 +726,14 @@ main = hspec do
             [x]
             y.q = 1
             [x.y]|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "4:4: key error: y is a closed table"
 
         it "dotted tables can't assign through closed tables!" $
           parse [quoteStr|
             [x.y]
             [x]
             y.z.w = 1|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "3:1: key error: y is a closed table"
 
         it "super tables can't add new subtables to array tables via dotted keys" $
           parse [quoteStr|
@@ -704,7 +741,7 @@ main = hspec do
             [x]
             y.z.a = 1
             y.z.b = 2|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "3:1: key error: y is a closed table"
 
         it "the previous example preserves closeness" $
           parse [quoteStr|
@@ -712,20 +749,20 @@ main = hspec do
             [x]
             y.z.a = 1
             y.w = 2|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "3:1: key error: y is a closed table"
 
         it "defining a supertable closes the supertable" $
           parse [quoteStr|
             [x.y]
             [x]
             [x]|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "3:2: key error: x is a closed table"
 
         it "prevents redefining an array of tables" $
           parse [quoteStr|
             [[x.y]]
             [x.y]|]
-          `shouldSatisfy` isLeft
+          `shouldBe` Left "2:4: key error: y is already an array of tables"
 
   describe "deserialization" deserializationTests
   describe "pretty-printing" prettyTests
@@ -736,8 +773,8 @@ tomlString = show . prettyToml
 prettyTests :: Spec
 prettyTests =
  do it "renders example 1" $
-      fmap tomlString (parse "x=1")
-        `shouldBe` Right [quoteStr|
+      show (encode (Map.singleton "x" (1 :: Integer)))
+        `shouldBe` [quoteStr|
         x = 1|]
 
     it "renders example 2" $

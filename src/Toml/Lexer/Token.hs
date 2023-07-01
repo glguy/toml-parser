@@ -168,14 +168,14 @@ mkMlLiteralString str =
 
 enforceScalar :: (String -> Token) -> String -> Token
 enforceScalar f str
-    | any isInvalid str = TokError "string literal controls non-scalar value"
+    | any isInvalid str = TokError "string literal contains non-scalar value"
     | otherwise = f str
     where
         isInvalid x = '\xd800' <= x && x < '\xe000'
 
 -- | Make a 'TokError' from a lexical error message.
 mkError :: String -> Token
-mkError str = TokError ("Lexical error: " ++ show (head str))
+mkError str = TokError ("unexpected " ++ show (head str))
 
 -- | Format strings for local date lexemes.
 localDatePatterns :: [String]
