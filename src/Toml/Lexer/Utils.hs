@@ -36,6 +36,8 @@ module Toml.Lexer.Utils (
     endStr,
     unicodeEscape,
 
+    eofToken,
+
     -- * Alex extension points
     AlexInput,
     alexGetByte,
@@ -154,3 +156,11 @@ alexGetByte Located { locPosition = p, locThing = str } =
       | otherwise -> Just (1,     rest)
       where
         rest = Located { locPosition = move x p, locThing = xs }
+
+eofToken :: [Context] -> Located String -> Located Token
+eofToken (MlStrContext p _ : _) _ = Located p (TokError "unterminated multi-line string literal")
+eofToken (StrContext   p _ : _) _ = Located p (TokError "unterminated string literal")
+eofToken (ListContext  p   : _) _ = Located p (TokError "unterminated '['")
+eofToken (TableContext p   : _) _ = Located p (TokError "unterminated '{'")
+eofToken (ValueContext     : s) t = eofToken s t
+eofToken _                      t = TokEOF <$ t

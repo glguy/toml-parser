@@ -182,13 +182,6 @@ scanTokens' st str =
       case runState (action (take n <$> str)) st of
         (t, st') -> t ++ scanTokens' st' str'
 
-eofToken :: [Context] -> Located String -> Located Token
-eofToken (MlStrContext p _ : _) _ = Located p (TokError "unterminated multi-line string literal")
-eofToken (StrContext   p _ : _) _ = Located p (TokError "unterminated string literal")
-eofToken (ListContext  p   : _) _ = Located p (TokError "unterminated '['")
-eofToken (TableContext p   : _) _ = Located p (TokError "unterminated '{'")
-eofToken _                       s = TokEOF <$ s
-
 stateInt :: [Context] -> Int
 stateInt (ValueContext   : _) = val
 stateInt (ListContext {} : _) = val

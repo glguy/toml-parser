@@ -56,6 +56,36 @@ main = hspec do
         `shouldBe`
         Left "1:6: lexical error: non-scalar unicode escape"
 
+      it "catches unclosed [" $
+        parse "x = [1,2,3"
+        `shouldBe`
+        Left "1:5: lexical error: unterminated '['"
+
+      it "catches unclosed {" $
+        parse "x = { y"
+        `shouldBe`
+        Left "1:5: lexical error: unterminated '{'"
+
+      it "catches unclosed \"" $
+        parse "x = \"abc"
+        `shouldBe`
+        Left "1:5: lexical error: unterminated string literal"
+
+      it "catches unclosed \"\"\"" $
+        parse "x = \"\"\"test"
+        `shouldBe`
+        Left "1:5: lexical error: unterminated multi-line string literal"
+      
+      it "handles escapes at the end of input" $
+        parse "x = \"\\"
+        `shouldBe`
+        Left "1:7: lexical error: unexpected end-of-input"
+
+      it "handles invalid escapes" $
+        parse "x = \"\\p\""
+        `shouldBe`
+        Left "1:7: lexical error: unexpected 'p'"
+
   describe "ToValue"
    do
     it "converts characters as singleton strings" $
