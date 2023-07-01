@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators, TypeFamilies #-}
 {-|
 Module      : Toml.ToValue
 Description : Automation for converting application values to TOML.
@@ -60,9 +60,11 @@ class ToValue a => ToTable a where
     -- | Convert a single value into a table
     toTable :: a -> Table
 
+-- | @since 1.0.1.0
 instance (k ~ String, ToValue v) => ToTable (Map k v) where
     toTable m = Map.fromList [(k, toValue v) | (k,v) <- Map.assocs m]
 
+-- | @since 1.0.1.0
 instance (k ~ String, ToValue v) => ToValue (Map k v) where
     toValue = defaultTableToValue
 
