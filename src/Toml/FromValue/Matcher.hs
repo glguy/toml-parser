@@ -16,8 +16,6 @@ module Toml.FromValue.Matcher (
     Result(..),
     ) where
 
-import Control.Applicative (Alternative(..))
-import Control.Monad (MonadPlus(..))
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader (asks, local, ReaderT(..))
 import Control.Monad.Trans.Writer.CPS (runWriterT, tell, WriterT)

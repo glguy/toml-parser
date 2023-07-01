@@ -42,7 +42,7 @@ module Toml.Lexer.Utils (
 
     ) where
 
-import Control.Monad.Trans.State.Strict (State, modify, state)
+import Control.Monad.Trans.State.Strict (State, state)
 import Data.Char (ord, chr, isAscii)
 import Data.Foldable (asum)
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
@@ -64,33 +64,33 @@ data Context
 
 strFrag :: Action
 strFrag s = state \case
-  StrContext   p acc : st -> ([], StrContext   p (locThing s:acc) : st)
-  MlStrContext p acc : st -> ([], MlStrContext p (locThing s:acc) : st)
-  _ -> error "strFrag: panic"
+  StrContext   p acc : st -> ([], StrContext   p (locThing s : acc) : st)
+  MlStrContext p acc : st -> ([], MlStrContext p (locThing s : acc) : st)
+  _                       -> error "strFrag: panic"
 
 endStr :: Action
 endStr x = state \case
-    StrContext   p acc : st -> ([Located p $ TokString   (concat (reverse (locThing x : acc)))], st)
-    MlStrContext p acc : st -> ([Located p $ TokMlString (concat (reverse (locThing x : acc)))], st)
+    StrContext   p acc : st -> ([Located p (TokString   (concat (reverse (locThing x : acc))))], st)
+    MlStrContext p acc : st -> ([Located p (TokMlString (concat (reverse (locThing x : acc))))], st)
     _                       -> error "endStr: panic"
 
 startStr :: Action
 startStr t = state \case
   ValueContext : st -> ([], StrContext (locPosition t) [] : st)
-  st -> ([], StrContext (locPosition t) [] : st)
+  st                -> ([], StrContext (locPosition t) [] : st)
 
 startMlStr :: Action
 startMlStr t = state \case
   ValueContext : st -> ([], MlStrContext (locPosition t) [] : st)
-  st -> ([], MlStrContext (locPosition t) [] : st)
+  st                -> ([], MlStrContext (locPosition t) [] : st)
 
 unicodeEscape :: Action
 unicodeEscape (Located p lexeme) =
   case readHex (drop 2 lexeme) of
-    [(n,_)] | 0xd800 <= n, n < 0xe000 -> pure [Located p $ TokError "non-scalar unicode escape"]
-      | n >= 0x110000 -> pure [Located p $ TokError "unicode escape too large"]
-      | otherwise -> strFrag (Located p [chr n])
-    _ -> error "unicodeEscape: panic"
+    [(n,_)] | 0xd800 <= n, n < 0xe000 -> pure [Located p (TokError "non-scalar unicode escape")]
+      | n >= 0x110000                 -> pure [Located p (TokError "unicode escape too large")]
+      | otherwise                     -> strFrag (Located p [chr n])
+    _                                 -> error "unicodeEscape: panic"
 
 equals :: Action
 equals t = state \case
@@ -118,7 +118,6 @@ curlyC t = state \case
   TableContext _ : st -> ([TokCurlyC <$ t], st)
   st                  -> ([TokCurlyC <$ t], st)
 
-
 token_ :: Token -> Action
 token_ t x = pure [t <$ x]
 
@@ -134,8 +133,8 @@ value f x = emitValue (f <$> x)
 emitValue :: Located Token -> State [Context] [Located Token]
 emitValue v = state \st ->
   case st of
-    ValueContext:st' -> ([v], st')
-    _                -> ([v], st )
+    ValueContext : st' -> ([v], st')
+    _                  -> ([v], st )
 
 timeValue :: ParseTime a => String -> [String] -> (a -> Token) -> Action
 timeValue description patterns constructor = value \str ->

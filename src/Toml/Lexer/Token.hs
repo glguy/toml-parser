@@ -35,7 +35,6 @@ module Toml.Lexer.Token (
     mkError,
     ) where
 
-import Data.Char (chr, isSpace)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 import Numeric (readBin, readHex, readOct)
 

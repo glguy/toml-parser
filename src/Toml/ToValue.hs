@@ -20,7 +20,6 @@ module Toml.ToValue (
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.String (IsString, fromString)
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)

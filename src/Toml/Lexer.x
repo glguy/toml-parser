@@ -140,19 +140,19 @@ $wschar+;
 
 }
 
-<str> {
+<bstr> {
   $unescaped+       { strFrag                           }
   \"                { endStr . fmap (drop 1)            }
 }
 
-<mlstr> {
+<mlbstr> {
   @mlb_escaped_nl;
   ($unescaped | @newline)+ { strFrag                    }
   \" {1,2}          { strFrag                           }
   \" {3,5}          { endStr . fmap (drop 3)            }
 }
 
-<mlstr, str> {
+<mlbstr, bstr> {
   \\ U $hexdig{8}   { unicodeEscape                     }
   \\ u $hexdig{4}   { unicodeEscape                     }
   \\ n              { strFrag . ("\n" <$)               }
@@ -192,8 +192,8 @@ eofToken _                       s = TokEOF <$ s
 stateInt :: [Context] -> Int
 stateInt (ValueContext   : _) = val
 stateInt (ListContext {} : _) = val
-stateInt (StrContext  {} : _) = str
-stateInt (MlStrContext{} : _) = mlstr
+stateInt (StrContext  {} : _) = bstr
+stateInt (MlStrContext{} : _) = mlbstr
 stateInt _                    = 0
 
 -- | Lex a single token in a value context. This is mostly useful for testing.
