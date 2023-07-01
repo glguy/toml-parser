@@ -19,6 +19,7 @@ module Toml.FromValue.Matcher (
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader (asks, local, ReaderT(..))
 import Control.Monad.Trans.Writer.CPS (runWriterT, tell, WriterT)
+import Data.Monoid (Endo(..))
 
 -- | Computations that result in a 'Result' and which track a list
 -- of nested contexts to assist in generating warnings and error
@@ -28,7 +29,7 @@ import Control.Monad.Trans.Writer.CPS (runWriterT, tell, WriterT)
 newtype Matcher a = Matcher (ReaderT [String] (WriterT (DList String) (Either String)) a)
     deriving (Functor, Applicative, Monad)
 
-type DList a = [a] -> [a]
+type DList a = Endo [a]
 
 -- | Computation outcome with error and warning messages.
 data Result a
@@ -41,7 +42,7 @@ runMatcher :: Matcher a -> Result a
 runMatcher (Matcher m) =
     case runWriterT (runReaderT m []) of
         Left e -> Failure e
-        Right (x,w) -> Success (w []) x
+        Right (x,w) -> Success (w `appEndo` []) x
 
 -- | Run a 'Matcher' with a locally extended scope.
 withScope :: String -> Matcher a -> Matcher a
@@ -55,7 +56,7 @@ getScope = Matcher (asks reverse)
 warning :: String -> Matcher ()
 warning w =
  do loc <- getScope
-    Matcher (lift (tell ((w ++ " in top" ++ concat loc):)))
+    Matcher (lift (tell (Endo ((w ++ " in top" ++ concat loc):))))
 
 -- | Fail with an error message annotated to the current location.
 instance MonadFail Matcher where
