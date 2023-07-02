@@ -127,3 +127,22 @@ Right (Fruits [
     Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
     Fruit "banana" Nothing [Variety "plantain"]])
 ```
+
+## Generics
+
+Code for generating and matching tables to records can be derived
+using GHC.Generics. This will generate tables using the field names
+as table keys.
+
+```haskell
+data ExampleRecord = ExampleRecord {
+  exString :: String,
+  exList   :: [Int],
+  exOpt    :: Maybe Bool}
+  deriving (Show, Generic, Eq)
+
+instance FromTable ExampleRecord where fromTable = genericFromTable
+instance FromValue ExampleRecord where fromValue = defaultTableFromValue
+instance ToTable   ExampleRecord where toTable   = genericToTable
+instance ToValue   ExampleRecord where toValue   = defaultTableToValue
+```

@@ -28,11 +28,17 @@ common extensions
     default-language:   Haskell2010
     default-extensions:
         BlockArguments
+        DeriveGeneric
         DeriveTraversable
+        EmptyCase
+        FlexibleContexts
+        FlexibleInstances
         GeneralizedNewtypeDeriving
         ImportQualifiedPost
         LambdaCase
         ScopedTypeVariables
+        TypeOperators
+        TypeSynonymInstances
         ViewPatterns
 
 library
@@ -42,6 +48,7 @@ library
     exposed-modules:
         Toml
         Toml.FromValue
+        Toml.FromValue.Generic
         Toml.FromValue.Matcher
         Toml.Lexer
         Toml.Lexer.Token
@@ -53,6 +60,7 @@ library
         Toml.Pretty
         Toml.Semantics
         Toml.ToValue
+        Toml.ToValue.Generic
         Toml.Value
     build-depends:
         array           ^>= 0.5,

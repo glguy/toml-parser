@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, TypeFamilies #-}
+{-# LANGUAGE TypeFamilies #-}
 {-|
 Module      : Toml.ToValue
 Description : Automation for converting application values to TOML.

@@ -15,11 +15,16 @@ module Main (main) where
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
+import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (hspec, describe, it, shouldBe, shouldSatisfy, Spec)
 import Toml (Value(..), parse, decode, encode, Result(Success), prettyToml, Table)
 import Toml.FromValue (FromValue(..), defaultTableFromValue, reqKey, optKey, runParseTable, ParseTable, FromTable (fromTable))
-import Toml.ToValue (table, (.=), toValue)
+import Toml.ToValue (table, (.=), toValue, defaultTableToValue, ToTable (toTable))
+import Toml.FromValue.Generic (genericFromTable)
+import Toml.ToValue.Generic (genericToTable)
+import Toml.ToValue (ToTable)
+import Toml.ToValue (ToValue)
 
 main :: IO ()
 main = hspec do
@@ -75,7 +80,7 @@ main = hspec do
         parse "x = \"\"\"test"
         `shouldBe`
         Left "1:5: lexical error: unterminated multi-line string literal"
-      
+
       it "handles escapes at the end of input" $
         parse "x = \"\\"
         `shouldBe`
@@ -806,6 +811,7 @@ main = hspec do
 
   describe "deserialization" deserializationTests
   describe "pretty-printing" prettyTests
+  describe "generics" genericsTests
 
 tomlString :: Table -> String
 tomlString = show . prettyToml
@@ -964,3 +970,45 @@ deserializationTests =
             Success mempty (Fruits [
                 Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
                 Fruit "banana" Nothing [Variety "plantain"]])
+
+data ExampleRecord = ExampleRecord {
+  exString :: String,
+  exList   :: [Int],
+  exOpt    :: Maybe Bool}
+  deriving (Show, Generic, Eq)
+
+instance FromTable ExampleRecord where fromTable = genericFromTable
+instance FromValue ExampleRecord where fromValue = defaultTableFromValue
+instance ToTable   ExampleRecord where toTable   = genericToTable
+instance ToValue   ExampleRecord where toValue   = defaultTableToValue
+
+genericsTests :: Spec
+genericsTests =
+ do let ex1 = ExampleRecord "one" [2,3] (Just True)
+
+    it "encodes correctly" $
+      show (encode ex1)
+      `shouldBe`
+      [quoteStr|
+        exList = [2, 3]
+        exOpt = true
+        exString = "one"|]
+
+    it "decodes correctly" $
+      decode (show (encode ex1))
+      `shouldBe`
+      Success [] ex1
+
+    let ex2 = ExampleRecord "two" [] Nothing
+
+    it "encodes correctly with missing optional" $
+      show (encode ex2)
+      `shouldBe`
+      [quoteStr|
+        exList = []
+        exString = "two"|]
+
+    it "decodes correctly again" $
+      decode (show (encode ex2))
+      `shouldBe`
+      Success [] ex2

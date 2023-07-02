@@ -50,7 +50,7 @@ module Toml.FromValue (
 
 import Control.Monad (zipWithM)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State.Strict (StateT(..), evalStateT, put, get)
+import Control.Monad.Trans.State.Strict (StateT(..), put, get)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.List (intercalate)
 import Data.Map (Map)
