@@ -55,12 +55,12 @@ instance (GParseTable f, GParseTable g) => GParseTable (f :*: g) where
 
 -- | Omits the key from the table on nothing, includes it on just
 instance {-# OVERLAPS #-} (Selector s, FromValue a) => GParseTable (S1 s (K1 i (Maybe a))) where
-    gParseTable f = f . M1 . K1 =<< optKey (selName (undefined :: S1 s [] ()))
+    gParseTable f = f . M1 . K1 =<< optKey (selName (M1 [] :: S1 s [] ()))
     {-# INLINE gParseTable #-}
 
 -- | Uses record selector name as table key
 instance (Selector s, FromValue a) => GParseTable (S1 s (K1 i a)) where
-    gParseTable f = f . M1 . K1 =<< reqKey (selName (undefined :: S1 s [] ()))
+    gParseTable f = f . M1 . K1 =<< reqKey (selName (M1 [] :: S1 s [] ()))
     {-# INLINE gParseTable #-}
 
 -- | Emits empty table
