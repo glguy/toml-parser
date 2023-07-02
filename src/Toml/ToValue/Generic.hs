@@ -19,17 +19,26 @@ import GHC.Generics
 import Toml.Value (Table)
 import Toml.ToValue (ToValue(..))
 
+-- | Use a record's field names to generate a 'Table'
+--
+-- @since 1.0.2.0
 genericToTable :: (Generic a, GToTable (Rep a)) => a -> Table
 genericToTable = gToTable . from
 {-# INLINE genericToTable #-}
 
+-- | Supports conversion of product types with field selector names
+-- to TOML values.
+--
+-- @since 1.0.2.0
 class GToTable f where
     gToTable :: f a -> Table
 
+-- | Ignores type constructor names
 instance GToTable f => GToTable (D1 c f) where
     gToTable (M1 x) = gToTable x
     {-# INLINE gToTable #-}
 
+-- | Ignores value constructor names
 instance GToTable f => GToTable (C1 c f) where
     gToTable (M1 x) = gToTable x
     {-# INLINE gToTable #-}

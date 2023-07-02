@@ -166,6 +166,11 @@ $wschar+;
 
 {
 
+type AlexInput = Located String
+
+alexGetByte :: AlexInput -> Maybe (Int, AlexInput)
+alexGetByte = locatedUncons
+
 -- | Generate a lazy-list of tokens from the input string.
 -- The token stream is guaranteed to be terminated either with
 -- 'TokEOF' or 'TokError'.

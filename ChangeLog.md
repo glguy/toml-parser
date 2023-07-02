@@ -1,6 +1,10 @@
 # Revision history for toml-parser
 
-## 1.0.1.0  --
+## 1.0.2.0  --
+
+* Add Toml.FromValue.Generic and Toml.ToValue.Generic
+
+## 1.0.1.0  -- 2023-07-01
 
 * Add ToTable and ToValue instances for Map
 * Refine error messages

@@ -21,6 +21,8 @@ import Toml.FromValue.Matcher (Matcher)
 import Toml.Value (Table)
 
 -- | Match a 'Table' using the field names in a record.
+--
+-- @since 1.0.2.0
 genericFromTable :: (Generic a, GParseTable (Rep a)) => Table -> Matcher a
 genericFromTable t = runParseTable (gParseTable (pure . to)) t
 {-# INLINE genericFromTable #-}
@@ -30,14 +32,20 @@ genericFromTable t = runParseTable (gParseTable (pure . to)) t
 -- a single location which allows the optimizer to optimize them
 -- complete away.
 
--- | Supports product types with field selector names.
+-- | Supports conversion of product types with field selector names to
+-- TOML values.
+--
+-- @since 1.0.2.0
 class GParseTable f where
+    -- | Convert a value and apply the continuation to the result.
     gParseTable :: (f a -> ParseTable b) -> ParseTable b
 
+-- | Ignores type constructor name
 instance GParseTable f => GParseTable (D1 c f) where
     gParseTable f = gParseTable (f . M1)
     {-# INLINE gParseTable #-}
 
+-- | Ignores value constructor name
 instance GParseTable f => GParseTable (C1 c f) where
     gParseTable f = gParseTable (f . M1)
     {-# INLINE gParseTable #-}
