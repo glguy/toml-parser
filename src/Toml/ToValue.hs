@@ -13,10 +13,6 @@ Because the top-level TOML document is always a table,
 the 'ToTable' class is for types that specifically support
 conversion from a 'Table'.
 
-'ParseTable' can be used to help generate a 'Matcher' for tables.
-It will track the currently unmatched key-value pairs allowing
-you to select them using 'reqKey' and 'optKey'.
-
 "Toml.ToValue.Generic" can be used to derive instances of 'ToTable'
 automatically for record types.
 
