@@ -1,11 +1,13 @@
 {-|
 Module      : Toml
-Description : TOML parser
+Description : TOML parsing, printing, and codecs
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
-This module parses TOML into semantically meaningful values.
+This is the high-level interface to the toml-parser library.
+It enables parsing, printing, and coversion into and out of
+application-specific representations.
 
 This parser implements TOML 1.0.0 <https://toml.io/en/v1.0.0>
 as carefully as possible.
@@ -13,14 +15,14 @@ as carefully as possible.
 -}
 module Toml (
 
-    -- * types
+    -- * Types
     Table,
     Value(..),
 
-    -- * parsing
+    -- * Parsing
     parse,
 
-    -- * printing
+    -- * Printing
     prettyToml,
     DocClass(..),
 
