@@ -28,6 +28,7 @@ common extensions
     default-language:   Haskell2010
     default-extensions:
         BlockArguments
+        DeriveDataTypeable
         DeriveGeneric
         DeriveTraversable
         EmptyCase

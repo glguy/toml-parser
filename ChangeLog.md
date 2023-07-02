@@ -4,6 +4,7 @@
 
 * Add Toml.FromValue.Generic and Toml.ToValue.Generic
 * Add Alternative instance to Matcher and support multiple error messages in Result
+* Add Data and Generic instances for Value
 
 ## 1.0.1.0  -- 2023-07-01
 

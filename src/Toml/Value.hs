@@ -15,8 +15,10 @@ module Toml.Value (
     Table,
     ) where
 
+import Data.Data (Data)
 import Data.Map (Map)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
+import GHC.Generics (Generic)
 
 -- | Representation of a TOML key-value table.
 type Table = Map String Value
@@ -33,7 +35,7 @@ data Value
     | ZonedTime ZonedTime
     | LocalTime LocalTime
     | Day       Day
-    deriving (Show, Read)
+    deriving (Show, Read, Data, Generic)
 
 instance Eq Value where
     Integer   x == Integer   y = x == y
