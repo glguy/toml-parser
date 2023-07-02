@@ -43,8 +43,6 @@ module Toml.Lexer.Utils (
     startStr,
     endStr,
     unicodeEscape,
-
-
     ) where
 
 import Control.Monad.Trans.State.Strict (State, state)
@@ -162,7 +160,7 @@ timeValue ::
   (a -> Token) {- ^ token constructor              -} ->
   Action
 timeValue description patterns constructor = value \str ->
-  case asum [parseTimeM False defaultTimeLocale pattern str | pattern <- patterns] of
+  case asum [parseTimeM False defaultTimeLocale pat str | pat <- patterns] of
     Nothing -> TokError ("malformed " ++ description)
     Just t  -> constructor t
 

@@ -22,33 +22,32 @@ meaningful in an old version of a configuration file.
 
 -}
 module Toml.FromValue (
-    -- * deserialization classes
+    -- * Deserialization classes
     FromValue(..),
     FromTable(..),
     defaultTableFromValue,
 
-    -- * matcher
+    -- * Matcher
     Matcher,
+    Result(..),
     runMatcher,
     withScope,
     warning,
 
-    -- * results
-    Result(..),
-
-    -- * table matching
+    -- * Table matching
     ParseTable,
     runParseTable,
     optKey,
     reqKey,
     warnTable,
 
-    -- * table matching primitives
+    -- * Table matching primitives
     getTable,
     setTable,
     ) where
 
-import Control.Monad (zipWithM)
+import Control.Applicative (Alternative)
+import Control.Monad (MonadPlus, zipWithM)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT(..), put, get)
 import Data.Int (Int8, Int16, Int32, Int64)
@@ -62,7 +61,6 @@ import Numeric.Natural (Natural)
 import Toml.FromValue.Matcher (Matcher, Result(..), runMatcher, withScope, warning)
 import Toml.Pretty (prettySimpleKey, prettyValue)
 import Toml.Value (Value(..), Table)
-
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
@@ -96,10 +94,12 @@ defaultTableFromValue v = typeError "table" v
 typeError :: String {- ^ expected type -} -> Value {- ^ actual value -} -> Matcher a
 typeError wanted got = fail ("Type error. wanted: " ++ wanted ++ " got: " ++ show (prettyValue got))
 
+-- | Matches integer values
 instance FromValue Integer where
     fromValue (Integer x) = pure x
     fromValue v = typeError "integer" v
 
+-- | Matches non-negative integer values
 instance FromValue Natural where
     fromValue v =
      do i <- fromValue v
@@ -127,6 +127,8 @@ instance FromValue Word16 where fromValue = fromValueSized "Word16"
 instance FromValue Word32 where fromValue = fromValueSized "Word32"
 instance FromValue Word64 where fromValue = fromValueSized "Word64"
 
+-- | Matches single-character strings with 'fromValue' and arbitrary
+-- strings with 'listFromValue' to support 'Prelude.String'
 instance FromValue Char where
     fromValue (String [c]) = pure c
     fromValue v = typeError "character" v
@@ -134,39 +136,48 @@ instance FromValue Char where
     listFromValue (String xs) = pure xs
     listFromValue v = typeError "string" v
 
+-- | Matches floating-point and integer values
 instance FromValue Double where
     fromValue (Float x) = pure x
     fromValue (Integer x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
+-- | Matches floating-point and integer values
 instance FromValue Float where
     fromValue (Float x) = pure (realToFrac x)
     fromValue (Integer x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
+-- | Matches @true@ and @false@
 instance FromValue Bool where
     fromValue (Bool x) = pure x
     fromValue v = typeError "boolean" v
 
+-- | Implemented in terms of 'listFromValue'
 instance FromValue a => FromValue [a] where
     fromValue = listFromValue
 
+-- | Matches local date literals
 instance FromValue Day where
     fromValue (Day x) = pure x
     fromValue v = typeError "local date" v
 
+-- | Matches local time literals
 instance FromValue TimeOfDay where
     fromValue (TimeOfDay x) = pure x
     fromValue v = typeError "local time" v
 
+-- | Matches offset date-time literals
 instance FromValue ZonedTime where
     fromValue (ZonedTime x) = pure x
     fromValue v = typeError "offset date-time" v
 
+-- | Matches local date-time literals
 instance FromValue LocalTime where
     fromValue (LocalTime x) = pure x
     fromValue v = typeError "local date-time" v
 
+-- | Matches all values, used for pass-through
 instance FromValue Value where
     fromValue = pure
 
@@ -175,7 +186,7 @@ instance FromValue Value where
 --
 -- Use 'optKey', 'reqKey', 'rej
 newtype ParseTable a = ParseTable (StateT Table Matcher a)
-    deriving (Functor, Applicative, Monad)
+    deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
 
 instance MonadFail ParseTable where
     fail = ParseTable . fail

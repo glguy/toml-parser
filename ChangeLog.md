@@ -1,8 +1,9 @@
 # Revision history for toml-parser
 
-## 1.0.2.0  --
+## 1.1.0.0  --
 
 * Add Toml.FromValue.Generic and Toml.ToValue.Generic
+* Add Alternative instance to Matcher and support multiple error messages in Result
 
 ## 1.0.1.0  -- 2023-07-01
 

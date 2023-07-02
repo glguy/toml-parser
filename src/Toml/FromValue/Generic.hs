@@ -23,7 +23,7 @@ import Toml.Value (Table)
 --
 -- @since 1.0.2.0
 genericFromTable :: (Generic a, GParseTable (Rep a)) => Table -> Matcher a
-genericFromTable t = runParseTable (gParseTable (pure . to)) t
+genericFromTable = runParseTable (gParseTable (pure . to))
 {-# INLINE genericFromTable #-}
 
 -- gParseTable is written in continuation passing style because

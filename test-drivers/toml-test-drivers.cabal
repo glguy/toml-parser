@@ -34,27 +34,27 @@ executable TomlDecoder
     hs-source-dirs:     decoder
     main-is:            Main.hs
     build-depends:
-        aeson >= 2.1 && < 2.3,
-        base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
-        bytestring ^>= 0.11,
-        toml-parser ^>= 1.0.0,
+        aeson           >= 2.1 && < 2.3,
+        base            ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
+        bytestring      ^>= 0.11,
+        toml-parser     ^>= 1.1.0.0,
 
 executable TomlEncoder
     import:             extensions
     hs-source-dirs:     encoder
     main-is:            Main.hs
     build-depends:
-        aeson >= 2.1 && < 2.3,
-        base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
-        bytestring ^>= 0.11,
-        toml-parser ^>= 1.0.0,
+        aeson           >= 2.1 && < 2.3,
+        base            ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
+        bytestring      ^>= 0.11,
+        toml-parser     ^>= 1.1.0.0,
 
 executable TomlHighlighter
     import:             extensions
     hs-source-dirs:     highlighter
     main-is:            Main.hs
     build-depends:
-        base ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
-        prettyprinter ^>= 1.7.1,
+        base            ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
+        prettyprinter   ^>= 1.7.1,
         prettyprinter-ansi-terminal ^>= 1.1.3,
-        toml-parser >= 1.0.0 && < 1.1,
+        toml-parser     ^>= 1.1.0.0,
