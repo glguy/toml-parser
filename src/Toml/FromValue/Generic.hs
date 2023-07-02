@@ -14,7 +14,6 @@ module Toml.FromValue.Generic (
     genericFromTable,
     ) where
 
-import Data.Map qualified as Map
 import GHC.Generics
 import Toml.FromValue (FromValue(..), ParseTable, optKey, reqKey, runParseTable)
 import Toml.FromValue.Matcher (Matcher)

@@ -49,7 +49,7 @@ instance (GToTable f, GToTable g) => GToTable (f :*: g) where
 
 -- | Omits the key from the table on nothing, includes it on just
 instance {-# OVERLAPS #-} (Selector s, ToValue a) => GToTable (S1 s (K1 i (Maybe a))) where
-    gToTable s@(M1 (K1 Nothing)) = Map.empty
+    gToTable (M1 (K1 Nothing)) = Map.empty
     gToTable s@(M1 (K1 (Just x))) = Map.singleton (selName s) (toValue x)
     {-# INLINE gToTable #-}
 
