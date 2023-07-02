@@ -5,6 +5,15 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
+This type helps to build up computations that can validate a TOML
+value and compute some application-specific representation.
+
+It supports warning messages which can be used to deprecate old
+configuration options and to detect unused table keys.
+
+It supports tracking multiple error messages when you have more
+than one decoding option and all of them have failed.
+
 -}
 module Toml.FromValue.Matcher ( 
     Matcher,

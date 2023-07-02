@@ -9,6 +9,11 @@ Maintainer  : emertens@gmail.com
 This module provides human-readable renderers for types used
 in this package to assist error message production.
 
+The generated 'Doc' values are annotated with 'DocClass' values
+to assist in producing syntax-highlighted outputs.
+
+To extract a plain String representation, use 'show'.
+
 -}
 module Toml.Pretty (
     -- * Types

@@ -20,6 +20,9 @@ context you're in. These warnings can provide useful feedback about
 problematic decodings or keys that might be unused now but were perhaps
 meaningful in an old version of a configuration file.
 
+"Toml.FromValue.Generic" can be used to derive instances of 'FromTable'
+automatically for record types.
+
 -}
 module Toml.FromValue (
     -- * Deserialization classes
