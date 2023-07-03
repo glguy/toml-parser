@@ -121,7 +121,7 @@ sepBy1(p,q) ::        { NonEmpty p            }
   : sepBy1_(p,q)      { NonEmpty.reverse $1   }
 
 sepBy1_(p,q) ::       { NonEmpty p            }
-  :                p  { NonEmpty.singleton $1 }
+  :                p  { pure $1               }
   | sepBy1_(p,q) q p  { NonEmpty.cons $3 $1   }
 
 {

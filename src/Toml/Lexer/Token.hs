@@ -36,8 +36,9 @@ module Toml.Lexer.Token (
     mkError,
     ) where
 
+import Data.Char (digitToInt)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
-import Numeric (readBin, readHex, readOct)
+import Numeric (readInt, readHex, readOct)
 
 -- | Lexical token
 data Token
@@ -89,6 +90,13 @@ mkOctInteger _ = error "processHex: bad input"
 mkBinInteger :: String -> Token
 mkBinInteger ('0':'b':xs) = TokInteger (fst (head (readBin (scrub xs))))
 mkBinInteger _ = error "processHex: bad input"
+
+-- This wasn't added to base until 4.16
+readBin :: (Eq a, Num a) => ReadS a
+readBin = readInt 2 isBinDigit digitToInt
+
+isBinDigit :: Char -> Bool
+isBinDigit x = x == '0' || x == '1'
 
 -- | Construct a 'TokFloat' from a floating-point literal lexeme.
 mkFloat :: String -> Token

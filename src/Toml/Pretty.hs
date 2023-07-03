@@ -36,7 +36,7 @@ module Toml.Pretty (
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
 import Data.Foldable (fold)
 import Data.List (partition)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.String (fromString)
@@ -130,7 +130,7 @@ prettyToken = \case
     TokEOF              -> "end-of-input"
 
 prettyAssignment :: String -> Value -> TomlDoc
-prettyAssignment = go . NonEmpty.singleton
+prettyAssignment = go . pure
     where
         go ks (Table (Map.assocs -> [(k,v)])) = go (NonEmpty.cons k ks) v
         go ks v = prettyKey (NonEmpty.reverse ks) <+> equals <+> prettyValue v
@@ -199,7 +199,11 @@ prettyToml_ kind prefix t = vcat (topLines ++ subtables)
 
         assignments = [prettyAssignment k v <> hardline | (k,v) <- simple]
 
-        subtables = [prettySection (prefix `NonEmpty.prependList` pure k) v | (k,v) <- sections]
+        subtables = [prettySection (prefix `snoc` k) v | (k,v) <- sections]
+
+snoc :: [a] -> a -> NonEmpty a
+snoc []       y = y :| []
+snoc (x : xs) y = x :| xs ++ [y]
 
 prettySection :: NonEmpty String -> Value -> TomlDoc
 prettySection key (Table t) =
