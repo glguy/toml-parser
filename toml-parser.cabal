@@ -79,6 +79,10 @@ test-suite unittests
     type:               exitcode-stdio-1.0
     hs-source-dirs:     test
     main-is:            Main.hs
+    default-extensions:
+        QuasiQuotes
+    build-tool-depends:
+        hspec-discover:hspec-discover == 2.*
     build-depends:
         base,
         containers,
@@ -87,4 +91,10 @@ test-suite unittests
         time,
         toml-parser,
     other-modules:
+        DecodeSpec
+        GenericSpec
+        LexerSpec
+        PrettySpec
         QuoteStr
+        TomlSpec
+        ToValueSpec
