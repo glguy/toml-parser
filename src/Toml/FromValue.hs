@@ -187,7 +187,10 @@ instance FromValue Value where
 -- | A 'Matcher' that tracks a current set of unmatched key-value
 -- pairs from a table.
 --
--- Use 'optKey', 'reqKey', 'rej
+-- Use 'optKey' and 'reqKey' to extract keys.
+--
+-- Use 'getTable' and 'setTable' to override the table and implement
+-- other primitives.
 newtype ParseTable a = ParseTable (StateT Table Matcher a)
     deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
 

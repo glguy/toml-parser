@@ -11,6 +11,7 @@ import Toml.FromValue (FromTable(..), FromValue(..), defaultTableFromValue, runP
 import Toml.FromValue.Generic (genericFromTable)
 import Toml.ToValue
 import Toml.ToValue.Generic (genericToTable)
+import Toml (Result(..))
 
 newtype Fruits = Fruits { fruits :: [Fruit] }
     deriving (Eq, Show, Generic)
@@ -126,3 +127,13 @@ spec =
             "Unexpected keys: count, taste in top.fruits[0]",
             "Unexpected key: color in top.fruits[1]"]
             (Fruits [Fruit "peach" Nothing [], Fruit "pineapple" Nothing []])
+    
+    it "handles missing key errors" $
+        (decode "[[fruits]]" :: Result Fruits)
+        `shouldBe`
+        Failure ["Missing key: name in top.fruits[0]"]
+
+    it "handles parse errors while decoding" $
+        (decode "x =" :: Result Fruits)
+        `shouldBe`
+        Failure ["1:4: parse error: unexpected end-of-input"]

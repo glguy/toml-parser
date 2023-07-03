@@ -139,23 +139,23 @@ prettyAssignment = go . NonEmpty.singleton
 -- of an equals sign. This value will always occupy a single line.
 prettyValue :: Value -> TomlDoc
 prettyValue = \case
-    Integer i       -> annotate NumberClass (pretty i)
+    Integer i           -> annotate NumberClass (pretty i)
     Float   f
-        | isNaN f      -> annotate NumberClass "nan"
-        | isInfinite f -> annotate NumberClass (if f > 0 then "inf" else "-inf")
-        | otherwise    -> annotate NumberClass (pretty f)
-    Array a         -> align (list [prettyValue v | v <- a])
-    Table t         -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,v) <- Map.assocs t] <> rbrace
-    Bool True       -> annotate BoolClass "true"
-    Bool False      -> annotate BoolClass "false"
-    String str      -> annotate StringClass (fromString (quoteString str))
-    TimeOfDay tod   -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
+        | isNaN f       -> annotate NumberClass "nan"
+        | isInfinite f  -> annotate NumberClass (if f > 0 then "inf" else "-inf")
+        | otherwise     -> annotate NumberClass (pretty f)
+    Array a             -> align (list [prettyValue v | v <- a])
+    Table t             -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,v) <- Map.assocs t] <> rbrace
+    Bool True           -> annotate BoolClass "true"
+    Bool False          -> annotate BoolClass "false"
+    String str          -> annotate StringClass (fromString (quoteString str))
+    TimeOfDay tod       -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
     ZonedTime zt
-      | timeZoneMinutes (zonedTimeZone zt) == 0 ->
-                          annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt))
-      | otherwise      -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt))
-    LocalTime lt    -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
-    Day d           -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
+        | timeZoneMinutes (zonedTimeZone zt) == 0 ->
+                           annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt))
+        | otherwise     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt))
+    LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
+    Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
 
 isAlwaysSimple :: Value -> Bool
 isAlwaysSimple = \case
