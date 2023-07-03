@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               toml-parser
-version:            1.1.0.0
+version:            1.1.1.0
 synopsis:           TOML 1.0.0 parser
 description:
     TOML parser using generated lexers and parsers with
@@ -13,7 +13,7 @@ maintainer:         emertens@gmail.com
 copyright:          2023 Eric Mertens
 category:           Text
 build-type:         Simple
-tested-with:        GHC == 9.2.8, GHC == 9.4.5, GHC == 9.6.2
+tested-with:        GHC == 8.10.7, GHC == 9.0.2, GHC == 9.2.8, GHC == 9.4.5, GHC == 9.6.2
 
 extra-doc-files:
     ChangeLog.md
@@ -65,10 +65,10 @@ library
         Toml.Value
     build-depends:
         array           ^>= 0.5,
-        base            ^>= 4.16 || ^>= 4.17 || ^>= 4.18,
+        base            >= 4.14 && < 4.19,
         containers      ^>= 0.5 || ^>= 0.6,
         prettyprinter   ^>= 1.7,
-        time            ^>= 1.11 || ^>= 1.12,
+        time            >= 1.9 && < 1.13,
         transformers    ^>= 0.5 || ^>= 0.6,
     build-tool-depends:
         alex:alex       >= 3.2,
@@ -87,7 +87,7 @@ test-suite unittests
         base,
         containers,
         hspec           >= 2.10 && < 2.12,
-        template-haskell ^>= 2.18 || ^>= 2.19 || ^>= 2.20,
+        template-haskell >= 2.16 && < 2.21,
         time,
         toml-parser,
     other-modules:

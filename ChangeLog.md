@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 1.1.1.0  --  2023-07-03
+
+* Add support for GHC 8.10.7 and 9.0.2
+
 ## 1.1.0.0  --  2023-07-03
 
 * Add Toml.FromValue.Generic and Toml.ToValue.Generic

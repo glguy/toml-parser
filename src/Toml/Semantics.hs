@@ -120,7 +120,7 @@ addSection kind kvs = walk
             Nothing ->
                 case kind of
                     TableKind      -> go (FrameTable Closed) Map.empty
-                    ArrayTableKind -> go (FrameArray . NonEmpty.singleton) Map.empty
+                    ArrayTableKind -> go (FrameArray . pure) Map.empty
 
             -- defining a super table of a previously defined subtable
             Just (FrameTable Open t) ->

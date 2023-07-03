@@ -4,12 +4,12 @@ module DecodeSpec (spec) where
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
-import QuoteStr (quoteStr )
+import QuoteStr (quoteStr)
 import Test.Hspec (it, shouldBe, Spec)
 import Toml (decode, Result(Success), encode)
 import Toml.FromValue (FromTable(..), FromValue(..), defaultTableFromValue, runParseTable, reqKey, optKey)
 import Toml.FromValue.Generic (genericFromTable)
-import Toml.ToValue
+import Toml.ToValue (ToTable(..), ToValue(toValue), (.=), defaultTableToValue)
 import Toml.ToValue.Generic (genericToTable)
 import Toml (Result(..))
 
