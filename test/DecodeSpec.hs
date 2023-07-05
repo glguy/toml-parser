@@ -131,7 +131,7 @@ spec =
     it "handles missing key errors" $
         (decode "[[fruits]]" :: Result Fruits)
         `shouldBe`
-        Failure ["Missing key: name in top.fruits[0]"]
+        Failure ["missing key: name in top.fruits[0]"]
 
     it "handles parse errors while decoding" $
         (decode "x =" :: Result Fruits)

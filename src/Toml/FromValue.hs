@@ -35,6 +35,8 @@ module Toml.FromValue (
     Result(..),
     runMatcher,
     withScope,
+    inKey,
+    inIndex,
     warning,
 
     -- * Table matching
@@ -43,13 +45,17 @@ module Toml.FromValue (
     optKey,
     reqKey,
     warnTable,
+    Alt(..),
+    alt,
+    pickKey,
 
     -- * Table matching primitives
     getTable,
     setTable,
+    liftMatcher,
     ) where
 
-import Control.Applicative (Alternative)
+import Control.Applicative (Alternative, optional)
 import Control.Monad (MonadPlus, zipWithM)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT(..), put, get)
@@ -72,7 +78,7 @@ class FromValue a where
 
     -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
     listFromValue :: Value -> Matcher [a]
-    listFromValue (Array xs) = zipWithM (\i v -> withScope ("[" ++ show i ++ "]") (fromValue v)) [0::Int ..] xs
+    listFromValue (Array xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
     listFromValue v = typeError "array" v
 
 -- | Class for types that can be decoded from a TOML table.
@@ -83,7 +89,7 @@ class FromValue a => FromTable a where
 instance (Ord k, IsString k, FromValue v) => FromTable (Map k v) where
     fromTable t = Map.fromList <$> traverse f (Map.assocs t)
         where
-            f (k,v) = (,) (fromString k) <$> withScope ('.':show (prettySimpleKey k)) (fromValue v)
+            f (k,v) = (,) (fromString k) <$> inKey k (fromValue v)
 
 instance (Ord k, IsString k, FromValue v) => FromValue (Map k v) where
     fromValue = defaultTableFromValue
@@ -95,7 +101,20 @@ defaultTableFromValue v = typeError "table" v
 
 -- | Report a type error
 typeError :: String {- ^ expected type -} -> Value {- ^ actual value -} -> Matcher a
-typeError wanted got = fail ("Type error. wanted: " ++ wanted ++ " got: " ++ show (prettyValue got))
+typeError wanted got = fail ("type error. wanted: " ++ wanted ++ " got: " ++ valueType got)
+
+valueType :: Value -> String
+valueType = \case
+    Integer   {} -> "integer"
+    Float     {} -> "float"
+    Array     {} -> "array"
+    Table     {} -> "table"
+    Bool      {} -> "boolean"
+    String    {} -> "string"
+    TimeOfDay {} -> "local time"
+    LocalTime {} -> "local date-time"
+    Day       {} -> "locate date"
+    ZonedTime {} -> "offset date-time"
 
 -- | Matches integer values
 instance FromValue Integer where
@@ -197,6 +216,10 @@ newtype ParseTable a = ParseTable (StateT Table Matcher a)
 instance MonadFail ParseTable where
     fail = ParseTable . fail
 
+-- | Lift a matcher into the current table parsing context.
+liftMatcher :: Matcher a -> ParseTable a
+liftMatcher = ParseTable . lift
+
 -- | Run a 'ParseTable' computation with a given starting 'Table'.
 -- Unused tables will generate a warning. To change this behavior
 -- 'getTable' and 'setTable' can be used to discard or generate
@@ -223,17 +246,60 @@ warnTable = ParseTable . lift . warning
 
 -- | Match a table entry by key if it exists or return 'Nothing' if not.
 optKey :: FromValue a => String -> ParseTable (Maybe a)
-optKey key = ParseTable $ StateT \t ->
-    case Map.lookup key t of
-        Nothing -> pure (Nothing, t)
-        Just v ->
-         do r <- withScope ('.' : show (prettySimpleKey key)) (fromValue v)
-            pure (Just r, Map.delete key t)
+optKey = optional . reqKey
 
 -- | Match a table entry by key or report an error if missing.
 reqKey :: FromValue a => String -> ParseTable a
-reqKey key =
- do mb <- optKey key
-    case mb of
-        Nothing -> fail ("Missing key: " ++ show (prettySimpleKey key))
-        Just v -> pure v
+reqKey key = pickKey [Alt key fromValue]
+
+-- | Key and value matching function
+--
+-- @since 1.1.2.0
+data Alt a = Alt String (Value -> Matcher a)
+
+-- | Helper for the common case where 'fromValue' is being used.
+--
+-- @since 1.1.2.0
+alt :: FromValue a => String -> Alt a
+alt key = Alt key fromValue
+
+-- | Take the first option from a list of table keys and matcher functions.
+-- This operation will commit to the first table key that matches. If the
+-- associated matcher fails, only that error will be propagated and the
+-- other alternatives will not be matched.
+--
+-- If no keys match, an error message is generated explaining which keys
+-- would have been accepted.
+--
+-- This is provided as an alternative to chaining multiple 'reqKey' cases
+-- together with @('<|>')@ because that will generate one error message for
+-- each unmatched alternative as well as the error associate with the
+-- matched alternative.
+--
+-- @since 1.1.2.0
+pickKey :: [Alt a] -> ParseTable a
+pickKey xs = ParseTable $ StateT \t ->
+    foldr (f t) (fail errMsg) xs
+    where
+        f t (Alt k c) continue =
+            case Map.lookup k t of
+                Nothing -> continue
+                Just v -> do v' <- inKey k (c v)
+                             pure (v', Map.delete k t)
+        errMsg =
+            case xs of
+                []        -> "no alternatives"
+                [Alt k _] -> "missing key: " ++ show (prettySimpleKey k)
+                _         -> "possible keys: " ++ intercalate ", " [show (prettySimpleKey k) | Alt k _ <- xs]
+
+-- | Update the scope with the message corresponding to a table key
+--
+-- @since 1.1.2.0
+inKey :: String -> Matcher a -> Matcher a
+inKey key = withScope ('.' : show (prettySimpleKey key))
+
+-- | Update the scope with the message corresponding to an array index
+--
+-- @since 1.1.2.0
+inIndex :: Int -> Matcher a -> Matcher a
+inIndex i = withScope ("[" ++ show i ++ "]")
