@@ -1,15 +1,16 @@
 cradle:
   cabal:
-    - path: "./src"
-      component: "toml-parser:lib:toml-parser"
-    - path: "./test"
-      component: "toml-parser:test:unittests"
-    - path: "./test-drivers/encoder"
-      component: "toml-test-drivers:exe:TomlEncoder"
-    - path: "./test-drivers/decoder"
-      component: "toml-test-drivers:exe:TomlDecoder"
-    - path: "./test-drivers/highlighter"
-      component: "toml-test-drivers:exe:TomlHighlighter"
+    components:
+      - path: "./src"
+        component: "toml-parser:lib:toml-parser"
+      - path: "./test"
+        component: "toml-parser:test:unittests"
+      - path: "./test-drivers/encoder"
+        component: "toml-test-drivers:exe:TomlEncoder"
+      - path: "./test-drivers/decoder"
+        component: "toml-test-drivers:exe:TomlDecoder"
+      - path: "./test-drivers/highlighter"
+        component: "toml-test-drivers:exe:TomlHighlighter"
 dependencies:
   - src/Toml/Lexer.x
   - src/Toml/Parser.y

@@ -347,3 +347,73 @@ spec =
                     ]
                 , dependencies = Nothing
                 }
+
+    it "parses things using components" $
+        decode [quoteStr|
+            dependencies = [
+                "src/Toml/Lexer.x",
+                "src/Toml/Parser.y",
+            ]
+
+            [cradle.cabal]
+            cabalProject = "cabal.project"
+            
+            [[cradle.cabal.components]]
+            path = "./src"
+            component = "toml-parser:lib:toml-parser"
+
+            [[cradle.cabal.components]]
+            path = "./test"
+            component = "toml-parser:test:unittests"
+
+            [[cradle.cabal.components]]
+            path = "./test-drivers/encoder"
+            component = "toml-test-drivers:exe:TomlEncoder"
+
+            [[cradle.cabal.components]]
+            path = "./test-drivers/decoder"
+            component = "toml-test-drivers:exe:TomlDecoder"
+
+            [[cradle.cabal.components]]
+            path = "./test-drivers/highlighter"
+            component = "toml-test-drivers:exe:TomlHighlighter"
+            |]
+        `shouldBe`
+        Success
+            []
+            CradleConfig
+                { cradle =
+                    Cabal
+                    CabalConfig
+                        { cabalProject = Just "cabal.project"
+                        , cabalComponents =
+                            ManyComponents
+                            [ CabalComponent
+                                { cabalPath = "./src"
+                                , cabalComponent = "toml-parser:lib:toml-parser"
+                                , cabalComponentProject = Nothing
+                                }
+                            , CabalComponent
+                                { cabalPath = "./test"
+                                , cabalComponent = "toml-parser:test:unittests"
+                                , cabalComponentProject = Nothing
+                                }
+                            , CabalComponent
+                                { cabalPath = "./test-drivers/encoder"
+                                , cabalComponent = "toml-test-drivers:exe:TomlEncoder"
+                                , cabalComponentProject = Nothing
+                                }
+                            , CabalComponent
+                                { cabalPath = "./test-drivers/decoder"
+                                , cabalComponent = "toml-test-drivers:exe:TomlDecoder"
+                                , cabalComponentProject = Nothing
+                                }
+                            , CabalComponent
+                                { cabalPath = "./test-drivers/highlighter"
+                                , cabalComponent = "toml-test-drivers:exe:TomlHighlighter"
+                                , cabalComponentProject = Nothing
+                                }
+                            ]
+                        }
+                , dependencies = Just [ "src/Toml/Lexer.x" , "src/Toml/Parser.y" ]
+                }
