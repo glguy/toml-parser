@@ -146,3 +146,8 @@ instance FromValue ExampleRecord where fromValue = defaultTableFromValue
 instance ToTable   ExampleRecord where toTable   = genericToTable
 instance ToValue   ExampleRecord where toValue   = defaultTableToValue
 ```
+
+## Larger Example
+
+A demonstration of using this package at a more realistic scale
+can be found in [HieDemoSpec](test/HieDemoSpec.hs).

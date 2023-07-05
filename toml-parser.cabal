@@ -92,6 +92,7 @@ test-suite unittests
         toml-parser,
     other-modules:
         DecodeSpec
+        HieDemoSpec
         LexerSpec
         PrettySpec
         QuoteStr
