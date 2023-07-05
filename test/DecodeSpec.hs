@@ -124,8 +124,8 @@ spec =
             color = "yellow"|]
         `shouldBe`
         Success [
-            "Unexpected keys: count, taste in top.fruits[0]",
-            "Unexpected key: color in top.fruits[1]"]
+            "unexpected keys: count, taste in top.fruits[0]",
+            "unexpected key: color in top.fruits[1]"]
             (Fruits [Fruit "peach" Nothing [], Fruit "pineapple" Nothing []])
     
     it "handles missing key errors" $

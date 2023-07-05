@@ -2,7 +2,7 @@
 
 ## 1.1.2.0  --
 
-* Add `pickKey`, `liftMatcher`, `inKey`, `inIndex` to Toml.FromValue
+* Add `pickKey`, `liftMatcher`, `inKey`, `inIndex` to `Toml.FromValue`
 
 ## 1.1.1.0  --  2023-07-03
 

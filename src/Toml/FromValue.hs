@@ -46,7 +46,6 @@ module Toml.FromValue (
     reqKey,
     warnTable,
     Alt(..),
-    alt,
     pickKey,
 
     -- * Table matching primitives
@@ -229,8 +228,8 @@ runParseTable (ParseTable p) t =
  do (x, t') <- runStateT p t
     case Map.keys t' of
         []  -> pure x
-        [k] -> x <$ warning ("Unexpected key: " ++ show (prettySimpleKey k))
-        ks  -> x <$ warning ("Unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
+        [k] -> x <$ warning ("unexpected key: " ++ show (prettySimpleKey k))
+        ks  -> x <$ warning ("unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
 
 -- | Return the remaining portion of the table being matched.
 getTable :: ParseTable Table
@@ -250,18 +249,14 @@ optKey = optional . reqKey
 
 -- | Match a table entry by key or report an error if missing.
 reqKey :: FromValue a => String -> ParseTable a
-reqKey key = pickKey [Alt key fromValue]
+reqKey key = pickKey [Key key fromValue]
 
 -- | Key and value matching function
 --
 -- @since 1.1.2.0
-data Alt a = Alt String (Value -> Matcher a)
-
--- | Helper for the common case where 'fromValue' is being used.
---
--- @since 1.1.2.0
-alt :: FromValue a => String -> Alt a
-alt key = Alt key fromValue
+data Alt a
+    = Key String (Value -> Matcher a) -- ^ pick alternative based on key match
+    | Else (Matcher a) -- ^ default case when no previous cases matched
 
 -- | Take the first option from a list of table keys and matcher functions.
 -- This operation will commit to the first table key that matches. If the
@@ -278,19 +273,23 @@ alt key = Alt key fromValue
 --
 -- @since 1.1.2.0
 pickKey :: [Alt a] -> ParseTable a
-pickKey xs = ParseTable $ StateT \t ->
+pickKey xs =
+ do t <- getTable
     foldr (f t) (fail errMsg) xs
     where
-        f t (Alt k c) continue =
+        f t (Else m) _ = liftMatcher m
+        f t (Key k c) continue =
             case Map.lookup k t of
                 Nothing -> continue
-                Just v -> do v' <- inKey k (c v)
-                             pure (v', Map.delete k t)
+                Just v ->
+                 do setTable $! Map.delete k t
+                    liftMatcher (inKey k (c v))
+
         errMsg =
             case xs of
                 []        -> "no alternatives"
-                [Alt k _] -> "missing key: " ++ show (prettySimpleKey k)
-                _         -> "possible keys: " ++ intercalate ", " [show (prettySimpleKey k) | Alt k _ <- xs]
+                [Key k _] -> "missing key: " ++ show (prettySimpleKey k)
+                _         -> "possible keys: " ++ intercalate ", " [show (prettySimpleKey k) | Key k _ <- xs]
 
 -- | Update the scope with the message corresponding to a table key
 --
