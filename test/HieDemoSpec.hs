@@ -126,97 +126,95 @@ data Callable
 -----------------------------------------------------------------------
 
 instance FromValue CradleConfig where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable CradleConfig where
-  fromTable = genericFromTable
+    fromTable = genericFromTable
 
 instance FromValue CradleComponent where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable CradleComponent where
     fromTable = runParseTable $
-      pickKey [
-        Key "multi"  (fmap Multi  . fromValue),
-        Key "cabal"  (fmap Cabal  . fromValue),
-        Key "stack"  (fmap Stack  . fromValue),
-        Key "direct" (fmap Direct . fromValue),
-        Key "bios"   (fmap Bios   . fromValue),
-        Key "none"   (fmap None   . fromValue)]
+        pickKey [
+            Key "multi"  (fmap Multi  . fromValue),
+            Key "cabal"  (fmap Cabal  . fromValue),
+            Key "stack"  (fmap Stack  . fromValue),
+            Key "direct" (fmap Direct . fromValue),
+            Key "bios"   (fmap Bios   . fromValue),
+            Key "none"   (fmap None   . fromValue)]
 
 instance FromValue MultiSubComponent where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable MultiSubComponent where
-  fromTable = genericFromTable
+    fromTable = genericFromTable
 
 instance FromValue CabalConfig where
-  fromValue v@Toml.Array{} = CabalConfig Nothing . ManyComponents <$> fromValue v
-  fromValue (Toml.Table t)  = getComponentTable CabalConfig "cabalProject" t
-  fromValue _               = fail "cabal configuration expects table or array"
+    fromValue v@Toml.Array{} = CabalConfig Nothing . ManyComponents <$> fromValue v
+    fromValue (Toml.Table t)  = getComponentTable CabalConfig "cabalProject" t
+    fromValue _               = fail "cabal configuration expects table or array"
 
 getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> String -> Toml.Table -> Matcher a
-getComponentTable con pathKey = runParseTable $
-  con <$> optKey pathKey
-      <*> pickKey [
-          Key "component"  (fmap  SingleComponent . fromValue),
-          Key "components" (fmap  ManyComponents  . fromValue),
-          Else (pure NoComponent)
-          ]
+getComponentTable con pathKey = runParseTable $ con
+    <$> optKey pathKey
+    <*> pickKey [
+        Key "component"  (fmap  SingleComponent . fromValue),
+        Key "components" (fmap  ManyComponents  . fromValue),
+        Else (pure NoComponent)]
 
 instance FromValue CabalComponent where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable CabalComponent where
-  fromTable = runParseTable $ CabalComponent
-    <$> reqKey "path"
-    <*> reqKey "component"
-    <*> optKey "cabalProject"
+    fromTable = runParseTable $ CabalComponent
+        <$> reqKey "path"
+        <*> reqKey "component"
+        <*> optKey "cabalProject"
 
 instance FromValue StackConfig where
-  fromValue v@Toml.Array{} = StackConfig Nothing . ManyComponents <$> fromValue v
-  fromValue (Toml.Table t) = getComponentTable StackConfig "stackYaml" t
-  fromValue _              = fail "stack configuration expects table or array"
+    fromValue v@Toml.Array{} = StackConfig Nothing . ManyComponents <$> fromValue v
+    fromValue (Toml.Table t) = getComponentTable StackConfig "stackYaml" t
+    fromValue _              = fail "stack configuration expects table or array"
 
 instance FromValue StackComponent where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable StackComponent where
-  fromTable = runParseTable $ StackComponent
-    <$> reqKey "path"
-    <*> reqKey "component"
-    <*> optKey "stackYaml"
+    fromTable = runParseTable $ StackComponent
+        <$> reqKey "path"
+        <*> reqKey "component"
+        <*> optKey "stackYaml"
 
 instance FromValue DirectConfig where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable DirectConfig where
-  fromTable = genericFromTable
+    fromTable = genericFromTable
 
 instance FromValue BiosConfig where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable BiosConfig where
-  fromTable = runParseTable $ BiosConfig
-    <$> getCallable
-    <*> getDepsCallable
-    <*> optKey "with-ghc"
-    where
-      getCallable =
-        pickKey [
-          Key "program" (fmap Program . fromValue),
-          Key "shell"   (fmap Shell   . fromValue)]
-      getDepsCallable =
-        optional (pickKey [
-          Key "dependency-program" (fmap Program . fromValue),
-          Key "dependency-shell"   (fmap Shell   . fromValue)]
-        )
+    fromTable = runParseTable $ BiosConfig
+        <$> getCallable
+        <*> getDepsCallable
+        <*> optKey "with-ghc"
+        where
+            getCallable =
+                pickKey [
+                    Key "program" (fmap Program . fromValue),
+                    Key "shell"   (fmap Shell   . fromValue)]
+            getDepsCallable =
+                optional (pickKey [
+                    Key "dependency-program" (fmap Program . fromValue),
+                    Key "dependency-shell"   (fmap Shell   . fromValue)])
 
 instance FromValue NoneConfig where
-  fromValue = defaultTableFromValue
+    fromValue = defaultTableFromValue
 
 instance FromTable NoneConfig where
-  fromTable = genericFromTable
+    fromTable = genericFromTable
 
 spec :: Spec
 spec =
@@ -417,3 +415,11 @@ spec =
                         }
                 , dependencies = Just [ "src/Toml/Lexer.x" , "src/Toml/Parser.y" ]
                 }
+
+    it "handles the none case" $
+        decode [quoteStr|
+            [cradle.none]|]
+        `shouldBe`
+        Success [] (CradleConfig {
+            cradle = None NoneConfig,
+            dependencies = Nothing})
