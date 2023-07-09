@@ -37,7 +37,7 @@ module Toml.FromValue (
     optKey,
     reqKey,
     warnTable,
-    Alt(..),
+    KeyAlt(..),
     pickKey,
 
     -- * Table matching primitives

@@ -94,12 +94,12 @@ instance MonadFail Matcher where
 
 -- | Update the scope with the message corresponding to a table key
 --
--- @since 1.1.2.0
+-- @since 1.2.0.0
 inKey :: String -> Matcher a -> Matcher a
 inKey key = withScope ('.' : show (prettySimpleKey key))
 
 -- | Update the scope with the message corresponding to an array index
 --
--- @since 1.1.2.0
+-- @since 1.2.0.0
 inIndex :: Int -> Matcher a -> Matcher a
 inIndex i = withScope ("[" ++ show i ++ "]")

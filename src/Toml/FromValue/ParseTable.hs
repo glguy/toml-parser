@@ -17,7 +17,19 @@ most of the basic functionality is exported directly from
 "Toml.FromValue".
 
 -}
-module Toml.FromValue.ParseTable where
+module Toml.FromValue.ParseTable (
+    -- * Base interface
+    ParseTable,
+    KeyAlt(..),
+    pickKey,
+    runParseTable,
+
+    -- * Primitives
+    liftMatcher,
+    warnTable,
+    setTable,
+    getTable,
+    ) where
 
 import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus)
@@ -75,7 +87,7 @@ warnTable = ParseTable . lift . warning
 -- | Key and value matching function
 --
 -- @since 1.2.0.0
-data Alt a
+data KeyAlt a
     = Key String (Value -> Matcher a) -- ^ pick alternative based on key match
     | Else (Matcher a) -- ^ default case when no previous cases matched
 
@@ -92,8 +104,8 @@ data Alt a
 -- each unmatched alternative as well as the error associate with the
 -- matched alternative.
 --
--- @since 1.1.2.0
-pickKey :: [Alt a] -> ParseTable a
+-- @since 1.2.0.0
+pickKey :: [KeyAlt a] -> ParseTable a
 pickKey xs =
  do t <- getTable
     foldr (f t) (fail errMsg) xs
