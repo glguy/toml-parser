@@ -20,7 +20,7 @@ import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
 import Toml (Value(Table, Array), Table, Result(..), decode)
 import Toml.FromValue
-import Toml.FromValue.Generic ( genericFromTable )
+import Toml.FromValue.Generic (genericParseTable)
 
 -----------------------------------------------------------------------
 -- THIS CODE DERIVED FROM CODE UNDER THE FOLLOWING LICENSE
@@ -126,16 +126,10 @@ data Callable
 -----------------------------------------------------------------------
 
 instance FromValue CradleConfig where
-    fromValue = defaultTableFromValue
-
-instance FromTable CradleConfig where
-    fromTable = genericFromTable
+    fromValue = parseTableFromValue genericParseTable
 
 instance FromValue CradleComponent where
-    fromValue = defaultTableFromValue
-
-instance FromTable CradleComponent where
-    fromTable = runParseTable $
+    fromValue = parseTableFromValue $
         pickKey [
             Key "multi"  (fmap Multi  . fromValue),
             Key "cabal"  (fmap Cabal  . fromValue),
@@ -145,10 +139,7 @@ instance FromTable CradleComponent where
             Key "none"   (fmap None   . fromValue)]
 
 instance FromValue MultiSubComponent where
-    fromValue = defaultTableFromValue
-
-instance FromTable MultiSubComponent where
-    fromTable = genericFromTable
+    fromValue = parseTableFromValue genericParseTable
 
 instance FromValue CabalConfig where
     fromValue v@Toml.Array{} = CabalConfig Nothing . ManyComponents <$> fromValue v
@@ -164,10 +155,7 @@ getComponentTable con pathKey = runParseTable $ con
         Else (pure NoComponent)]
 
 instance FromValue CabalComponent where
-    fromValue = defaultTableFromValue
-
-instance FromTable CabalComponent where
-    fromTable = runParseTable $ CabalComponent
+    fromValue = parseTableFromValue $ CabalComponent
         <$> reqKey "path"
         <*> reqKey "component"
         <*> optKey "cabalProject"
@@ -178,25 +166,16 @@ instance FromValue StackConfig where
     fromValue _              = fail "stack configuration expects table or array"
 
 instance FromValue StackComponent where
-    fromValue = defaultTableFromValue
-
-instance FromTable StackComponent where
-    fromTable = runParseTable $ StackComponent
+    fromValue = parseTableFromValue $ StackComponent
         <$> reqKey "path"
         <*> reqKey "component"
         <*> optKey "stackYaml"
 
 instance FromValue DirectConfig where
-    fromValue = defaultTableFromValue
-
-instance FromTable DirectConfig where
-    fromTable = genericFromTable
+    fromValue = parseTableFromValue genericParseTable
 
 instance FromValue BiosConfig where
-    fromValue = defaultTableFromValue
-
-instance FromTable BiosConfig where
-    fromTable = runParseTable $ BiosConfig
+    fromValue = parseTableFromValue $ BiosConfig
         <$> getCallable
         <*> getDepsCallable
         <*> optKey "with-ghc"
@@ -211,10 +190,7 @@ instance FromTable BiosConfig where
                     Key "dependency-shell"   (fmap Shell   . fromValue)])
 
 instance FromValue NoneConfig where
-    fromValue = defaultTableFromValue
-
-instance FromTable NoneConfig where
-    fromTable = genericFromTable
+    fromValue = parseTableFromValue genericParseTable
 
 spec :: Spec
 spec =

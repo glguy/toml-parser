@@ -33,7 +33,8 @@ module Toml (
     ) where
 
 import Text.Printf (printf)
-import Toml.FromValue (FromTable (fromTable), runMatcher, Result(..))
+import Toml.FromValue (FromValue (fromValue), Result(..))
+import Toml.FromValue.Matcher (runMatcher)
 import Toml.Lexer (scanTokens, Token(TokError))
 import Toml.Located (Located(Located))
 import Toml.Parser (parseRawToml)
@@ -53,9 +54,9 @@ parse str =
             Left (printf "%d:%d: parse error: unexpected %s" (posLine p) (posColumn p) (prettyToken t))
         Right exprs -> semantics exprs
 
--- | Use the 'FromTable' instance to decode a value from a TOML string.
-decode :: FromTable a => String -> Result a
-decode = either (Failure . pure) (runMatcher . fromTable) . parse
+-- | Use the 'FromValue' instance to decode a value from a TOML string.
+decode :: FromValue a => String -> Result a
+decode = either (Failure . pure) (runMatcher . fromValue . Table) . parse
 
 -- | Use the 'ToTable' instance to encode a value to a TOML string.
 encode :: ToTable a => a -> TomlDoc

@@ -1,8 +1,24 @@
 # Revision history for toml-parser
 
-## 1.1.2.0  --
+## 1.2.0.0  --
 
-* Add `pickKey`, `liftMatcher`, `inKey`, `inIndex` to `Toml.FromValue`
+* Remove `FromTable` class. This class existed for things that could be
+  matched specifically from tables, which is what the top-level values
+  always are. However `FromValue` already handles this, and both classes
+  can fail, so having the extra level of checking doesn't avoid failure.
+  It does, however, create a lot of noise generating instances. Note that
+  `ToTable` continues to exist because `toTable` isn't allowed to fail,
+  and when serializing to TOML syntax you can only serialize top-level
+  tables.
+* Extracted `Toml.FromValue.Matcher` and `Toml.FromValue.ParseTable` into
+  their own modules.
+* Add `pickKey`, `liftMatcher`, `inKey`, `inIndex`, `parseTableFromValue` to `Toml.FromValue`
+* Replace `genericFromTable` with `genericParseTable`. The intended way to
+  derive a `FromValue` instance is now to write:
+
+  ```haskell
+  instance FromValue T where fromValue = parseTableFromValue genericParseTable
+  ```
 
 ## 1.1.1.0  --  2023-07-03
 

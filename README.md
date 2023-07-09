@@ -21,13 +21,13 @@ stateDiagram-v2
     TOML --> [Token]: Toml.Lexer
     [Token] --> [Expr]: Toml.Parser
     [Expr] --> Table : Toml.Semantics
-    Table --> ApplicationTypes : Toml.FromTable
-    ApplicationTypes --> Table : Toml.ToTable
+    Table --> ApplicationTypes : Toml.FromValue
+    ApplicationTypes --> Table : Toml.ToValue
     Table --> TOML : Toml.Pretty
 
 ```
 
-The highest-level interface to this package is to define `FromTable` and `ToTable`
+The highest-level interface to this package is to define `FromValue` and `ToTable`
 instances for your application-specific datatypes. These can be used with `encode`
 and `decode` to convert to and from TOML.
 
@@ -101,22 +101,17 @@ data Physical = Physical String String
 newtype Variety = Variety String
     deriving (Eq, Show)
 
-instance FromTable Fruits where
-    fromTable = runParseTable (Fruits <$> reqKey "fruits")
+instance FromValue Fruits where
+    fromValue = parseTableFromValue (Fruits <$> reqKey "fruits")
 
-instance FromTable Fruit where
-    fromTable = runParseTable (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+instance FroValue Fruit where
+    fromValue = parseTableFromValue (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
 
-instance FromTable Physical where
-    fromTable = runParseTable (Physical <$> reqKey "color" <*> reqKey "shape")
+instance FromValue Physical where
+    fromValue = parseTableFromValue (Physical <$> reqKey "color" <*> reqKey "shape")
 
-instance FromTable Variety where
-    fromTable = runParseTable (Variety <$> reqKey "name")
-
-instance FromValue Fruits   where fromValue = defaultTableFromValue
-instance FromValue Fruit    where fromValue = defaultTableFromValue
-instance FromValue Physical where fromValue = defaultTableFromValue
-instance FromValue Variety  where fromValue = defaultTableFromValue
+instance FromValue Variety where
+    fromValue = parseTableFromValue (Variety <$> reqKey "name")
 ```
 
 We can run this example on the original value to deserialize it into domain-specific datatypes.
@@ -141,8 +136,7 @@ data ExampleRecord = ExampleRecord {
   exOpt    :: Maybe Bool}
   deriving (Show, Generic, Eq)
 
-instance FromTable ExampleRecord where fromTable = genericFromTable
-instance FromValue ExampleRecord where fromValue = defaultTableFromValue
+instance FromValue ExampleRecord where fromValue = parseTableFromValue genericParseTable
 instance ToTable   ExampleRecord where toTable   = genericToTable
 instance ToValue   ExampleRecord where toValue   = defaultTableToValue
 ```

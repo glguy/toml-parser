@@ -7,11 +7,12 @@ import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (it, shouldBe, Spec)
 import Toml (decode, Result(Success), encode)
-import Toml.FromValue (FromTable(..), FromValue(..), defaultTableFromValue, runParseTable, reqKey, optKey)
-import Toml.FromValue.Generic (genericFromTable)
+import Toml.FromValue (FromValue(..), runParseTable, reqKey, optKey)
+import Toml.FromValue.Generic (genericParseTable)
 import Toml.ToValue (ToTable(..), ToValue(toValue), (.=), defaultTableToValue)
 import Toml.ToValue.Generic (genericToTable)
 import Toml (Result(..))
+import Toml.FromValue (parseTableFromValue)
 
 newtype Fruits = Fruits { fruits :: [Fruit] }
     deriving (Eq, Show, Generic)
@@ -31,14 +32,9 @@ newtype Variety = Variety {
     name :: String
     } deriving (Eq, Show, Generic)
 
-instance FromTable Fruits   where fromTable = genericFromTable
-instance FromTable Physical where fromTable = genericFromTable
-instance FromTable Variety  where fromTable = genericFromTable
-
-instance FromValue Fruits   where fromValue = defaultTableFromValue
-instance FromValue Fruit    where fromValue = defaultTableFromValue
-instance FromValue Physical where fromValue = defaultTableFromValue
-instance FromValue Variety  where fromValue = defaultTableFromValue
+instance FromValue Fruits   where fromValue = parseTableFromValue genericParseTable
+instance FromValue Physical where fromValue = parseTableFromValue genericParseTable
+instance FromValue Variety  where fromValue = parseTableFromValue genericParseTable
 
 instance ToTable Fruits   where toTable = genericToTable
 instance ToTable Physical where toTable = genericToTable
@@ -49,8 +45,8 @@ instance ToValue Fruit    where toValue = defaultTableToValue
 instance ToValue Physical where toValue = defaultTableToValue
 instance ToValue Variety  where toValue = defaultTableToValue
 
-instance FromTable Fruit where
-    fromTable = runParseTable (Fruit
+instance FromValue Fruit where
+    fromValue = parseTableFromValue (Fruit
         <$> reqKey "name"
         <*> optKey "physical"
         <*> (fromMaybe [] <$> optKey "varieties"))

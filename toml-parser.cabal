@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               toml-parser
-version:            1.1.2.0
+version:            1.2.0.0
 synopsis:           TOML 1.0.0 parser
 description:
     TOML parser using generated lexers and parsers with
@@ -51,6 +51,7 @@ library
         Toml.FromValue
         Toml.FromValue.Generic
         Toml.FromValue.Matcher
+        Toml.FromValue.ParseTable
         Toml.Lexer
         Toml.Lexer.Token
         Toml.Lexer.Utils

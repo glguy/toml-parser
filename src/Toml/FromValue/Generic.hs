@@ -5,26 +5,28 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
-Use 'genericFromTable' to derive an instance of 'Toml.FromValue.FromTable'
-using the field names of a record.
+Use 'genericParseTable' to derive a 'ParseTable' using the field names
+of a record. This can be combined with 'Toml.FromValue.parseTableFromValue'
+to derive a 'Toml.FromValue.FromValue' instance.
 
 -}
 module Toml.FromValue.Generic (
     GParseTable(..),
-    genericFromTable,
+    genericParseTable,
     ) where
 
 import GHC.Generics
-import Toml.FromValue (FromValue(..), ParseTable, optKey, reqKey, runParseTable)
+import Toml.FromValue.ParseTable (ParseTable, runParseTable)
 import Toml.FromValue.Matcher (Matcher)
-import Toml.Value (Table)
+import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
+import Toml.Value (Table, Value(Table))
 
 -- | Match a 'Table' using the field names in a record.
 --
--- @since 1.0.2.0
-genericFromTable :: (Generic a, GParseTable (Rep a)) => Table -> Matcher a
-genericFromTable = runParseTable (gParseTable (pure . to))
-{-# INLINE genericFromTable #-}
+-- @since 1.2.0.0
+genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable a
+genericParseTable = gParseTable (pure . to)
+{-# INLINE genericParseTable #-}
 
 -- gParseTable is written in continuation passing style because
 -- it allows all the GHC.Generics constructors to inline into
@@ -49,6 +51,7 @@ instance GParseTable f => GParseTable (C1 c f) where
     gParseTable f = gParseTable (f . M1)
     {-# INLINE gParseTable #-}
 
+-- | Matches left then right component
 instance (GParseTable f, GParseTable g) => GParseTable (f :*: g) where
     gParseTable f = gParseTable \x -> gParseTable \y -> f (x :*: y)
     {-# INLINE gParseTable #-}

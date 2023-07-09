@@ -22,6 +22,10 @@ module Toml.FromValue.Matcher (
     withScope,
     getScope,
     warning,
+
+    -- * Scope helpers
+    inKey,
+    inIndex,
     ) where
 
 import Control.Monad.Trans.Class (lift)
@@ -31,6 +35,7 @@ import Control.Monad.Trans.Writer.CPS (runWriterT, tell, WriterT)
 import Data.Monoid (Endo(..))
 import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus)
+import Toml.Pretty (prettySimpleKey)
 
 -- | Computations that result in a 'Result' and which track a list
 -- of nested contexts to assist in generating warnings and error
@@ -86,3 +91,15 @@ instance MonadFail Matcher where
     fail e =
      do loc <- getScope
         Matcher (lift (lift (throwE (string (e ++ " in top" ++ concat loc)))))
+
+-- | Update the scope with the message corresponding to a table key
+--
+-- @since 1.1.2.0
+inKey :: String -> Matcher a -> Matcher a
+inKey key = withScope ('.' : show (prettySimpleKey key))
+
+-- | Update the scope with the message corresponding to an array index
+--
+-- @since 1.1.2.0
+inIndex :: Int -> Matcher a -> Matcher a
+inIndex i = withScope ("[" ++ show i ++ "]")
