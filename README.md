@@ -117,8 +117,8 @@ instance FromValue Variety where
 We can run this example on the original value to deserialize it into domain-specific datatypes.
 
 ```haskell
->>> decode fruitToml :: Either String Fruits
-Right (Fruits [
+>>> decode fruitToml :: Result Fruits
+Success [] (Fruits [
     Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
     Fruit "banana" Nothing [Variety "plantain"]])
 ```
