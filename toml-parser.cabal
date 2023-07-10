@@ -107,7 +107,6 @@ test-suite readme
     ghc-options:        -pgmL markdown-unlit
     build-depends:
         base,
-        markdown-unlit  ^>=0.5.1,
         toml-parser,
     build-tool-depends:
-        markdown-unlit:markdown-unlit,
+        markdown-unlit:markdown-unlit ^>=0.5.1 || ^>= 0.6.0,
