@@ -1,6 +1,6 @@
 # Revision history for toml-parser
 
-## 1.2.0.0  --
+## 1.2.0.0  --  2023-07-09
 
 * Remove `FromTable` class. This class existed for things that could be
   matched specifically from tables, which is what the top-level values

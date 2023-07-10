@@ -35,7 +35,22 @@ For low-level access to the TOML format, the lexer, parser, and validator are av
 for direct use. The diagram above shows how the different modules enable you to
 advance through the increasingly high-level TOML representations.
 
-## Example
+## Examples
+
+This file uses [markdown-unlit](https://hackage.haskell.org/package/markdown-unlit)
+to ensure that its code typechecks and stays in sync with the rest of the package.
+
+```haskell
+import Toml (parse, decode, Value(..))
+import Toml.FromValue (FromValue(fromValue), parseTableFromValue, reqKey, optKey)
+import Toml.FromValue.Generic (genericParseTable)
+import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue)
+import Toml.ToValue.Generic (genericToTable)
+import GHC.Generics (Generic)
+main = pure ()
+```
+
+### Using the raw parser
 
 Consider this sample TOML text from the specification.
 
@@ -63,9 +78,8 @@ name = "plantain"
 
 Parsing using this package generates the following value
 
-```haskell
->>> Right fruitToml = parse fruitStr
->>> fruitToml
+```haskell ignore
+>>> parse fruitStr
 Right (fromList [
     ("fruits",Array [
         Table (fromList [
@@ -104,7 +118,7 @@ newtype Variety = Variety String
 instance FromValue Fruits where
     fromValue = parseTableFromValue (Fruits <$> reqKey "fruits")
 
-instance FroValue Fruit where
+instance FromValue Fruit where
     fromValue = parseTableFromValue (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
 
 instance FromValue Physical where
@@ -116,14 +130,14 @@ instance FromValue Variety where
 
 We can run this example on the original value to deserialize it into domain-specific datatypes.
 
-```haskell
->>> decode fruitToml :: Result Fruits
+```haskell ignore
+>>> decode fruitStr :: Result Fruits
 Success [] (Fruits [
     Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
     Fruit "banana" Nothing [Variety "plantain"]])
 ```
 
-## Generics
+### Generics
 
 Code for generating and matching tables to records can be derived
 using GHC.Generics. This will generate tables using the field names
@@ -141,7 +155,7 @@ instance ToTable   ExampleRecord where toTable   = genericToTable
 instance ToValue   ExampleRecord where toValue   = defaultTableToValue
 ```
 
-## Larger Example
+### Larger Example
 
 A demonstration of using this package at a more realistic scale
 can be found in [HieDemoSpec](test/HieDemoSpec.hs).

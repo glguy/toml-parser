@@ -99,3 +99,15 @@ test-suite unittests
         QuoteStr
         TomlSpec
         ToValueSpec
+
+test-suite readme
+    import:             extensions
+    type:               exitcode-stdio-1.0
+    main-is:            README.lhs
+    ghc-options:        -pgmL markdown-unlit
+    build-depends:
+        base,
+        markdown-unlit  ^>=0.5.1,
+        toml-parser,
+    build-tool-depends:
+        markdown-unlit:markdown-unlit,
