@@ -100,6 +100,8 @@ We can render this parsed value back to TOML text using `prettyToml fruitToml`.
 In this case the input was already sorted, so the generated text will happen
 to match almost exactly.
 
+### Using decoding classes
+
 Here's an example of defining datatypes and deserializers for the TOML above.
 
 ```haskell
