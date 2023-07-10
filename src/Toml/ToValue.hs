@@ -81,6 +81,7 @@ instance (k ~ String, ToValue v) => ToValue (Map k v) where
 defaultTableToValue :: ToTable a => a -> Value
 defaultTableToValue = Table . toTable
 
+-- | Identity function
 instance ToValue Value where
     toValue = id
 

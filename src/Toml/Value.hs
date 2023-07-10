@@ -35,7 +35,15 @@ data Value
     | ZonedTime ZonedTime
     | LocalTime LocalTime
     | Day       Day
-    deriving (Show, Read, Data, Generic)
+    deriving (
+        Show {- ^ Default instance -}, 
+        Read {- ^ Default instance -},
+        Data {- ^ Default instance -},
+        Generic {- ^ Default instance -})
+
+-- | Nearly default instance except 'ZonedTime' doesn't have an
+-- 'Eq' instance. 'ZonedTime' values are equal if their times and
+-- timezones are both equal.
 
 instance Eq Value where
     Integer   x == Integer   y = x == y

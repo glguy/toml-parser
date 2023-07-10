@@ -9,6 +9,8 @@ This module provides the 'Position' type for tracking locations
 in files while doing lexing and parsing for providing more useful
 error messages.
 
+This module assumes 8 column wide tab stops.
+
 -}
 module Toml.Position (
     Position(..),
@@ -17,9 +19,15 @@ module Toml.Position (
     ) where
 
 -- | A position in a text file
-data Position = Position
-    { posIndex, posLine, posColumn :: {-# UNPACK #-} !Int }
-    deriving (Read, Show, Ord, Eq)
+data Position = Position {
+    posIndex  :: {-# UNPACK #-} !Int, -- ^ code-point index (zero-based)
+    posLine   :: {-# UNPACK #-} !Int, -- ^ line index (one-based)
+    posColumn :: {-# UNPACK #-} !Int  -- ^ column index (one-based)
+    } deriving (
+        Read    {- ^ Default instance -},
+        Show    {- ^ Default instance -},
+        Ord     {- ^ Default instance -},
+        Eq      {- ^ Default instance -})
 
 -- | The initial 'Position' for the start of a file
 startPos :: Position

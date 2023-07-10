@@ -17,7 +17,12 @@ import Toml.Position (Position)
 
 -- | A value annotated with its text file position
 data Located a = Located
-    { locPosition :: {-# UNPACK #-} !Position
-    , locThing    :: !a
+    { locPosition :: {-# UNPACK #-} !Position -- ^ position
+    , locThing    :: !a -- ^ thing at position
     }
-    deriving (Read, Show, Functor, Foldable, Traversable)
+    deriving (
+        Read        {- ^ Default instance -}, 
+        Show        {- ^ Default instance -}, 
+        Functor     {- ^ Default instance -}, 
+        Foldable    {- ^ Default instance -}, 
+        Traversable {- ^ Default instance -})

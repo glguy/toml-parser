@@ -61,9 +61,13 @@ runStrings (Strings s) = s `appEndo` []
 -- messages can occur when multiple alternatives all fail. Resolving any
 -- one of the error messages could allow the computation to succeed.
 data Result a
-    = Failure [String]   -- error messages
-    | Success [String] a -- warnings and result
-    deriving (Read, Show, Eq, Ord)
+    = Failure [String]   -- ^ error messages
+    | Success [String] a -- ^ warning messages and result
+    deriving (
+        Read {- ^ Default instance -},
+        Show {- ^ Default instance -},
+        Eq   {- ^ Default instance -},
+        Ord  {- ^ Default instance -})
 
 -- | Run a 'Matcher' with an empty scope.
 runMatcher :: Matcher a -> Result a
