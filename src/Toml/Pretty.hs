@@ -1,4 +1,4 @@
-{-# Language OverloadedStrings #-}
+{-# Language OverloadedStrings, GADTs #-}
 {-|
 Module      : Toml.Pretty
 Description : Human-readable representations for error messages
@@ -20,22 +20,23 @@ module Toml.Pretty (
     TomlDoc,
     DocClass(..),
 
-    -- * semantic values
+    -- * Printing semantic values
     prettyToml,
+    prettyTomlOrdered,
     prettyValue,
 
-    -- * syntactic components
+    -- * Printing syntactic components
     prettyToken,
     prettySectionKind,
 
-    -- * keys
+    -- * Printing keys
     prettySimpleKey,
     prettyKey,
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
 import Data.Foldable (fold)
-import Data.List (partition)
+import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
@@ -136,7 +137,8 @@ prettyAssignment = go . pure
         go ks v = prettyKey (NonEmpty.reverse ks) <+> equals <+> prettyValue v
 
 -- | Render a value suitable for assignment on the right-hand side
--- of an equals sign. This value will always occupy a single line.
+-- of an equals sign. This value will always use inline table and list
+-- syntax.
 prettyValue :: Value -> TomlDoc
 prettyValue = \case
     Integer i           -> annotate NumberClass (pretty i)
@@ -172,22 +174,80 @@ isAlwaysSimple = \case
 
 isTable :: Value -> Bool
 isTable Table {} = True
-isTable _           = False
+isTable _        = False
 
 isSingularTable :: Table -> Bool
 isSingularTable (Map.elems -> [Table v]) = isSingularTable v
 isSingularTable (Map.elems -> [v])       = isAlwaysSimple v
 isSingularTable _                        = False
 
--- | Render a complete TOML document using top-level table
--- and array of table sections where appropriate.
-prettyToml :: Table -> TomlDoc
-prettyToml = prettyToml_ TableKind []
+-- | Render a complete TOML document using top-level table and array of
+-- table sections where possible.
+--
+-- Keys are sorted alphabetically. To provide a custom ordering, see
+-- 'prettyTomlOrdered'.
+prettyToml ::
+    Table {- ^ table to print -} ->
+    TomlDoc {- ^ TOML syntax -}
+prettyToml = prettyToml_ NoProjection TableKind []
 
-prettyToml_ :: SectionKind -> [String] -> Table -> TomlDoc
-prettyToml_ kind prefix t = vcat (topLines ++ subtables)
+-- | Render a complete TOML document like 'prettyToml' but use a
+-- custom key ordering. The comparison function has access to the
+-- complete key path. Note that only keys in the same table will
+-- every be compared.
+--
+-- This operation allows you to render your TOML files with the
+-- most important sections first. A TOML file describing a package
+-- might desire to have the @[package]@ section first before any
+-- of the ancilliary configuration sections.
+--
+-- The /table path/ is the name of the table being sorted. This allows
+-- the projection to be aware of which table is being sorted.
+--
+-- The /key/ is the key in the table being sorted. These are the
+-- keys that will be compared to each other.
+--
+-- Here's a projection that puts the @package@ section first, the
+-- @secondary@ section second, and then all remaining cases are
+-- sorted alphabetically afterward.
+--
+-- @
+-- example :: [String] -> String -> Either Int String
+-- example [] "package" = Left 1
+-- example [] "second"  = Left 2
+-- example _  other     = Right other
+-- @
+--
+-- We could also put the tables in reverse-alphabetical order
+-- by leveraging an existing newtype.
+--
+-- @
+-- reverseOrderProj :: [String] -> String -> Down String
+-- reverseOrderProj _ = Down
+-- @
+prettyTomlOrdered ::
+  Ord a =>
+  ([String] -> String -> a) {- ^ table path -> key -> projection -} ->
+  Table {- ^ table to print -} ->
+  TomlDoc {- ^ TOML syntax -}
+prettyTomlOrdered proj = prettyToml_ (KeyProjection proj) TableKind []
+
+-- | Optional projection used to order rendered tables
+data KeyProjection where
+    -- | No projection provided; alphabetical order used
+    NoProjection :: KeyProjection
+    -- | Projection provided: table name and current key are available
+    KeyProjection :: Ord a => ([String] -> String -> a) -> KeyProjection
+
+prettyToml_ :: KeyProjection -> SectionKind -> [String] -> Table -> TomlDoc
+prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
     where
-        (simple, sections) = partition (isAlwaysSimple . snd) (Map.assocs t)
+        order =
+            case mbKeyProj of
+                NoProjection    -> id
+                KeyProjection f -> sortOn (f prefix . fst)
+
+        (simple, sections) = partition (isAlwaysSimple . snd) (order (Map.assocs t))
 
         topLines = [fold topElts | let topElts = headers ++ assignments, not (null topElts)]
 
@@ -201,13 +261,13 @@ prettyToml_ kind prefix t = vcat (topLines ++ subtables)
 
         subtables = [prettySection (prefix `snoc` k) v | (k,v) <- sections]
 
+        prettySection key (Table t) =
+            prettyToml_ mbKeyProj TableKind (NonEmpty.toList key) t
+        prettySection key (Array a) =
+            vcat [prettyToml_ mbKeyProj ArrayTableKind (NonEmpty.toList key) t | Table t <- a]
+        prettySection _ _ = error "prettySection applied to simple value"
+
+-- | Create a 'NonEmpty' with a given prefix and last element.
 snoc :: [a] -> a -> NonEmpty a
 snoc []       y = y :| []
 snoc (x : xs) y = x :| xs ++ [y]
-
-prettySection :: NonEmpty String -> Value -> TomlDoc
-prettySection key (Table t) =
-    prettyToml_ TableKind (NonEmpty.toList key) t
-prettySection key (Array a) =
-    vcat [prettyToml_ ArrayTableKind (NonEmpty.toList key) t | Table t <- a]
-prettySection _ _ = error "prettySection applied to simple value"

@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 1.2.1.0  --
+
+* Added `Toml.Pretty.prettyTomlOrdered` to allow user-specified section ordering.
+
 ## 1.2.0.0  --  2023-07-09
 
 * Remove `FromTable` class. This class existed for things that could be
