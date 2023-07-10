@@ -44,7 +44,7 @@ import Toml.Value (Table, Value)
 -- | A 'Matcher' that tracks a current set of unmatched key-value
 -- pairs from a table.
 --
--- Use 'optKey' and 'reqKey' to extract keys.
+-- Use 'Toml.FromValue.optKey' and 'Toml.FromValue.reqKey' to extract keys.
 --
 -- Use 'getTable' and 'setTable' to override the table and implement
 -- other primitives.
@@ -99,10 +99,10 @@ data KeyAlt a
 -- If no keys match, an error message is generated explaining which keys
 -- would have been accepted.
 --
--- This is provided as an alternative to chaining multiple 'reqKey' cases
--- together with @('<|>')@ because that will generate one error message for
--- each unmatched alternative as well as the error associate with the
--- matched alternative.
+-- This is provided as an alternative to chaining multiple
+-- 'Toml.FromValue.reqKey' cases together with @('<|>')@ because that will
+-- generate one error message for each unmatched alternative as well as
+-- the error associate with the matched alternative.
 --
 -- @since 1.2.0.0
 pickKey :: [KeyAlt a] -> ParseTable a

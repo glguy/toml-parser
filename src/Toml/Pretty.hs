@@ -225,6 +225,8 @@ prettyToml = prettyToml_ NoProjection TableKind []
 -- reverseOrderProj :: [String] -> String -> Down String
 -- reverseOrderProj _ = Down
 -- @
+--
+-- @since 1.2.1.0
 prettyTomlOrdered ::
   Ord a =>
   ([String] -> String -> a) {- ^ table path -> key -> projection -} ->
