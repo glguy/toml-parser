@@ -34,8 +34,10 @@ module Toml.FromValue (
     ParseTable,
     runParseTable,
     parseTableFromValue,
-    optKey,
     reqKey,
+    optKey,
+    reqKeyOf,
+    optKeyOf,
     warnTable,
     KeyAlt(..),
     pickKey,
@@ -46,7 +48,7 @@ module Toml.FromValue (
     liftMatcher,
     ) where
 
-import Control.Applicative (Alternative, optional)
+import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus, zipWithM)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT(..), put, get)
@@ -202,10 +204,35 @@ instance FromValue LocalTime where
 instance FromValue Value where
     fromValue = pure
 
--- | Match a table entry by key if it exists or return 'Nothing' if not.
+-- | Convenience function for matching an optional key with a 'FromValue'
+-- instance.
+--
+-- @optKey key = 'optKeyOf' key 'fromValue'@
 optKey :: FromValue a => String -> ParseTable (Maybe a)
-optKey = optional . reqKey
+optKey key = optKeyOf key fromValue
+
+-- | Convenience function for matching a required key with a 'FromValue'
+-- instance.
+--
+-- @optKey key = 'reqKeyOf' key 'fromValue'@
+reqKey :: FromValue a => String -> ParseTable a
+reqKey key = reqKeyOf key fromValue
+
+-- | Match a table entry by key if it exists or return 'Nothing' if not.
+-- If the key is defined, it is matched by the given function.
+--
+-- See 'pickKey' for more complex cases.
+optKeyOf ::
+    String {- ^ key -} ->
+    (Value -> Matcher a) {- ^ value matcher -} ->
+    ParseTable (Maybe a)
+optKeyOf key k = pickKey [Key key (fmap Just . k), Else (pure Nothing)]
 
 -- | Match a table entry by key or report an error if missing.
-reqKey :: FromValue a => String -> ParseTable a
-reqKey key = pickKey [Key key fromValue]
+--
+-- See 'pickKey' for more complex cases.
+reqKeyOf ::
+    String {- ^ key -} ->
+    (Value -> Matcher a) {- ^ value matcher -} ->
+    ParseTable a
+reqKeyOf key k = pickKey [Key key k]
