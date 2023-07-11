@@ -8,11 +8,10 @@ Maintainer  : emertens@gmail.com
 -}
 module FromValueSpec (spec) where
 
-import Test.Hspec
-import Toml
-import Toml.FromValue
-import Toml.FromValue.Matcher
-import Toml.FromValue.ParseTable
+import Test.Hspec (it, shouldBe, Spec)
+import Toml (Result(..), Value(String))
+import Toml.FromValue (Result(..), FromValue(fromValue), optKey, parseTableFromValue, reqKey)
+import Toml.FromValue.Matcher (runMatcher)
 import Toml.ToValue (table)
 import Control.Applicative ((<|>), empty)
 
