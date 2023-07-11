@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               toml-parser
-version:            1.2.0.0
+version:            1.2.1.0
 synopsis:           TOML 1.0.0 parser
 description:
     TOML parser using generated lexers and parsers with
@@ -69,6 +69,7 @@ library
         base            >= 4.14 && < 4.19,
         containers      ^>= 0.5 || ^>= 0.6,
         prettyprinter   ^>= 1.7,
+        text            >= 0.2,
         time            >= 1.9 && < 1.13,
         transformers    ^>= 0.5 || ^>= 0.6,
     build-tool-depends:

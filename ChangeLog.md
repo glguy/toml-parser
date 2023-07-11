@@ -3,6 +3,7 @@
 ## 1.2.1.0  --
 
 * Added `Toml.Pretty.prettyTomlOrdered` to allow user-specified section ordering.
+* Added `FromValue` and `ToValue` instances for `Text`
 
 ## 1.2.0.0  --  2023-07-09
 

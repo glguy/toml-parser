@@ -55,13 +55,15 @@ import Data.List (intercalate)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.String (IsString (fromString))
+import Data.Text qualified
+import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.FromValue.Matcher (Matcher, Result(..), runMatcher, withScope, warning, inIndex, inKey)
+import Toml.FromValue.ParseTable
 import Toml.Pretty (prettySimpleKey, prettyValue)
 import Toml.Value (Value(..), Table)
-import Toml.FromValue.ParseTable
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
@@ -143,7 +145,19 @@ instance FromValue Char where
     listFromValue (String xs) = pure xs
     listFromValue v = typeError "string" v
 
+-- | Matches string literals
+instance FromValue Data.Text.Text where
+    fromValue v = Data.Text.pack <$> fromValue v
+
+-- | Matches string literals
+--
+-- @since 1.2.1.0
+instance FromValue Data.Text.Lazy.Text where
+    fromValue v = Data.Text.Lazy.pack <$> fromValue v
+
 -- | Matches floating-point and integer values
+--
+-- @since 1.2.1.0
 instance FromValue Double where
     fromValue (Float x) = pure x
     fromValue (Integer x) = pure (fromInteger x)

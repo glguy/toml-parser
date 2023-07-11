@@ -177,9 +177,8 @@ isTable Table {} = True
 isTable _        = False
 
 isSingularTable :: Table -> Bool
-isSingularTable (Map.elems -> [Table v]) = isSingularTable v
-isSingularTable (Map.elems -> [v])       = isAlwaysSimple v
-isSingularTable _                        = False
+isSingularTable (Map.elems -> [v])  = isAlwaysSimple v
+isSingularTable _                   = False
 
 -- | Render a complete TOML document using top-level table and array of
 -- table sections where possible.

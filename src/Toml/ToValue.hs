@@ -30,6 +30,8 @@ module Toml.ToValue (
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Text qualified
+import Data.Text.Lazy qualified
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
@@ -90,6 +92,18 @@ instance ToValue Value where
 instance ToValue Char where
     toValue x = String [x]
     toValueList = String
+
+-- | Encodes as string literal
+--
+-- @since 1.2.1.0
+instance ToValue Data.Text.Text where
+    toValue = toValue . Data.Text.unpack
+
+-- | Encodes as string literal
+--
+-- @since 1.2.1.0
+instance ToValue Data.Text.Lazy.Text where
+    toValue = toValue . Data.Text.Lazy.unpack
 
 -- | This instance defers to the list element's 'toValueList' implementation.
 instance ToValue a => ToValue [a] where
