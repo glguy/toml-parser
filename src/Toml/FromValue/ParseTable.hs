@@ -31,7 +31,7 @@ module Toml.FromValue.ParseTable (
     getTable,
     ) where
 
-import Control.Applicative (Alternative)
+import Control.Applicative (Alternative, empty)
 import Control.Monad (MonadPlus)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT(..), get, put)
@@ -108,7 +108,7 @@ data KeyAlt a
 pickKey :: [KeyAlt a] -> ParseTable a
 pickKey xs =
  do t <- getTable
-    foldr (f t) (fail errMsg) xs
+    foldr (f t) errCase xs
     where
         f t (Else m) _ = liftMatcher m
         f t (Key k c) continue =
@@ -118,8 +118,8 @@ pickKey xs =
                  do setTable $! Map.delete k t
                     liftMatcher (inKey k (c v))
 
-        errMsg =
+        errCase =
             case xs of
-                []        -> "no alternatives"
-                [Key k _] -> "missing key: " ++ show (prettySimpleKey k)
-                _         -> "possible keys: " ++ intercalate ", " [show (prettySimpleKey k) | Key k _ <- xs]
+                []        -> empty -- there's nothing a user can do here
+                [Key k _] -> fail ("missing key: " ++ show (prettySimpleKey k))
+                _         -> fail ("possible keys: " ++ intercalate ", " [show (prettySimpleKey k) | Key k _ <- xs])
