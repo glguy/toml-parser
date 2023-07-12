@@ -331,7 +331,7 @@ spec =
 
             [cradle.cabal]
             cabalProject = "cabal.project"
-            
+
             [[cradle.cabal.components]]
             path = "./src"
             component = "toml-parser:lib:toml-parser"

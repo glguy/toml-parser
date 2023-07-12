@@ -36,7 +36,7 @@ data Value
     | LocalTime LocalTime
     | Day       Day
     deriving (
-        Show {- ^ Default instance -}, 
+        Show {- ^ Default instance -},
         Read {- ^ Default instance -},
         Data {- ^ Default instance -},
         Generic {- ^ Default instance -})

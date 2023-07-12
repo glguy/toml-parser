@@ -21,8 +21,8 @@ data Located a = Located
     , locThing    :: !a -- ^ thing at position
     }
     deriving (
-        Read        {- ^ Default instance -}, 
-        Show        {- ^ Default instance -}, 
-        Functor     {- ^ Default instance -}, 
-        Foldable    {- ^ Default instance -}, 
+        Read        {- ^ Default instance -},
+        Show        {- ^ Default instance -},
+        Functor     {- ^ Default instance -},
+        Foldable    {- ^ Default instance -},
         Traversable {- ^ Default instance -})

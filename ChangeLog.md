@@ -1,9 +1,10 @@
 # Revision history for toml-parser
 
-## 1.2.1.0  --
+## 1.2.1.0  --  2023-07-12
 
 * Added `Toml.Pretty.prettyTomlOrdered` to allow user-specified section ordering.
 * Added `FromValue` and `ToValue` instances for `Text`
+* Added `reqKeyOf` and `optKeyOf` for easier custom matching without `FromValue` instances.
 
 ## 1.2.0.0  --  2023-07-09
 

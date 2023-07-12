@@ -214,7 +214,7 @@ optKey key = optKeyOf key fromValue
 -- | Convenience function for matching a required key with a 'FromValue'
 -- instance.
 --
--- @optKey key = 'reqKeyOf' key 'fromValue'@
+-- @reqKey key = 'reqKeyOf' key 'fromValue'@
 reqKey :: FromValue a => String -> ParseTable a
 reqKey key = reqKeyOf key fromValue
 
