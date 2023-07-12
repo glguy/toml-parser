@@ -36,7 +36,7 @@ semantics exprs =
     m1 <- assignKeyVals topKVs Map.empty
     m2 <- foldM (\m (kind, key, kvs) ->
         addSection kind kvs key m) m1 tables
-    pure (fmap frameToValue m2)
+    pure (framesToTable m2)
 
 -- | Line number, key, value
 type KeyVals = [(Key, Val)]
@@ -71,11 +71,15 @@ data FrameKind
     | Closed -- ^ table closed to further extension
     deriving Show
 
-frameToValue :: Frame -> Value
-frameToValue = \case
-    FrameTable _ t -> Table (frameToValue <$> t)
-    FrameArray a   -> Array (reverse (Table . fmap frameToValue <$> NonEmpty.toList a))
-    FrameValue v   -> v
+framesToTable :: Map String Frame -> Table
+framesToTable =
+    fmap \case
+        FrameTable _ t -> Table (framesToTable t)
+        FrameArray a   -> Array (toArray a)
+        FrameValue v   -> v
+    where
+        -- reverses the list while converting the frames to tables
+        toArray = foldl (\acc frame -> Table (framesToTable frame) : acc) []
 
 constructTable :: [(Key, Value)] -> Either String Table
 constructTable entries =
