@@ -1,3 +1,4 @@
+{-# Language GADTs #-}
 {-|
 Module      : HieDemoSpec
 Description : Exercise various components of FromValue on a life-sized example
@@ -130,13 +131,13 @@ instance FromValue CradleConfig where
 
 instance FromValue CradleComponent where
     fromValue = parseTableFromValue $
-        pickKey [
-            Key "multi"  (fmap Multi  . fromValue),
-            Key "cabal"  (fmap Cabal  . fromValue),
-            Key "stack"  (fmap Stack  . fromValue),
-            Key "direct" (fmap Direct . fromValue),
-            Key "bios"   (fmap Bios   . fromValue),
-            Key "none"   (fmap None   . fromValue)]
+        reqAlts [
+            KeyCase Multi  "multi",
+            KeyCase Cabal  "cabal",
+            KeyCase Stack  "stack",
+            KeyCase Direct "direct",
+            KeyCase Bios   "bios",
+            KeyCase None   "none"]
 
 instance FromValue MultiSubComponent where
     fromValue = parseTableFromValue genericParseTable
@@ -181,13 +182,25 @@ instance FromValue BiosConfig where
         <*> optKey "with-ghc"
         where
             getCallable =
-                pickKey [
-                    Key "program" (fmap Program . fromValue),
-                    Key "shell"   (fmap Shell   . fromValue)]
+                reqAlts [
+                    KeyCase Program "program",
+                    KeyCase Shell   "shell"]
             getDepsCallable =
-                optional (pickKey [
-                    Key "dependency-program" (fmap Program . fromValue),
-                    Key "dependency-shell"   (fmap Shell   . fromValue)])
+                optAlts [
+                    KeyCase Program "dependency-program",
+                    KeyCase Shell   "dependency-shell"]
+
+data KeyCase a where
+    KeyCase :: FromValue b => (b -> a) -> String -> KeyCase a
+
+reqAlts :: [KeyCase a] -> ParseTable a
+reqAlts xs = pickKey
+    [Key key (fmap con . fromValue) | KeyCase con key <- xs]
+
+optAlts :: [KeyCase a] -> ParseTable (Maybe a)
+optAlts xs = pickKey $
+    [Key key (fmap (Just . con) . fromValue) | KeyCase con key <- xs] ++
+    [Else (pure Nothing)]
 
 instance FromValue NoneConfig where
     fromValue = parseTableFromValue genericParseTable
