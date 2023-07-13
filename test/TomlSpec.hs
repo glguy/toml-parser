@@ -319,6 +319,14 @@ spec =
             Left{} -> False
             Right x -> all checkNaN x
 
+        -- code using Numeric.readFloat can use significant
+        -- resources. this makes sure this doesn't start happening
+        -- in the future
+        it "parses huge floats without great delays" $
+          parse "x = 1e1000000000000"
+          `shouldBe`
+          Right (Map.singleton "x" (Float (1/0)))
+
     describe "boolean"
      do it "parses boolean literals" $
           parse [quoteStr|
