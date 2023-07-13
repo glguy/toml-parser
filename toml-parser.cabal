@@ -84,7 +84,7 @@ test-suite unittests
     default-extensions:
         QuasiQuotes
     build-tool-depends:
-        hspec-discover:hspec-discover ^>= 2
+        hspec-discover:hspec-discover ^>= {2.10, 2.11}
     build-depends:
         base,
         containers,
