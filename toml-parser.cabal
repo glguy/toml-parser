@@ -54,17 +54,18 @@ library
         Toml.FromValue.ParseTable
         Toml.Lexer
         Toml.Lexer.Token
-        Toml.Lexer.Utils
         Toml.Located
         Toml.Parser
         Toml.Parser.Types
-        Toml.Parser.Utils
         Toml.Position
         Toml.Pretty
         Toml.Semantics
         Toml.ToValue
         Toml.ToValue.Generic
         Toml.Value
+    other-modules:
+        Toml.Lexer.Utils
+        Toml.Parser.Utils
     build-depends:
         array           ^>= 0.5,
         base            ^>= {4.14, 4.15, 4.16, 4.17, 4.18},
