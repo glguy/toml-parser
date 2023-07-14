@@ -18,22 +18,15 @@ module Toml.Lexer.Utils (
     -- * Types
     Action,
     Context(..),
+    Outcome(..),
 
     -- * Input processing
     locatedUncons,
 
     -- * Actions
-    value,
-    value_,
     token,
     token_,
 
-    squareO,
-    squareC,
-    curlyO,
-    curlyC,
-
-    equals,
     timeValue,
     eofToken,
 
@@ -56,101 +49,59 @@ import Toml.Position (move, Position)
 import Toml.Lexer.Token (Token(..))
 
 -- | Type of actions associated with lexer patterns
-type Action = Located String -> State [Context] [Located Token]
+type Action = Located String -> Context -> Outcome
+
+data Outcome
+  = Resume Context
+  | LexerError (Located String)
+  | EmitToken (Located Token)
 
 -- | Representation of the current lexer state.
 data Context
-  = ListContext Position -- ^ processing an inline list, lex values
-  | TableContext Position -- ^ processing an inline table, don't lex values
-  | ValueContext -- ^ processing after an equals, lex one value
+  = NameContext  -- ^ lex key names
+  | ValueContext -- ^ lex number literals
   | MlStrContext Position [String] -- ^ position of opening delimiter and list of fragments
   | StrContext   Position [String] -- ^ position of opening delimiter and list of fragments
   deriving Show
 
 -- | Add a literal fragment of a string to the current string state.
 strFrag :: Action
-strFrag s = state \case
-  StrContext   p acc : st -> ([], StrContext   p (locThing s : acc) : st)
-  MlStrContext p acc : st -> ([], MlStrContext p (locThing s : acc) : st)
-  _                       -> error "strFrag: panic"
+strFrag s = \case
+  StrContext   p acc -> Resume (StrContext   p (locThing s : acc))
+  MlStrContext p acc -> Resume (MlStrContext p (locThing s : acc))
+  _                  -> error "strFrag: panic"
 
 -- | End the current string state and emit the string literal token.
 endStr :: Action
-endStr x = state \case
-    StrContext   p acc : st -> ([Located p (TokString   (concat (reverse (locThing x : acc))))], st)
-    MlStrContext p acc : st -> ([Located p (TokMlString (concat (reverse (locThing x : acc))))], st)
-    _                       -> error "endStr: panic"
+endStr x = \case
+    StrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (locThing x : acc)))))
+    MlStrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (locThing x : acc)))))
+    _                  -> error "endStr: panic"
 
 -- | Start a basic string literal
 startStr :: Action
-startStr t = state \case
-  ValueContext : st -> ([], StrContext (locPosition t) [] : st)
-  st                -> ([], StrContext (locPosition t) [] : st)
+startStr t _ = Resume (StrContext (locPosition t) [])
 
 -- | Start a multi-line basic string literal
 startMlStr :: Action
-startMlStr t = state \case
-  ValueContext : st -> ([], MlStrContext (locPosition t) [] : st)
-  st                -> ([], MlStrContext (locPosition t) [] : st)
+startMlStr t _ = Resume (MlStrContext (locPosition t) [])
 
 -- | Resolve a unicode escape sequence and add it to the current string literal
 unicodeEscape :: Action
-unicodeEscape (Located p lexeme) =
+unicodeEscape (Located p lexeme) ctx =
   case readHex (drop 2 lexeme) of
-    [(n,_)] | 0xd800 <= n, n < 0xe000 -> pure [Located p (TokError "non-scalar unicode escape")]
-      | n >= 0x110000                 -> pure [Located p (TokError "unicode escape too large")]
-      | otherwise                     -> strFrag (Located p [chr n])
+    [(n,_)] | 0xd800 <= n, n < 0xe000 -> LexerError (Located p "non-scalar unicode escape")
+      | n >= 0x110000                 -> LexerError (Located p "unicode escape too large")
+      | otherwise                     -> strFrag (Located p [chr n]) ctx
     _                                 -> error "unicodeEscape: panic"
-
--- | Record an @=@ token and update the state
-equals :: Action
-equals t = state \case
-  st -> ([TokEquals <$ t], ValueContext : st)
-
--- | Record an opening square bracket and update the state
-squareO :: Action
-squareO t = state \case
-  ValueContext  : st -> ([TokSquareO <$ t], ListContext (locPosition t) : st)
-  ListContext p : st -> ([TokSquareO <$ t], ListContext (locPosition t): ListContext p : st)
-  st                 -> ([TokSquareO <$ t], st)
-
--- | Record a closing square bracket and update the state
-squareC :: Action
-squareC t = state \case
-  ListContext _ : st -> ([TokSquareC <$ t], st)
-  st                 -> ([TokSquareC <$ t], st)
-
--- | Record an opening curly bracket and update the state
-curlyO :: Action
-curlyO t = state \case
-  ValueContext  : st -> ([TokCurlyO <$ t], TableContext (locPosition t) : st)
-  ListContext p : st -> ([TokCurlyO <$ t], TableContext (locPosition t) : ListContext p : st)
-  st                 -> ([TokCurlyO <$ t], st)
-
--- | Record a closing curly bracket and update the state
-curlyC :: Action
-curlyC t = state \case
-  TableContext _ : st -> ([TokCurlyC <$ t], st)
-  st                  -> ([TokCurlyC <$ t], st)
 
 -- | Emit a token ignoring the current lexeme
 token_ :: Token -> Action
-token_ t x = pure [t <$ x]
+token_ t x _ = EmitToken (t <$ x)
 
 -- | Emit a token using the current lexeme
 token :: (String -> Token) -> Action
-token f x = pure [f <$> x]
-
--- | Emit a value token and update the current state
-value_ :: Token -> Action
-value_ t = value (const t)
-
--- | Emit a value token using the current lexeme and update the current state
-value :: (String -> Token) -> Action
-value f x = state \st ->
-  case st of
-    ValueContext : st' -> ([f <$> x], st')
-    _                  -> ([f <$> x], st )
+token f x _ = EmitToken (f <$> x)
 
 -- | Attempt to parse the current lexeme as a date-time token.
 timeValue ::
@@ -159,10 +110,10 @@ timeValue ::
   [String]     {- ^ possible valid patterns        -} ->
   (a -> Token) {- ^ token constructor              -} ->
   Action
-timeValue description patterns constructor = value \str ->
+timeValue description patterns constructor (Located p str) _ =
   case asum [parseTimeM False defaultTimeLocale pat str | pat <- patterns] of
-    Nothing -> TokError ("malformed " ++ description)
-    Just t  -> constructor t
+    Nothing -> LexerError (Located p ("malformed " ++ description))
+    Just t  -> EmitToken (Located p (constructor t))
 
 -- | Pop the first character off a located string if it's not empty.
 -- The resulting 'Int' will either be the ASCII value of the character
@@ -173,6 +124,7 @@ locatedUncons Located { locPosition = p, locThing = str } =
   case str of
     "" -> Nothing
     x:xs
+      | rest `seq` False -> undefined
       | x == '\1' -> Just (0,     rest)
       | isAscii x -> Just (ord x, rest)
       | otherwise -> Just (1,     rest)
@@ -180,10 +132,8 @@ locatedUncons Located { locPosition = p, locThing = str } =
         rest = Located { locPosition = move x p, locThing = xs }
 
 -- | Generate the correct terminating token given the current lexer state.
-eofToken :: [Context] -> Located String -> Located Token
-eofToken (MlStrContext p _ : _) _ = Located p (TokError "unterminated multi-line string literal")
-eofToken (StrContext   p _ : _) _ = Located p (TokError "unterminated string literal")
-eofToken (ListContext  p   : _) _ = Located p (TokError "unterminated '['")
-eofToken (TableContext p   : _) _ = Located p (TokError "unterminated '{'")
-eofToken (ValueContext     : s) t = eofToken s t
-eofToken _                      t = TokEOF <$ t
+eofToken :: Context -> Located String -> Either (Located String) (Located Token, Located String)
+eofToken (MlStrContext p _) _ = Left (Located p "unterminated multi-line string literal")
+eofToken (StrContext   p _) _ = Left (Located p "unterminated string literal")
+eofToken ValueContext       t = Right (TokEOF <$ t, t)
+eofToken NameContext        t = Right (TokEOF <$ t, t)

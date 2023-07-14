@@ -45,7 +45,7 @@ import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
 import Text.Printf (printf)
-import Toml.Parser (SectionKind(..))
+import Toml.Parser.Types (SectionKind(..))
 import Toml.Lexer (Token(..))
 import Toml.Value (Value(..), Table)
 
@@ -127,7 +127,6 @@ prettyToken = \case
     TokLocalDateTime  _ -> "local date-time"
     TokLocalDate      _ -> "local date"
     TokLocalTime      _ -> "local time"
-    TokError          e -> "lexical error: " ++ e
     TokEOF              -> "end-of-input"
 
 prettyAssignment :: String -> Value -> TomlDoc

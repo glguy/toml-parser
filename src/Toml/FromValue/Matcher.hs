@@ -15,7 +15,7 @@ It supports tracking multiple error messages when you have more
 than one decoding option and all of them have failed.
 
 -}
-module Toml.FromValue.Matcher ( 
+module Toml.FromValue.Matcher (
     Matcher,
     Result(..),
     runMatcher,

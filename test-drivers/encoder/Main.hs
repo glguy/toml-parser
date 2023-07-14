@@ -41,17 +41,17 @@ instance Aeson.FromJSON Toml.Value where
         ]
 
 decodeValue :: String -> String -> Aeson.Parser Toml.Value
-decodeValue "string"         x                                 = pure (Toml.String    x)
-decodeValue "bool"           (lexValue -> TokTrue            ) = pure (Toml.Bool      True)
-decodeValue "bool"           (lexValue -> TokFalse           ) = pure (Toml.Bool      False)
-decodeValue "integer"        (lexValue -> TokInteger        x) = pure (Toml.Integer   x)
-decodeValue "time-local"     (lexValue -> TokLocalTime      x) = pure (Toml.TimeOfDay x)
-decodeValue "datetime"       (lexValue -> TokOffsetDateTime x) = pure (Toml.ZonedTime x)
-decodeValue "datetime-local" (lexValue -> TokLocalDateTime  x) = pure (Toml.LocalTime x)
-decodeValue "date-local"     (lexValue -> TokLocalDate      x) = pure (Toml.Day       x)
-decodeValue "float"          (lexValue -> TokFloat          x) = pure (Toml.Float     x)
+decodeValue "string"         x                                         = pure (Toml.String    x)
+decodeValue "bool"           (lexValue -> Right TokTrue              ) = pure (Toml.Bool      True)
+decodeValue "bool"           (lexValue -> Right TokFalse             ) = pure (Toml.Bool      False)
+decodeValue "integer"        (lexValue -> Right (TokInteger        x)) = pure (Toml.Integer   x)
+decodeValue "time-local"     (lexValue -> Right (TokLocalTime      x)) = pure (Toml.TimeOfDay x)
+decodeValue "datetime"       (lexValue -> Right (TokOffsetDateTime x)) = pure (Toml.ZonedTime x)
+decodeValue "datetime-local" (lexValue -> Right (TokLocalDateTime  x)) = pure (Toml.LocalTime x)
+decodeValue "date-local"     (lexValue -> Right (TokLocalDate      x)) = pure (Toml.Day       x)
+decodeValue "float"          (lexValue -> Right (TokFloat          x)) = pure (Toml.Float     x)
 -- toml-tests are inconsistent about representing floating point numbers
-decodeValue "float"          (lexValue -> TokInteger        x) = pure (Toml.Float (fromInteger x))
-decodeValue "float"          "+Inf"                            = pure (Toml.Float (1/0))
-decodeValue "float"          "-Inf"                            = pure (Toml.Float (-1/0))
-decodeValue _                _                                 = empty
+decodeValue "float"          (lexValue -> Right (TokInteger        x)) = pure (Toml.Float (fromInteger x))
+decodeValue "float"          "+Inf"                                    = pure (Toml.Float (1/0))
+decodeValue "float"          "-Inf"                                    = pure (Toml.Float (-1/0))
+decodeValue _                _                                         = empty

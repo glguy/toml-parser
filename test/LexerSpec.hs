@@ -40,12 +40,12 @@ spec =
     it "catches unclosed [" $
         parse "x = [1,2,3"
         `shouldBe`
-        Left "1:5: lexical error: unterminated '['"
+        Left "1:11: parse error: unexpected end-of-input"
 
     it "catches unclosed {" $
         parse "x = { y"
         `shouldBe`
-        Left "1:5: lexical error: unterminated '{'"
+        Left "1:8: parse error: unexpected end-of-input"
 
     it "catches unclosed \"" $
         parse "x = \"abc"

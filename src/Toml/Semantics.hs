@@ -12,7 +12,7 @@ file. It detects invalid key assignments and resolves dotted
 key assignments.
 
 -}
-module Toml.Semantics (semantics) where
+module Toml.Semantics (SemanticError(..), SemanticErrorKind(..), semantics) where
 
 import Control.Monad (foldM)
 import Data.List (sortOn)
@@ -28,9 +28,24 @@ import Toml.Position (Position(..))
 import Toml.Pretty (prettySimpleKey)
 import Control.Applicative ((<|>))
 
+-- | The type of errors that can be generated when resolving all the key
+-- used in a TOML document. These errors always pertain to some key to
+-- caused one of three conflicts.
+data SemanticError = SemanticError {
+    errorKey :: String,
+    errorKind :: SemanticErrorKind
+    } deriving (Eq, Ord, Read, Show)
+
+-- | Enumeration of the kinds of conflicts a key can generate.
+data SemanticErrorKind
+    = AlreadyAssigned -- ^ Attempted to assign to a key that was already assigned
+    | ClosedTable     -- ^ Attempted to open a table already closed
+    | ImplicitlyTable -- ^ Attempted to open a tables as an array of tables that was implicitly defined to be a table
+    deriving (Eq, Ord, Read, Show)
+
 -- | Extract semantic value from sequence of raw TOML expressions
 -- or report an error string.
-semantics :: [Expr] -> Either String Table
+semantics :: [Expr] -> Either (Located SemanticError) Table
 semantics exprs =
  do let (topKVs, tables) = gather exprs
     m1 <- assignKeyVals topKVs Map.empty
@@ -81,10 +96,10 @@ framesToTable =
         -- reverses the list while converting the frames to tables
         toArray = foldl (\acc frame -> Table (framesToTable frame) : acc) []
 
-constructTable :: [(Key, Value)] -> Either String Table
+constructTable :: [(Key, Value)] -> Either (Located SemanticError) Table
 constructTable entries =
     case findBadKey (map fst entries) of
-        Just bad -> invalidKey bad "is already assigned"
+        Just bad -> invalidKey bad AlreadyAssigned
         Nothing -> Right (Map.unionsWith merge [singleValue (locThing k) (locThing <$> ks) v | (k:|ks, v) <- entries])
     where
         merge (Table x) (Table y) = Table (Map.unionWith merge x y)
@@ -107,16 +122,13 @@ findBadKey = check . sortOn (fmap locThing)
                     [] -> Just y1
                     x' : xs' -> check1 (x' :| xs') (y2 :| ys)
         check1 _ _ = Nothing
-            
-
-
 
 addSection ::
     SectionKind                      {- ^ section kind        -} ->
     KeyVals                          {- ^ values to install   -} ->
     Key                              {- ^ section key         -} ->
     Map String Frame                 {- ^ local frame map     -} ->
-    Either String (Map String Frame) {- ^ error message or updated local frame map -}
+    Either (Located SemanticError) (Map String Frame) {- ^ error message or updated local frame map -}
 addSection kind kvs = walk
     where
         walk (k1 :| []) = flip Map.alterF (locThing k1) \case
@@ -130,18 +142,18 @@ addSection kind kvs = walk
             Just (FrameTable Open t) ->
                 case kind of
                     TableKind      -> go (FrameTable Closed) t
-                    ArrayTableKind -> invalidKey k1 "is already a table"
+                    ArrayTableKind -> invalidKey k1 ImplicitlyTable
 
             -- Add a new array element to an existing table array
             Just (FrameArray a) ->
                 case kind of
                     ArrayTableKind -> go (FrameArray . (`NonEmpty.cons` a)) Map.empty
-                    TableKind      -> invalidKey k1 "is already an array of tables"
+                    TableKind      -> invalidKey k1 ClosedTable
 
             -- failure cases
-            Just (FrameTable Closed _) -> invalidKey k1 "is a closed table"
+            Just (FrameTable Closed _) -> invalidKey k1 ClosedTable
             Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
-            Just (FrameValue {})       -> invalidKey k1 "is already assigned"
+            Just (FrameValue {})       -> invalidKey k1 AlreadyAssigned
             where
                 go g t = Just . g . closeDots <$> assignKeyVals kvs t
 
@@ -149,7 +161,7 @@ addSection kind kvs = walk
             Nothing                     -> go (FrameTable Open     ) Map.empty
             Just (FrameTable tk t)      -> go (FrameTable tk       ) t
             Just (FrameArray (t :| ts)) -> go (FrameArray . (:| ts)) t
-            Just (FrameValue _)         -> invalidKey k1 "is already assigned"
+            Just (FrameValue _)         -> invalidKey k1 AlreadyAssigned
             where
                 go g t = Just . g <$> walk (k2 :| ks) t
 
@@ -161,31 +173,31 @@ closeDots =
         FrameTable Dotted t -> FrameTable Closed (closeDots t)
         frame               -> frame
 
-assignKeyVals :: KeyVals -> Map String Frame -> Either String (Map String Frame)
+assignKeyVals :: KeyVals -> Map String Frame -> Either (Located SemanticError) (Map String Frame)
 assignKeyVals kvs t = closeDots <$> foldM f t kvs
     where
         f m (k,v) = assign k v m
 
 -- | Assign a single dotted key in a frame.
-assign :: Key -> Val -> Map String Frame -> Either String (Map String Frame)
+assign :: Key -> Val -> Map String Frame -> Either (Located SemanticError) (Map String Frame)
 
 assign (key :| []) val = flip Map.alterF (locThing key) \case
     Nothing -> Just . FrameValue <$> valToValue val
-    Just{}  -> invalidKey key "is already assigned"
+    Just{}  -> invalidKey key AlreadyAssigned
 
 assign (key :| k1 : keys) val = flip Map.alterF (locThing key) \case
     Nothing                    -> go Map.empty
     Just (FrameTable Open   t) -> go t
     Just (FrameTable Dotted t) -> go t
-    Just (FrameTable Closed _) -> invalidKey key "is a closed table"
-    Just (FrameArray        _) -> invalidKey key "is a closed table"
-    Just (FrameValue        _) -> invalidKey key "is already assigned"
+    Just (FrameTable Closed _) -> invalidKey key ClosedTable
+    Just (FrameArray        _) -> invalidKey key ClosedTable
+    Just (FrameValue        _) -> invalidKey key AlreadyAssigned
     where
         go t = Just . FrameTable Dotted <$> assign (k1 :| keys) val t
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
-valToValue :: Val -> Either String Value
+valToValue :: Val -> Either (Located SemanticError) Value
 valToValue = \case
     ValInteger   x    -> Right (Integer   x)
     ValFloat     x    -> Right (Float     x)
@@ -199,9 +211,5 @@ valToValue = \case
     ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
                             Table <$> constructTable entries
 
-invalidKey :: Located String -> String -> Either String a
-invalidKey k msg = Left (printf "%d:%d: key error: %s %s"
-    (posLine (locPosition k))
-    (posColumn (locPosition k))
-    (show (prettySimpleKey (locThing k)))
-    msg)
+invalidKey :: Located String -> SemanticErrorKind -> Either (Located SemanticError) a
+invalidKey k msg = Left (fmap (\key -> SemanticError key msg) k)

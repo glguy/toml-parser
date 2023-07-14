@@ -616,7 +616,7 @@ spec =
             [[fruit]]  # parser must throw an error upon discovering that "fruit" is
                     # an array rather than a table
             name = "apple"|]
-            `shouldBe` Left "6:3: key error: fruit is already a table"
+            `shouldBe` Left "6:3: key error: fruit is already implicitly defined to be a table"
 
         it "prevents redefining an inline array" $
           parse [quoteStr|
@@ -739,4 +739,10 @@ spec =
           parse [quoteStr|
             [[x.y]]
             [x.y]|]
-          `shouldBe` Left "2:4: key error: y is already an array of tables"
+          `shouldBe` Left "2:4: key error: y is a closed table"
+
+        it "quotes table names in semantic errors" $
+          parse [quoteStr|
+            [[x.""]]
+            [x.""]|]
+          `shouldBe` Left "2:4: key error: \"\" is a closed table"

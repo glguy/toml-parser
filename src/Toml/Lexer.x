@@ -17,9 +17,8 @@ This module uses actions and lexical hooks defined in
 "LexerUtils".
 
 -}
-module Toml.Lexer (scanTokens, lexValue, Token(..)) where
+module Toml.Lexer (Context(..), scanToken, lexValue, Token(..)) where
 
-import Control.Monad.Trans.State.Strict (evalState, runState)
 import Toml.Lexer.Token
 import Toml.Lexer.Utils
 import Toml.Located
@@ -95,13 +94,13 @@ toml :-
 
 <val> {
 
-@dec_int            { value mkDecInteger                }
-@hex_int            { value mkHexInteger                }
-@oct_int            { value mkOctInteger                }
-@bin_int            { value mkBinInteger                }
-@float              { value mkFloat                     }
-"true"              { value_ TokTrue                    }
-"false"             { value_ TokFalse                   }
+@dec_int            { token mkDecInteger                }
+@hex_int            { token mkHexInteger                }
+@oct_int            { token mkOctInteger                }
+@bin_int            { token mkBinInteger                }
+@float              { token mkFloat                     }
+"true"              { token_ TokTrue                    }
+"false"             { token_ TokFalse                   }
 
 @offset_date_time   { timeValue "offset date-time" offsetDateTimePatterns TokOffsetDateTime }
 @local_date         { timeValue "local date"       localDatePatterns      TokLocalDate      }
@@ -120,18 +119,18 @@ toml :-
 @comment;
 $wschar+;
 
-@literal_string     { value mkLiteralString             }
+@literal_string     { token mkLiteralString             }
 
-@ml_literal_string  { value mkMlLiteralString           }
+@ml_literal_string  { token mkMlLiteralString           }
 
-"="                 { equals                            }
+"="                 { token_ TokEquals                  }
 "."                 { token_ TokPeriod                  }
 ","                 { token_ TokComma                   }
 
-"["                 { squareO                           }
-"]"                 { squareC                           }
-"{"                 { curlyO                            }
-"}"                 { curlyC                            }
+"["                 { token_ TokSquareO                 }
+"]"                 { token_ TokSquareC                 }
+"{"                 { token_ TokCurlyO                  }
+"}"                 { token_ TokCurlyC                  }
 
 @barekey            { token TokBareKey                  }
 
@@ -171,42 +170,31 @@ type AlexInput = Located String
 alexGetByte :: AlexInput -> Maybe (Int, AlexInput)
 alexGetByte = locatedUncons
 
--- | Generate a lazy-list of tokens from the input string.
--- The token stream is guaranteed to be terminated either with
--- 'TokEOF' or 'TokError'.
-scanTokens :: String -> [Located Token]
-scanTokens str = scanTokens' [] Located { locPosition = startPos, locThing = str }
-
-scanTokens' :: [Context] -> AlexInput -> [Located Token]
-scanTokens' st str =
+-- | Get the next token from a located string. This function can be total
+-- because one of the possible token outputs is an error token.
+scanToken :: Context -> Located String -> Either (Located String) (Located Token, Located String)
+scanToken st str =
   case alexScan str (stateInt st) of
-    AlexEOF          -> [eofToken st str]
-    AlexError str'   -> [mkError <$> str']
-    AlexSkip  str' _ -> scanTokens' st str'
+    AlexEOF          -> eofToken st str
+    AlexError str'   -> Left (mkError <$> str')
+    AlexSkip  str' _ -> scanToken st str'
     AlexToken str' n action ->
-      case runState (action (take n <$> str)) st of
-        (t, st') -> t ++ scanTokens' st' str'
+      case action (take n <$> str) st of
+        Resume st'   -> scanToken st' str'
+        LexerError e -> Left e
+        EmitToken  t -> Right (t, str')
 
-stateInt :: [Context] -> Int
-stateInt (ValueContext   : _) = val
-stateInt (ListContext {} : _) = val
-stateInt (StrContext  {} : _) = bstr
-stateInt (MlStrContext{} : _) = mlbstr
-stateInt _                    = 0
+stateInt :: Context -> Int
+stateInt NameContext    = 0
+stateInt ValueContext   = val
+stateInt StrContext  {} = bstr
+stateInt MlStrContext{} = mlbstr
 
 -- | Lex a single token in a value context. This is mostly useful for testing.
-lexValue :: String -> Token
-lexValue str = lexValue_ Located { locPosition = startPos, locThing = str }
-
-lexValue_ :: Located String -> Token
-lexValue_ str =
-  case alexScan str val of
-    AlexEOF              -> TokError "end of input"
-    AlexError{}          -> TokError "lexer error"
-    AlexSkip str' _      -> lexValue_ str'
-    AlexToken _ n action ->
-      case evalState (action (take n <$> str)) [ValueContext] of
-        t:_ -> locThing t
-        []  -> TokError "lexer error"
+lexValue :: String -> Either String Token
+lexValue str =
+    case scanToken ValueContext Located{ locPosition = startPos, locThing = str } of
+      Left e -> Left (locThing e)
+      Right (t,_) -> Right (locThing t)
 
 }

@@ -1,5 +1,12 @@
 # Revision history for toml-parser
 
+## 1.3.0.0  --
+
+* Make more structured error messages available in the low-level modules.
+  Consumers of the `Toml` module can keep getting simple error strings
+  and users interested in structured errors can run the different layers
+  independently to get more detailed error reporting.
+
 ## 1.2.1.0  --  2023-07-12
 
 * Added `Toml.Pretty.prettyTomlOrdered` to allow user-specified section ordering.

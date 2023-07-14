@@ -63,7 +63,6 @@ data Token
     | TokLocalDateTime !LocalTime   -- ^ local date-time
     | TokLocalDate !Day             -- ^ local date
     | TokLocalTime !TimeOfDay       -- ^ local time
-    | TokError String               -- ^ lexical error
     | TokEOF                        -- ^ end of file
     deriving (Read, Show)
 
@@ -128,9 +127,9 @@ mkMlLiteralString str =
         go "" = error "processMlLiteral: missing terminator"
 
 -- | Make a 'TokError' from a lexical error message.
-mkError :: String -> Token
-mkError ""    = TokError "unexpected end-of-input"
-mkError (x:_) = TokError ("unexpected " ++ show x)
+mkError :: String -> String
+mkError ""    = "unexpected end-of-input"
+mkError (x:_) = "unexpected " ++ show x
 
 -- | Format strings for local date lexemes.
 localDatePatterns :: [String]

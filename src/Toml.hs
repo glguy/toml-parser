@@ -32,27 +32,33 @@ module Toml (
     Result(..),
     ) where
 
+import Control.Monad ((<=<))
 import Text.Printf (printf)
 import Toml.FromValue (FromValue (fromValue), Result(..))
 import Toml.FromValue.Matcher (runMatcher)
-import Toml.Lexer (scanTokens, Token(TokError))
 import Toml.Located (Located(Located))
 import Toml.Parser (parseRawToml)
 import Toml.Position (Position(posColumn, posLine))
-import Toml.Pretty (TomlDoc, DocClass(..), prettyToken, prettyToml)
-import Toml.Semantics (semantics)
+import Toml.Pretty (TomlDoc, DocClass(..), prettyToken, prettyToml, prettySimpleKey)
+import Toml.Semantics (SemanticError(..), SemanticErrorKind(..), semantics)
 import Toml.ToValue (ToTable (toTable))
 import Toml.Value (Table, Value(..))
+import Toml.Position(Position(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse :: String -> Either String Table
 parse str =
-    case parseRawToml (scanTokens str) of
-        Left (Located p (TokError e)) ->
-            Left (printf "%d:%d: lexical error: %s" (posLine p) (posColumn p) e)
-        Left (Located p t) ->
-            Left (printf "%d:%d: parse error: unexpected %s" (posLine p) (posColumn p) (prettyToken t))
-        Right exprs -> semantics exprs
+    case parseRawToml str of
+        Left (Located p e) -> Left (printf "%d:%d: %s" (posLine p) (posColumn p) e)
+        Right exprs ->
+            case semantics exprs of
+                Left (Located p (SemanticError k e)) ->
+                    Left (printf "%d:%d: key error: %s %s" (posLine p) (posColumn p) (show (prettySimpleKey k)) (prettySemanticError e))
+                Right tab -> Right tab
+    where
+        prettySemanticError AlreadyAssigned = "is already assigned"
+        prettySemanticError ClosedTable     = "is a closed table"
+        prettySemanticError ImplicitlyTable = "is already implicitly defined to be a table"
 
 -- | Use the 'FromValue' instance to decode a value from a TOML string.
 decode :: FromValue a => String -> Result a
