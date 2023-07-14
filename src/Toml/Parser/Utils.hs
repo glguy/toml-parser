@@ -72,7 +72,7 @@ errorP e = P \_ _ t -> Left (fmap (\t -> "parse error: unexpected " ++ prettyTok
 
 -- | Operation the parser generator uses to request the next token.
 lexerP :: (Located Token -> Parser r a) -> Parser r a
-lexerP f = P \st str k -> 
+lexerP f = P \st str k ->
     case scanToken (head st) str of
         Left le -> Left (("lexical error: " ++) <$> le)
         Right (t, str') -> getP (f t) st str' k

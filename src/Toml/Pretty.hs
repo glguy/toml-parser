@@ -296,5 +296,5 @@ prettyMatchMessage :: MatchMessage -> String
 prettyMatchMessage (MatchMessage scope msg) =
     msg ++ " in top" ++ foldr f "" scope
     where
-        f (ScopeIndex i) = ('[' :) . shows i . (']':) 
+        f (ScopeIndex i) = ('[' :) . shows i . (']':)
         f (ScopeKey key) = ('.' :) . shows (prettySimpleKey key)

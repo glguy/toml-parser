@@ -23,17 +23,12 @@ module Toml.Parser (
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
-import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Class (lift)
-import Text.Printf (printf)
 
-import Toml.Lexer (Context(..), Token(..), scanToken)
+import Toml.Lexer (Context(..), Token(..))
 import Toml.Located (Located(Located, locThing))
-import Toml.Parser.Types
-import Toml.Parser.Utils
-import Toml.Position (Position(..), startPos)
-import Toml.Pretty (prettyToken)
+import Toml.Parser.Types (Expr(..), Key, Val(..), SectionKind(..))
+import Toml.Parser.Utils (Parser, runParser, lexerP, errorP, push, pop, thenP, pureP, asString)
+import Toml.Position (startPos)
 
 }
 
