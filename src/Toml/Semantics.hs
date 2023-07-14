@@ -14,6 +14,7 @@ key assignments.
 -}
 module Toml.Semantics (SemanticError(..), SemanticErrorKind(..), semantics) where
 
+import Control.Applicative ((<|>))
 import Control.Monad (foldM)
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -22,29 +23,41 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Text.Printf (printf)
 import Toml.Located (locThing, Located, locPosition)
-import Toml.Parser (SectionKind(..), Key, Val(..), Expr(..))
-import Toml.Value (Table, Value(..))
+import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Position (Position(..))
-import Toml.Pretty (prettySimpleKey)
-import Control.Applicative ((<|>))
+import Toml.Value (Table, Value(..))
 
 -- | The type of errors that can be generated when resolving all the key
 -- used in a TOML document. These errors always pertain to some key to
 -- caused one of three conflicts.
+--
+-- @since 1.3.0.0
 data SemanticError = SemanticError {
     errorKey :: String,
     errorKind :: SemanticErrorKind
-    } deriving (Eq, Ord, Read, Show)
+    } deriving (
+        Read {- ^ Default instance -},
+        Show {- ^ Default instance -},
+        Eq   {- ^ Default instance -},
+        Ord  {- ^ Default instance -})
 
 -- | Enumeration of the kinds of conflicts a key can generate.
+--
+-- @since 1.3.0.0
 data SemanticErrorKind
     = AlreadyAssigned -- ^ Attempted to assign to a key that was already assigned
     | ClosedTable     -- ^ Attempted to open a table already closed
     | ImplicitlyTable -- ^ Attempted to open a tables as an array of tables that was implicitly defined to be a table
-    deriving (Eq, Ord, Read, Show)
+    deriving (
+        Read {- ^ Default instance -},
+        Show {- ^ Default instance -},
+        Eq   {- ^ Default instance -},
+        Ord  {- ^ Default instance -})
 
 -- | Extract semantic value from sequence of raw TOML expressions
--- or report an error string.
+-- or report a semantic error.
+--
+-- @since 1.3.0.0
 semantics :: [Expr] -> Either (Located SemanticError) Table
 semantics exprs =
  do let (topKVs, tables) = gather exprs
@@ -123,6 +136,8 @@ findBadKey = check . sortOn (fmap locThing)
                     x' : xs' -> check1 (x' :| xs') (y2 :| ys)
         check1 _ _ = Nothing
 
+-- | Attempts to insert the key-value pairs given into a new section
+-- located at the given key-path in a frame map.
 addSection ::
     SectionKind                      {- ^ section kind        -} ->
     KeyVals                          {- ^ values to install   -} ->
@@ -212,4 +227,4 @@ valToValue = \case
                             Table <$> constructTable entries
 
 invalidKey :: Located String -> SemanticErrorKind -> Either (Located SemanticError) a
-invalidKey k msg = Left (fmap (\key -> SemanticError key msg) k)
+invalidKey key kind = Left ((`SemanticError` kind) <$> key)

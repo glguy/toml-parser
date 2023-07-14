@@ -1,4 +1,3 @@
-{-# Language OverloadedStrings #-}
 {-|
 Module      : Main
 Description : Decoder driver for BurntSushi TOML test suite

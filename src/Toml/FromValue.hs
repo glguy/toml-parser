@@ -27,6 +27,7 @@ module Toml.FromValue (
 
     -- * Matcher
     Matcher,
+    MatchMessage(..),
     Result(..),
     warning,
 
@@ -62,7 +63,7 @@ import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.FromValue.Matcher (Matcher, Result(..), runMatcher, withScope, warning, inIndex, inKey)
+import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), runMatcher, withScope, warning, inIndex, inKey)
 import Toml.FromValue.ParseTable
 import Toml.Pretty (prettySimpleKey, prettyValue)
 import Toml.Value (Value(..), Table)

@@ -32,6 +32,10 @@ module Toml.Pretty (
     -- * Printing keys
     prettySimpleKey,
     prettyKey,
+
+    -- * Pretty errors
+    prettySemanticError,
+    prettyMatchMessage,
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
@@ -45,8 +49,10 @@ import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
 import Text.Printf (printf)
-import Toml.Parser.Types (SectionKind(..))
+import Toml.FromValue.Matcher (MatchMessage(..), Scope (..))
 import Toml.Lexer (Token(..))
+import Toml.Parser.Types (SectionKind(..))
+import Toml.Semantics (SemanticError (..), SemanticErrorKind (..))
 import Toml.Value (Value(..), Table)
 
 -- | Annotation used to enable styling pretty-printed TOML
@@ -271,3 +277,24 @@ prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
 snoc :: [a] -> a -> NonEmpty a
 snoc []       y = y :| []
 snoc (x : xs) y = x :| xs ++ [y]
+
+-- | Render a semantic TOML error in a human-readable string.
+--
+-- @since 1.3.0.0
+prettySemanticError :: SemanticError -> String
+prettySemanticError (SemanticError key kind) =
+    printf "key error: %s %s" (show (prettySimpleKey key))
+    case kind of
+        AlreadyAssigned -> "is already assigned" :: String
+        ClosedTable     -> "is a closed table"
+        ImplicitlyTable -> "is already implicitly defined to be a table"
+
+-- | Render a TOML decoding error as a human-readable string.
+--
+-- @since 1.3.0.0
+prettyMatchMessage :: MatchMessage -> String
+prettyMatchMessage (MatchMessage scope msg) =
+    msg ++ " in top" ++ foldr f "" scope
+    where
+        f (ScopeIndex i) = ('[' :) . shows i . (']':) 
+        f (ScopeKey key) = ('.' :) . shows (prettySimpleKey key)

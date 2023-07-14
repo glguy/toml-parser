@@ -125,11 +125,11 @@ spec =
             (Fruits [Fruit "peach" Nothing [], Fruit "pineapple" Nothing []])
 
     it "handles missing key errors" $
-        (decode "[[fruits]]" :: Result Fruits)
+        (decode "[[fruits]]" :: Result String Fruits)
         `shouldBe`
         Failure ["missing key: name in top.fruits[0]"]
 
     it "handles parse errors while decoding" $
-        (decode "x =" :: Result Fruits)
+        (decode "x =" :: Result String Fruits)
         `shouldBe`
         Failure ["1:4: parse error: unexpected end-of-input"]

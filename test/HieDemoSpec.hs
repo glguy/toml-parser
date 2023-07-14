@@ -280,7 +280,7 @@ spec =
             |]
         `shouldBe`
         (Failure ["type error. wanted: string got: integer in top.cradle.cabal.component"]
-            :: Result CradleConfig)
+            :: Result String CradleConfig)
 
     it "detects unusd keys" $
         decode [quoteStr|
