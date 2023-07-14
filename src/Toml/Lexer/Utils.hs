@@ -58,33 +58,34 @@ data Outcome
 
 -- | Representation of the current lexer state.
 data Context
-  = NameContext  -- ^ lex key names
-  | ValueContext -- ^ lex number literals
+  = TopContext -- ^ top-level where @[[@ and @]]@ have special meaning
+  | TableContext -- ^ inline table - lex key names
+  | ValueContext -- ^ value lexer - lex number literals
   | MlStrContext Position [String] -- ^ position of opening delimiter and list of fragments
   | StrContext   Position [String] -- ^ position of opening delimiter and list of fragments
   deriving Show
 
 -- | Add a literal fragment of a string to the current string state.
 strFrag :: Action
-strFrag s = \case
-  StrContext   p acc -> Resume (StrContext   p (locThing s : acc))
-  MlStrContext p acc -> Resume (MlStrContext p (locThing s : acc))
+strFrag (Located _ s) = \case
+  StrContext   p acc -> Resume (StrContext   p (s : acc))
+  MlStrContext p acc -> Resume (MlStrContext p (s : acc))
   _                  -> error "strFrag: panic"
 
 -- | End the current string state and emit the string literal token.
 endStr :: Action
-endStr x = \case
-    StrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (locThing x : acc)))))
-    MlStrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (locThing x : acc)))))
+endStr (Located _ x) = \case
+    StrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (x : acc)))))
+    MlStrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (x : acc)))))
     _                  -> error "endStr: panic"
 
 -- | Start a basic string literal
 startStr :: Action
-startStr t _ = Resume (StrContext (locPosition t) [])
+startStr (Located p _) _ = Resume (StrContext p [])
 
 -- | Start a multi-line basic string literal
 startMlStr :: Action
-startMlStr t _ = Resume (MlStrContext (locPosition t) [])
+startMlStr (Located p _) _ = Resume (MlStrContext p [])
 
 -- | Resolve a unicode escape sequence and add it to the current string literal
 unicodeEscape :: Action
@@ -135,5 +136,4 @@ locatedUncons Located { locPosition = p, locThing = str } =
 eofToken :: Context -> Located String -> Either (Located String) (Located Token, Located String)
 eofToken (MlStrContext p _) _ = Left (Located p "unterminated multi-line string literal")
 eofToken (StrContext   p _) _ = Left (Located p "unterminated string literal")
-eofToken ValueContext       t = Right (TokEOF <$ t, t)
-eofToken NameContext        t = Right (TokEOF <$ t, t)
+eofToken _                  t = Right (TokEOF <$ t, t)

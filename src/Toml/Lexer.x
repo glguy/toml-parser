@@ -114,7 +114,7 @@ toml :-
 "]]"                { token_ Tok2SquareC                }
 }
 
-<0,val> {
+<0,val,tab> {
 @newline            { token_ TokNewline                 }
 @comment;
 $wschar+;
@@ -185,7 +185,8 @@ scanToken st str =
         EmitToken  t -> Right (t, str')
 
 stateInt :: Context -> Int
-stateInt NameContext    = 0
+stateInt TopContext     = 0
+stateInt TableContext   = tab
 stateInt ValueContext   = val
 stateInt StrContext  {} = bstr
 stateInt MlStrContext{} = mlbstr

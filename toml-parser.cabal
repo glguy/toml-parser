@@ -58,6 +58,7 @@ library
         Toml.Located
         Toml.Parser
         Toml.Parser.Types
+        Toml.Parser.Utils
         Toml.Position
         Toml.Pretty
         Toml.Semantics

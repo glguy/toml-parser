@@ -31,6 +31,7 @@ import Text.Printf (printf)
 import Toml.Lexer (Context(..), Token(..), scanToken)
 import Toml.Located (Located(Located, locThing))
 import Toml.Parser.Types
+import Toml.Parser.Utils
 import Toml.Position (Position(..), startPos)
 import Toml.Pretty (prettyToken)
 
@@ -60,7 +61,7 @@ LOCALDATETIME   { Located _ (TokLocalDateTime  $$)  }
 LOCALDATE       { Located _ (TokLocalDate      $$)  }
 LOCALTIME       { Located _ (TokLocalTime      $$)  }
 
-%monad          { M }
+%monad          { Parser r } { thenP } { pureP }
 %lexer          { lexerP } { Located _ TokEOF }
 %error          { errorP }
 
@@ -114,9 +115,9 @@ arrayvalues ::      { [Val]                   }
   :                          val newlines { [$1]    }
   | arrayvalues ',' newlines val newlines { $4 : $1 }
 
-newlines ::         {                         }
-  :                 {                         }
-  | newlines NEWLINE{                         }
+newlines ::         { ()                      }
+  :                 { ()                      }
+  | newlines NEWLINE{ ()                      }
 
 sepBy(p,q) ::       { [p]                     }
   :                 { []                      }
@@ -129,53 +130,21 @@ sepBy1_(p,q) ::     { NonEmpty p              }
   :                p{ pure $1                 }
   | sepBy1_(p,q) q p{ NonEmpty.cons $3 $1     }
 
-rhs ::              {                         }
+rhs ::              { ()                      }
   :                 {% push ValueContext      }
 
-lhs ::              {                         }
-  :                 {% push NameContext       }
+lhs ::              { ()                      }
+  :                 {% push TableContext      }
 
-pop ::              {                         }
+pop ::              { ()                      }
   :                 {% pop                    }
 
 {
-
-type M = StateT ([Context], Located String) (Either (Located String))
 
 -- | Parse a list of tokens either returning the first unexpected
 -- token or a list of the TOML statements in the file to be
 -- processed by "Toml.Semantics".
 parseRawToml :: String -> Either (Located String) [Expr]
-parseRawToml str = evalStateT parseRawToml_ ([NameContext], Located startPos str)
-
--- | Add a new context to the lexer context stack
-push :: Context -> M ()
-push x = modify \(st, str) -> (x : st, str)
-
--- | Pop the top context off the lexer context stack
-pop :: M ()
-pop = modify \(_ : st, str) -> (st, str)
-
--- | Operation the parser generator uses when it reaches an unexpected token.
-errorP :: Located Token -> M a
-errorP = failure . fmap \t -> "parse error: unexpected " ++ prettyToken t
-
--- | Abort with a located error message.
-failure :: Located String -> M a
-failure = lift . Left
-
--- | Operation the parser generator uses to request the next token.
-lexerP :: (Located Token -> M a) -> M a
-lexerP k =
- do (st, str) <- get
-    case scanToken (head st) str of
-      Left le -> failure (("lexical error: " ++) <$> le)
-      Right (t, str') -> put (st, str') >> k t
-
--- | Extract the string content of a bare-key or a quoted string.
-asString :: Token -> String
-asString (TokString x) = x
-asString (TokBareKey x) = x
-asString _ = error "simpleKeyLexeme: panic"
+parseRawToml = runParser parseRawToml_ TopContext . Located startPos
 
 }
