@@ -164,6 +164,8 @@ prettyValue = \case
     LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
     Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
 
+-- | Predicate for values that should be completely rendered on the
+-- righthand-side of an @=@.
 isAlwaysSimple :: Value -> Bool
 isAlwaysSimple = \case
     Integer   _ -> True
@@ -177,10 +179,14 @@ isAlwaysSimple = \case
     Table     x -> isSingularTable x
     Array     x -> null x || not (all isTable x)
 
+-- | Predicate for table values.
 isTable :: Value -> Bool
 isTable Table {} = True
 isTable _        = False
 
+-- | Predicate for tables that can be rendered with a single assignment.
+-- These can be collapsed using dotted-key notation on the lefthand-side
+-- of a @=@.
 isSingularTable :: Table -> Bool
 isSingularTable (Map.elems -> [v])  = isAlwaysSimple v
 isSingularTable _                   = False
