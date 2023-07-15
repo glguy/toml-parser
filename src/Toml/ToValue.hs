@@ -36,6 +36,7 @@ import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Value (Value(..), Table)
+import Data.Ratio (Ratio)
 
 -- | Build a 'Table' from a list of key-value pairs.
 --
@@ -108,6 +109,12 @@ instance ToValue Data.Text.Lazy.Text where
 -- | This instance defers to the list element's 'toValueList' implementation.
 instance ToValue a => ToValue [a] where
     toValue = toValueList
+
+-- | Converts to a 'Double'. This can overflow to infinity.
+--
+-- @since 1.3.0.0
+instance Integral a => ToValue (Ratio a) where
+    toValue = Float . realToFrac
 
 instance ToValue Double    where toValue = Float
 instance ToValue Float     where toValue = Float . realToFrac

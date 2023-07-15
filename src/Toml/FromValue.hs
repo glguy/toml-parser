@@ -67,6 +67,7 @@ import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), runMatcher
 import Toml.FromValue.ParseTable
 import Toml.Pretty (prettySimpleKey, prettyValue)
 import Toml.Value (Value(..), Table)
+import Data.Ratio (Ratio)
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
@@ -149,6 +150,8 @@ instance FromValue Char where
     listFromValue v = typeError "string" v
 
 -- | Matches string literals
+--
+-- @since 1.2.1.0
 instance FromValue Data.Text.Text where
     fromValue v = Data.Text.pack <$> fromValue v
 
@@ -159,8 +162,6 @@ instance FromValue Data.Text.Lazy.Text where
     fromValue v = Data.Text.Lazy.pack <$> fromValue v
 
 -- | Matches floating-point and integer values
---
--- @since 1.2.1.0
 instance FromValue Double where
     fromValue (Float x) = pure x
     fromValue (Integer x) = pure (fromInteger x)
@@ -169,6 +170,21 @@ instance FromValue Double where
 -- | Matches floating-point and integer values
 instance FromValue Float where
     fromValue (Float x) = pure (realToFrac x)
+    fromValue (Integer x) = pure (fromInteger x)
+    fromValue v = typeError "float" v
+
+-- | Matches floating-point and integer values.
+-- 
+-- TOML specifies @Floats should be implemented as IEEE 754 binary64 values.@
+-- so note that the given 'Rational' will be converted from a double
+-- representation and will often be an approximation rather than the exact
+-- value.
+--
+-- @since 1.3.0.0
+instance Integral a => FromValue (Ratio a) where
+    fromValue (Float x)
+        | isNaN x || isInfinite x = fail "finite float required"
+        | otherwise = pure (realToFrac x)
     fromValue (Integer x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
