@@ -54,6 +54,8 @@ $comment_start_symbol = \#
 @float_int_part = @dec_int
 @float = @float_int_part ( @exp | @frac @exp? ) | @special_float
 
+@bad_dec_int = [\-\+]? 0 ($digit | _ $digit)+
+
 $non_eol = [\x09 \x20-\x7E $non_ascii]
 @comment = $comment_start_symbol $non_eol*
 
@@ -94,6 +96,7 @@ toml :-
 
 <val> {
 
+@bad_dec_int        { failure "leading zero prohibited" }
 @dec_int            { token mkDecInteger                }
 @hex_int            { token mkHexInteger                }
 @oct_int            { token mkOctInteger                }

@@ -30,6 +30,8 @@ module Toml.Lexer.Utils (
     timeValue,
     eofToken,
 
+    failure,
+
     -- * String literals
     strFrag,
     startMlStr,
@@ -136,3 +138,6 @@ eofToken :: Context -> Located String -> Either (Located String) (Located Token,
 eofToken (MlStrContext p _) _ = Left (Located p "unterminated multi-line string literal")
 eofToken (StrContext   p _) _ = Left (Located p "unterminated string literal")
 eofToken _                  t = Right (TokEOF <$ t, t)
+
+failure :: String -> Action
+failure err t _ = LexerError (err <$ t)

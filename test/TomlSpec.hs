@@ -278,6 +278,12 @@ spec =
               "oct1" .= Integer 0o01234567,
               "oct2" .= Integer 0o755])
 
+    it "handles leading zeros gracefully" $
+      parse "x = 01"
+      `shouldBe`
+      Left "1:5: lexical error: leading zero prohibited"
+
+
     describe "float"
      do it "parses floats" $
           parse [quoteStr|
