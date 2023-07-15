@@ -33,15 +33,14 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
-import Data.Sequence qualified as Seq
 import Data.Text qualified
 import Data.Text.Lazy qualified
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Value (Value(..), Table)
-import Data.Ratio (Ratio)
 
 -- | Build a 'Table' from a list of key-value pairs.
 --

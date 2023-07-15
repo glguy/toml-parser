@@ -16,10 +16,8 @@ module Toml.FromValue.Generic (
     ) where
 
 import GHC.Generics
-import Toml.FromValue.ParseTable (ParseTable, runParseTable)
-import Toml.FromValue.Matcher (Matcher)
-import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
-import Toml.Value (Table, Value(Table))
+import Toml.FromValue.ParseTable (ParseTable)
+import Toml.FromValue (FromValue, optKey, reqKey)
 
 -- | Match a 'Table' using the field names in a record.
 --

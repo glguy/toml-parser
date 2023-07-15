@@ -29,7 +29,6 @@ module Toml.Parser.Utils (
 import Toml.Lexer (scanToken, Context(..))
 import Toml.Lexer.Token (Token(TokBareKey, TokString))
 import Toml.Located (Located)
-import Toml.Parser.Types (Expr)
 import Toml.Pretty (prettyToken)
 
 -- continuation passing implementation of a state monad with errors
@@ -70,7 +69,7 @@ pop = P \ctx str k ->
 
 -- | Operation the parser generator uses when it reaches an unexpected token.
 errorP :: Located Token -> Parser r a
-errorP e = P \_ _ t -> Left (fmap (\t -> "parse error: unexpected " ++ prettyToken t) e)
+errorP e = P \_ _ _ -> Left (fmap (\t -> "parse error: unexpected " ++ prettyToken t) e)
 
 -- | Operation the parser generator uses to request the next token.
 lexerP :: (Located Token -> Parser r a) -> Parser r a

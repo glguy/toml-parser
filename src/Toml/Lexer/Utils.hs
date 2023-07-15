@@ -38,7 +38,6 @@ module Toml.Lexer.Utils (
     unicodeEscape,
     ) where
 
-import Control.Monad.Trans.State.Strict (State, state)
 import Data.Char (ord, chr, isAscii)
 import Data.Foldable (asum)
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)

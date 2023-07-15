@@ -273,10 +273,10 @@ prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
 
         subtables = [prettySection (prefix `snoc` k) v | (k,v) <- sections]
 
-        prettySection key (Table t) =
-            prettyToml_ mbKeyProj TableKind (NonEmpty.toList key) t
+        prettySection key (Table tab) =
+            prettyToml_ mbKeyProj TableKind (NonEmpty.toList key) tab
         prettySection key (Array a) =
-            vcat [prettyToml_ mbKeyProj ArrayTableKind (NonEmpty.toList key) t | Table t <- a]
+            vcat [prettyToml_ mbKeyProj ArrayTableKind (NonEmpty.toList key) tab | Table tab <- a]
         prettySection _ _ = error "prettySection applied to simple value"
 
 -- | Create a 'NonEmpty' with a given prefix and last element.

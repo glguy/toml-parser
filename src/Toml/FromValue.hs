@@ -49,16 +49,13 @@ module Toml.FromValue (
     liftMatcher,
     ) where
 
-import Control.Applicative (Alternative)
-import Control.Monad (MonadPlus, zipWithM)
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State.Strict (StateT(..), put, get)
+import Control.Monad (zipWithM)
 import Data.Int (Int8, Int16, Int32, Int64)
-import Data.List (intercalate)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
 import Data.String (IsString (fromString))
@@ -67,11 +64,9 @@ import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), runMatcher, withScope, warning, inIndex, inKey)
+import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), warning, inIndex, inKey)
 import Toml.FromValue.ParseTable
-import Toml.Pretty (prettySimpleKey, prettyValue)
-import Toml.Value (Value(..), Table)
-import Data.Ratio (Ratio)
+import Toml.Value (Value(..))
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where

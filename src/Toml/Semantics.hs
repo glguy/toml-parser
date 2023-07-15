@@ -21,10 +21,8 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Text.Printf (printf)
-import Toml.Located (locThing, Located, locPosition)
+import Toml.Located (locThing, Located)
 import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
-import Toml.Position (Position(..))
 import Toml.Value (Table, Value(..))
 
 -- | The type of errors that can be generated when resolving all the key

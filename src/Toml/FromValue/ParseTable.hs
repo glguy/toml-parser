@@ -110,7 +110,7 @@ pickKey xs =
  do t <- getTable
     foldr (f t) errCase xs
     where
-        f t (Else m) _ = liftMatcher m
+        f _ (Else m) _ = liftMatcher m
         f t (Key k c) continue =
             case Map.lookup k t of
                 Nothing -> continue
