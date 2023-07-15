@@ -46,7 +46,7 @@ data Token
     | TokFalse                      -- ^ @false@
     | TokComma                      -- ^ @','@
     | TokEquals                     -- ^ @'='@
-    | TokNewline                    -- ^ @'\\n'@
+    | TokNewline                    -- ^ @end-of-line@
     | TokPeriod                     -- ^ @'.'@
     | TokSquareO                    -- ^ @'['@
     | TokSquareC                    -- ^ @']'@
@@ -63,7 +63,7 @@ data Token
     | TokLocalDateTime !LocalTime   -- ^ local date-time
     | TokLocalDate !Day             -- ^ local date
     | TokLocalTime !TimeOfDay       -- ^ local time
-    | TokEOF                        -- ^ end of file
+    | TokEOF                        -- ^ @end-of-input@
     deriving (Read, Show)
 
 -- | Remove underscores from number literals
@@ -126,9 +126,11 @@ mkMlLiteralString str =
         go (x:xs) = x : go xs
         go "" = error "processMlLiteral: missing terminator"
 
--- | Make a 'TokError' from a lexical error message.
+-- | Generate an error message given the current string being lexed.
 mkError :: String -> String
 mkError ""    = "unexpected end-of-input"
+mkError ('\n':_) = "unexpected end-of-line"
+mkError ('\r':'\n':_) = "unexpected end-of-line"
 mkError (x:_) = "unexpected " ++ show x
 
 -- | Format strings for local date lexemes.

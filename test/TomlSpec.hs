@@ -233,6 +233,12 @@ spec =
             x = "\U11111111"|]
           `shouldBe` Left "1:6: lexical error: unicode escape too large"
 
+        it "handles unexpected end of line" $
+          parse [quoteStr|
+            x = "example
+            y = 42|]
+          `shouldBe` Left "1:13: lexical error: unexpected end-of-line"
+
     describe "integer"
      do it "parses literals correctly" $
           parse [quoteStr|

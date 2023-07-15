@@ -121,7 +121,7 @@ prettyToken = \case
     Tok2SquareC         -> "']]'"
     TokCurlyO           -> "'{'"
     TokCurlyC           -> "'}'"
-    TokNewline          -> "newline"
+    TokNewline          -> "end-of-line"
     TokBareKey        _ -> "bare key"
     TokTrue             -> "true literal"
     TokFalse            -> "false literal"
