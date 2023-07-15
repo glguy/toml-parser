@@ -27,9 +27,14 @@ module Toml.ToValue (
     (.=),
     ) where
 
+import Data.Foldable (toList)
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.Text qualified
 import Data.Text.Lazy qualified
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
@@ -109,6 +114,18 @@ instance ToValue Data.Text.Lazy.Text where
 -- | This instance defers to the list element's 'toValueList' implementation.
 instance ToValue a => ToValue [a] where
     toValue = toValueList
+
+-- | Converts to list and encodes that to value
+--
+-- @since 1.3.0.0
+instance ToValue a => ToValue (NonEmpty a) where
+    toValue = toValue . NonEmpty.toList
+
+-- | Converts to list and encodes that to value
+--
+-- @since 1.3.0.0
+instance ToValue a => ToValue (Seq a) where
+    toValue = toValue . toList
 
 -- | Converts to a 'Double'. This can overflow to infinity.
 --

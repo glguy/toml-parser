@@ -6,7 +6,7 @@
   Consumers of the `Toml` module can keep getting simple error strings
   and users interested in structured errors can run the different layers
   independently to get more detailed error reporting.
-* `FromValue` and `ToValue` instances for `Ratio`
+* `FromValue` and `ToValue` instances for: `Ratio`, `NonEmpty`, `Seq`
 
 ## 1.2.1.0  --  2023-07-12
 

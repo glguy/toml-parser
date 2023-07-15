@@ -55,8 +55,12 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (StateT(..), put, get)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.List (intercalate)
+import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Sequence (Seq)
+import Data.Sequence qualified as Seq
 import Data.String (IsString (fromString))
 import Data.Text qualified
 import Data.Text.Lazy qualified
@@ -187,6 +191,22 @@ instance Integral a => FromValue (Ratio a) where
         | otherwise = pure (realToFrac x)
     fromValue (Integer x) = pure (fromInteger x)
     fromValue v = typeError "float" v
+
+-- | Matches non-empty arrays or reports an error.
+--
+-- @since 1.3.0.0
+instance FromValue a => FromValue (NonEmpty a) where
+    fromValue v =
+     do xs <- fromValue v
+        case NonEmpty.nonEmpty xs of
+            Nothing -> fail "non-empty list required"
+            Just ne -> pure ne
+
+-- | Matches arrays
+--
+-- @since 1.3.0.0
+instance FromValue a => FromValue (Seq a) where
+    fromValue v = Seq.fromList <$> fromValue v
 
 -- | Matches @true@ and @false@
 instance FromValue Bool where
