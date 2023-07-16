@@ -7,6 +7,7 @@
   and users interested in structured errors can run the different layers
   independently to get more detailed error reporting.
 * `FromValue` and `ToValue` instances for: `Ratio`, `NonEmpty`, `Seq`
+* Add `FromKey` and `ToKey` for allowing codecs for `Map` to use various key types.
 
 ## 1.2.1.0  --  2023-07-12
 

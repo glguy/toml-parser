@@ -22,6 +22,7 @@ module Toml.ToValue (
 
     -- * Table construction
     ToTable(..),
+    ToKey(..),
     defaultTableToValue,
     table,
     (.=),

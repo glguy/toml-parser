@@ -24,6 +24,7 @@ automatically for record types.
 module Toml.FromValue (
     -- * Deserialization classes
     FromValue(..),
+    FromKey(..),
 
     -- * Matcher
     Matcher,
@@ -78,11 +79,35 @@ class FromValue a where
     listFromValue (Array xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
     listFromValue v = typeError "array" v
 
-instance (Ord k, IsString k, FromValue v) => FromValue (Map k v) where
+instance (Ord k, FromKey k, FromValue v) => FromValue (Map k v) where
     fromValue (Table t) = Map.fromList <$> traverse f (Map.assocs t)
         where
-            f (k,v) = (,) (fromString k) <$> inKey k (fromValue v)
+            f (k,v) = (,) <$> fromKey k <*> inKey k (fromValue v)
     fromValue v = typeError "table" v
+
+-- | Convert from a table key
+--
+-- @since 1.3.0.0
+class FromKey a where
+    fromKey :: String -> Matcher a
+
+-- | Matches all strings
+--
+-- @since 1.3.0.0
+instance a ~ Char => FromKey [a] where
+    fromKey = pure
+
+-- | Matches all strings
+--
+-- @since 1.3.0.0
+instance FromKey Data.Text.Text where
+    fromKey = pure . Data.Text.pack
+
+-- | Matches all strings
+--
+-- @since 1.3.0.0
+instance FromKey Data.Text.Lazy.Text where
+    fromKey = pure . Data.Text.Lazy.pack
 
 -- | Report a type error
 typeError :: String {- ^ expected type -} -> Value {- ^ actual value -} -> Matcher a
