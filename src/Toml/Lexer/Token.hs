@@ -13,10 +13,6 @@ module Toml.Lexer.Token (
     -- * Types
     Token(..),
 
-    -- * String literals
-    mkLiteralString,
-    mkMlLiteralString,
-
     -- * Integer literals
     mkBinInteger,
     mkDecInteger,
@@ -31,9 +27,6 @@ module Toml.Lexer.Token (
     localTimePatterns,
     localDateTimePatterns,
     offsetDateTimePatterns,
-
-    -- * Errors
-    mkError,
     ) where
 
 import Data.Char (digitToInt)
@@ -107,31 +100,6 @@ mkFloat "+inf"  = TokFloat (1/0)
 mkFloat "-inf"  = TokFloat (-1/0)
 mkFloat ('+':x) = TokFloat (read (scrub x))
 mkFloat x       = TokFloat (read (scrub x))
-
--- | Construct a 'TokString' from a literal string lexeme.
-mkLiteralString :: String -> Token
-mkLiteralString = TokString . tail . init
-
--- | Construct a 'TokMlString' from a literal multi-line string lexeme.
-mkMlLiteralString :: String -> Token
-mkMlLiteralString str =
-    TokMlString
-    case str of
-        '\'':'\'':'\'':'\r':'\n':start -> go start
-        '\'':'\'':'\'':'\n':start -> go start
-        '\'':'\'':'\'':start -> go start
-        _ -> error "processMlLiteral: mising initializer"
-    where
-        go "'''" = ""
-        go (x:xs) = x : go xs
-        go "" = error "processMlLiteral: missing terminator"
-
--- | Generate an error message given the current string being lexed.
-mkError :: String -> String
-mkError ""    = "unexpected end-of-input"
-mkError ('\n':_) = "unexpected end-of-line"
-mkError ('\r':'\n':_) = "unexpected end-of-line"
-mkError (x:_) = "unexpected " ++ show x
 
 -- | Format strings for local date lexemes.
 localDatePatterns :: [String]

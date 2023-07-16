@@ -40,6 +40,8 @@ module Toml.Lexer.Utils (
     startLstr,
     endStr,
     unicodeEscape,
+
+    mkError,
     ) where
 
 import Data.Char (ord, chr, isAscii)
@@ -159,3 +161,10 @@ eofToken _                  t = Right (TokEOF <$ t, t)
 
 failure :: String -> Action
 failure err t _ = LexerError (err <$ t)
+
+-- | Generate an error message given the current string being lexed.
+mkError :: String -> String
+mkError ""    = "unexpected end-of-input"
+mkError ('\n':_) = "unexpected end-of-line"
+mkError ('\r':'\n':_) = "unexpected end-of-line"
+mkError (x:_) = "unexpected " ++ show x

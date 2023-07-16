@@ -28,7 +28,7 @@ spec =
             key = "value"  # This is a comment at the end of a line
             another = "# This is not a comment"|]
           `shouldBe`
-          Right (Map.fromList [("another",String "# This is not a comment"),("key",String "value")])
+          Right (table [("another",String "# This is not a comment"),("key",String "value")])
 
     describe "key/value pair"
      do it "supports the most basic assignments" $
@@ -52,7 +52,7 @@ spec =
             bare-key = "value"
             1234 = "value"|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "1234"     .= "value",
             "bare-key" .= "value",
             "bare_key" .= "value",
@@ -66,7 +66,7 @@ spec =
             'key2' = "value"
             'quoted "value"' = "value"|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "127.0.0.1"          .= "value",
             "character encoding" .= "value",
             "key2"               .= "value",
@@ -80,7 +80,7 @@ spec =
             physical.shape = "round"
             site."google.com" = true|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "name"     .= "Orange",
             "physical" .= table ["color" .= "orange", "shape" .= "round"],
             "site"     .= table ["google.com" .= True]])
@@ -108,7 +108,7 @@ spec =
             apple.color = "red"
             orange.color = "orange"|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "apple" .= table [
                 "color" .= "red",
                 "skin"  .= "thin",
@@ -119,7 +119,8 @@ spec =
                 "type"  .= "fruit"]])
 
         it "allows numeric bare keys" $
-          parse "3.14159 = 'pi'" `shouldBe` Right (Map.singleton "3" (table [("14159", String "pi")]))
+          parse "3.14159 = 'pi'" `shouldBe` Right (table [
+            "3" .= table [("14159", String "pi")]])
 
         it "allows keys that look like other values" $
           parse [quoteStr|
@@ -128,7 +129,7 @@ spec =
             1900-01-01 = 1900-01-01
             1_2 = 2_3|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "1900-01-01" .= (read "1900-01-01" :: Day),
             "1_2"        .= (23::Int),
             "false"      .= False,
@@ -166,7 +167,7 @@ spec =
                 the lazy dog.\
                 """|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "str1" .= "The quick brown fox jumps over the lazy dog.",
             "str2" .= "The quick brown fox jumps over the lazy dog.",
             "str3" .= "The quick brown fox jumps over the lazy dog."])
@@ -180,7 +181,7 @@ spec =
             # "This," she said, "is just a pointless statement."
             str7 = """"This," she said, "is just a pointless statement.""""|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "str4" .= "Here are two quotation marks: \"\". Simple enough.",
             "str5" .= "Here are three quotation marks: \"\"\".",
             "str6" .= "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".",
@@ -199,7 +200,7 @@ spec =
             quoted   = 'Tom "Dubs" Preston-Werner'
             regex    = '<\i\c*\s*>'|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "quoted"   .= "Tom \"Dubs\" Preston-Werner",
             "regex"    .= "<\\i\\c*\\s*>",
             "winpath"  .= "C:\\Users\\nodejs\\templates",
@@ -215,7 +216,7 @@ spec =
             is preserved.
             '''|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "lines"  .= "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n",
             "regex2" .= "I [dw]on't need \\d{2} apples"])
 
@@ -224,7 +225,7 @@ spec =
             x = "\\\b\f\r\U0010abcd"
             y = """\\\b\f\r\u7bca\U0010abcd\n\r\t"""|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "x" .= "\\\b\f\r\x0010abcd",
             "y" .= "\\\b\f\r\x7bca\x0010abcd\n\r\t"])
 
@@ -262,7 +263,7 @@ spec =
             # binary with prefix `0b`
             bin1 = 0b11010110|]
           `shouldBe` Right
-          (Map.fromList [
+          (table [
               "bin1" .= Integer 214,
               "hex1" .= Integer 0xDEADBEEF,
               "hex2" .= Integer 0xDEADBEEF,
@@ -305,7 +306,7 @@ spec =
             sf2 = +inf # positive infinity
             sf3 = -inf # negative infinity|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "flt1" .= Float 1.0,
             "flt2" .= Float 3.1415,
             "flt3" .= Float (-1.0e-2),
@@ -345,7 +346,7 @@ spec =
             bool1 = true
             bool2 = false|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "bool1" .= True,
             "bool2" .= False])
 
@@ -357,7 +358,7 @@ spec =
             odt3 = 1979-05-27T00:32:00.999999-07:00
             odt4 = 1979-05-27 07:32:00Z|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "odt1" .= ZonedTime (read "1979-05-27 07:32:00 +0000"),
             "odt2" .= ZonedTime (read "1979-05-27 00:32:00 -0700"),
             "odt3" .= ZonedTime (read "1979-05-27 00:32:00.999999 -0700"),
@@ -370,7 +371,7 @@ spec =
             ldt2 = 1979-05-27T00:32:00.999999
             ldt3 = 1979-05-28 00:32:00.999999|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "ldt1" .= LocalTime (read "1979-05-27 07:32:00"),
             "ldt2" .= LocalTime (read "1979-05-27 00:32:00.999999"),
             "ldt3" .= LocalTime (read "1979-05-28 00:32:00.999999")])
@@ -394,7 +395,7 @@ spec =
             lt1 = 07:32:00
             lt2 = 00:32:00.999999|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "lt1" .= TimeOfDay (read "07:32:00"),
             "lt2" .= TimeOfDay (read "00:32:00.999999")])
 
@@ -414,14 +415,14 @@ spec =
             { name = "Baz Qux", email = "bazqux@example.com", url = "https://example.com/bazqux" }
             ]|]
             `shouldBe`
-            Right (Map.fromList [
+            Right (table [
                 "colors" .= ["red", "yellow", "green"],
                 "contributors" .= [
                     String "Foo Bar <foo@example.com>",
-                    table [
+                    Table (table [
                         "email" .= "bazqux@example.com",
                         "name" .= "Baz Qux",
-                        "url" .= "https://example.com/bazqux"]],
+                        "url" .= "https://example.com/bazqux"])],
                 "integers" .= [1, 2, 3 :: Integer],
                 "nested_arrays_of_ints" .= [[1, 2], [3, 4, 5 :: Integer]],
                 "nested_mixed_array" .= [[Integer 1, Integer 2], [String "a", String "b", String "c"]],
@@ -439,7 +440,7 @@ spec =
             2, # this is ok
             ]|]
             `shouldBe`
-            Right (Map.fromList [
+            Right (table [
                 "integers2" .= [1, 2, 3 :: Int],
                 "integers3" .= [1, 2 :: Int]])
 
@@ -448,7 +449,7 @@ spec =
 
     describe "table"
      do it "allows empty tables" $
-          parse "[table]" `shouldBe` Right (Map.singleton "table" (table []))
+          parse "[table]" `shouldBe` Right (table ["table" .= table []])
 
         it "parses simple tables" $
           parse [quoteStr|
@@ -460,7 +461,7 @@ spec =
             key1 = "another string"
             key2 = 456|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "table-1" .= table [
                 "key1" .= "some string",
                 "key2" .= Integer 123],
@@ -473,7 +474,7 @@ spec =
             [dog."tater.man"]
             type.name = "pug"|]
           `shouldBe`
-          Right (Map.fromList [("dog", table [("tater.man", table [("type", table [("name",String "pug")])])])])
+          Right (table ["dog" .= table ["tater.man" .= table ["type" .= table ["name" .= "pug"]]]])
 
         it "allows whitespace around keys" $
           parse [quoteStr|
@@ -482,7 +483,7 @@ spec =
             [ g .  h  . i ]    # same as [g.h.i]
             [ j . "ʞ" . 'l' ]  # same as [j."ʞ".'l']|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "a" .= table ["b" .= table ["c" .= table []]],
             "d" .= table ["e" .= table ["f" .= table []]],
             "g" .= table ["h" .= table ["i" .= table []]],
@@ -498,7 +499,7 @@ spec =
             [x] # defining a super-table afterward is ok
             q=1|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "x" .= table [
                 "q" .= Integer 1,
                 "y" .= table [
@@ -521,7 +522,7 @@ spec =
             [fruit.apple.texture]  # you can add sub-tables
             smooth = true|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "fruit" .= table [
                 "apple" .= table [
                     "color" .= "red",
@@ -537,7 +538,7 @@ spec =
             point = { x = 1, y = 2 }
             animal = { type.name = "pug" }|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "animal" .= table ["type" .= table ["name" .= "pug"]],
             "name"   .= table ["first" .= "Tom", "last" .= "Preston-Werner"],
             "point"  .= table ["x" .= Integer 1, "y" .= Integer 2]])
@@ -572,11 +573,11 @@ spec =
             color = "gray"|]
           `shouldBe`
           Success mempty (Map.singleton "products" [
-            Map.fromList [
+            table [
               "name" .= "Hammer",
               "sku"  .= Integer 738594937],
             Map.empty,
-            Map.fromList [
+            table [
                 "color" .= "gray",
                 "name"  .= "Nail",
                 "sku"   .= Integer 284758393]])
@@ -603,7 +604,7 @@ spec =
             [[fruits.varieties]]
             name = "plantain"|]
           `shouldBe`
-          Right (Map.fromList [
+          Right (table [
             "fruits" .= [
                 table [
                     "name" .= "apple",
@@ -679,13 +680,13 @@ spec =
           parse [quoteStr|
             t = { a.x.y = 1, a.x.z = 2, a.q = 3}|]
           `shouldBe`
-          Right (Map.fromList [
-            ("t", table [
-                ("a", table [
-                    ("q",Integer 3),
-                    ("x", table [
+          Right (table [
+            "t" .= table [
+                "a" .= table [
+                    "q" .= Integer 3,
+                    "x" .= table [
                         ("y",Integer 1),
-                        ("z",Integer 2)])])])])
+                        ("z",Integer 2)]]]])
 
         it "disallows overwriting assignments with tables" $
           parse [quoteStr|

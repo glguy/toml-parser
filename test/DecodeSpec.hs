@@ -9,7 +9,7 @@ import Test.Hspec (it, shouldBe, Spec)
 import Toml (decode, Result(Success), encode)
 import Toml.FromValue (FromValue(..), runParseTable, reqKey, optKey)
 import Toml.FromValue.Generic (genericParseTable)
-import Toml.ToValue (ToTable(..), ToValue(toValue), (.=), defaultTableToValue)
+import Toml.ToValue (ToTable(..), ToValue(toValue), table, (.=), defaultTableToValue)
 import Toml.ToValue.Generic (genericToTable)
 import Toml (Result(..))
 import Toml.FromValue (parseTableFromValue)
@@ -52,7 +52,7 @@ instance FromValue Fruit where
         <*> (fromMaybe [] <$> optKey "varieties"))
 
 instance ToTable Fruit where
-    toTable (Fruit n mbp vs) = Map.fromList $
+    toTable (Fruit n mbp vs) = table $
         ["varieties" .= vs | not (null vs)] ++
         ["physical"  .= p | Just p <- [mbp]] ++
         ["name"      .= n]

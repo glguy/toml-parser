@@ -45,8 +45,10 @@ import Toml.Value (Value(..), Table)
 -- | Build a 'Table' from a list of key-value pairs.
 --
 -- Use '.=' for a convenient way to build the pairs.
-table :: [(String, Value)] -> Value
-table = Table . Map.fromList
+--
+-- @since 1.3.0.0
+table :: [(String, Value)] -> Table
+table = Map.fromList
 
 -- | Convenience function for building key-value pairs while
 -- constructing a 'Table'.
