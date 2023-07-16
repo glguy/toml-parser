@@ -49,6 +49,7 @@ import Toml.Value (Value(..), Table)
 -- @since 1.3.0.0
 table :: [(String, Value)] -> Table
 table = Map.fromList
+{-# INLINE table #-}
 
 -- | Convenience function for building key-value pairs while
 -- constructing a 'Table'.
@@ -79,12 +80,36 @@ class ToValue a => ToTable a where
     toTable :: a -> Table
 
 -- | @since 1.0.1.0
-instance (k ~ String, ToValue v) => ToTable (Map k v) where
-    toTable m = Map.fromList [(k, toValue v) | (k,v) <- Map.assocs m]
+instance (ToKey k, ToValue v) => ToTable (Map k v) where
+    toTable m = table [(toKey k, toValue v) | (k,v) <- Map.assocs m]
 
 -- | @since 1.0.1.0
-instance (k ~ String, ToValue v) => ToValue (Map k v) where
+instance (ToKey k, ToValue v) => ToValue (Map k v) where
     toValue = defaultTableToValue
+
+-- | Convert to a table key
+--
+-- @since 1.3.0.0
+class ToKey a where
+    toKey :: a -> String
+
+-- | toKey = id
+--
+-- @since 1.3.0.0
+instance Char ~ a => ToKey [a] where
+    toKey = id
+
+-- | toKey = unpack
+--
+-- @since 1.3.0.0
+instance ToKey Data.Text.Text where
+    toKey =Data.Text.unpack
+
+-- | toKey = unpack
+--
+-- @since 1.3.0.0
+instance ToKey Data.Text.Lazy.Text where
+    toKey = Data.Text.Lazy.unpack
 
 -- | Convenience function for building 'ToValue' instances.
 defaultTableToValue :: ToTable a => a -> Value
