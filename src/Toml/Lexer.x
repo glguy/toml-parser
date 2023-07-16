@@ -156,7 +156,9 @@ $wschar+;
 
 <mlbstr, bstr> {
   \\ U $hexdig{8}   { unicodeEscape                     }
+  \\ U              { failure "\\U requires exactly 8 hex digits"}
   \\ u $hexdig{4}   { unicodeEscape                     }
+  \\ u              { failure "\\u requires exactly 4 hex digits"}
   \\ n              { strFrag . ("\n" <$)               }
   \\ t              { strFrag . ("\t" <$)               }
   \\ r              { strFrag . ("\r" <$)               }
