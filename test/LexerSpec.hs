@@ -50,12 +50,27 @@ spec =
     it "catches unclosed \"" $
         parse "x = \"abc"
         `shouldBe`
-        Left "1:5: lexical error: unterminated string literal"
+        Left "1:5: lexical error: unterminated basic string"
 
     it "catches unclosed \"\"\"" $
         parse "x = \"\"\"test"
         `shouldBe`
-        Left "1:5: lexical error: unterminated multi-line string literal"
+        Left "1:5: lexical error: unterminated multi-line basic string"
+
+    it "catches unclosed '" $
+        parse "x = 'abc\ny = 2"
+        `shouldBe`
+        Left "1:9: lexical error: unexpected end-of-line"
+
+    it "catches unclosed '" $
+        parse "x = 'abc"
+        `shouldBe`
+        Left "1:5: lexical error: unterminated literal string"
+
+    it "catches unclosed '''" $
+        parse "x = '''test\n\n"
+        `shouldBe`
+        Left "1:5: lexical error: unterminated multi-line literal string"
 
     it "handles escapes at the end of input" $
         parse "x = \"\\"

@@ -34,8 +34,10 @@ module Toml.Lexer.Utils (
 
     -- * String literals
     strFrag,
-    startMlStr,
-    startStr,
+    startMlBstr,
+    startBstr,
+    startMlLstr,
+    startLstr,
     endStr,
     unicodeEscape,
     ) where
@@ -62,31 +64,45 @@ data Context
   = TopContext -- ^ top-level where @[[@ and @]]@ have special meaning
   | TableContext -- ^ inline table - lex key names
   | ValueContext -- ^ value lexer - lex number literals
-  | MlStrContext Position [String] -- ^ position of opening delimiter and list of fragments
-  | StrContext   Position [String] -- ^ position of opening delimiter and list of fragments
+  | MlBstrContext Position [String] -- ^ multiline basic string: position of opening delimiter and list of fragments
+  | BstrContext   Position [String] -- ^ basic string: position of opening delimiter and list of fragments
+  | MlLstrContext Position [String] -- ^ multiline literal string: position of opening delimiter and list of fragments
+  | LstrContext   Position [String] -- ^ literal string: position of opening delimiter and list of fragments
   deriving Show
 
 -- | Add a literal fragment of a string to the current string state.
 strFrag :: Action
 strFrag (Located _ s) = \case
-  StrContext   p acc -> Resume (StrContext   p (s : acc))
-  MlStrContext p acc -> Resume (MlStrContext p (s : acc))
-  _                  -> error "strFrag: panic"
+  BstrContext   p acc -> Resume (BstrContext   p (s : acc))
+  MlBstrContext p acc -> Resume (MlBstrContext p (s : acc))
+  LstrContext   p acc -> Resume (LstrContext   p (s : acc))
+  MlLstrContext p acc -> Resume (MlLstrContext p (s : acc))
+  _                   -> error "strFrag: panic"
 
 -- | End the current string state and emit the string literal token.
 endStr :: Action
 endStr (Located _ x) = \case
-    StrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (x : acc)))))
-    MlStrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (x : acc)))))
+    BstrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (x : acc)))))
+    MlBstrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (x : acc)))))
+    LstrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (x : acc)))))
+    MlLstrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (x : acc)))))
     _                  -> error "endStr: panic"
 
 -- | Start a basic string literal
-startStr :: Action
-startStr (Located p _) _ = Resume (StrContext p [])
+startBstr :: Action
+startBstr (Located p _) _ = Resume (BstrContext p [])
+
+-- | Start a literal string literal
+startLstr :: Action
+startLstr (Located p _) _ = Resume (LstrContext p [])
 
 -- | Start a multi-line basic string literal
-startMlStr :: Action
-startMlStr (Located p _) _ = Resume (MlStrContext p [])
+startMlBstr :: Action
+startMlBstr (Located p _) _ = Resume (MlBstrContext p [])
+
+-- | Start a multi-line literal string literal
+startMlLstr :: Action
+startMlLstr (Located p _) _ = Resume (MlLstrContext p [])
 
 -- | Resolve a unicode escape sequence and add it to the current string literal
 unicodeEscape :: Action
@@ -135,8 +151,10 @@ locatedUncons Located { locPosition = p, locThing = str } =
 
 -- | Generate the correct terminating token given the current lexer state.
 eofToken :: Context -> Located String -> Either (Located String) (Located Token, Located String)
-eofToken (MlStrContext p _) _ = Left (Located p "unterminated multi-line string literal")
-eofToken (StrContext   p _) _ = Left (Located p "unterminated string literal")
+eofToken (MlBstrContext p _) _ = Left (Located p "unterminated multi-line basic string")
+eofToken (BstrContext   p _) _ = Left (Located p "unterminated basic string")
+eofToken (MlLstrContext p _) _ = Left (Located p "unterminated multi-line literal string")
+eofToken (LstrContext   p _) _ = Left (Located p "unterminated literal string")
 eofToken _                  t = Right (TokEOF <$ t, t)
 
 failure :: String -> Action

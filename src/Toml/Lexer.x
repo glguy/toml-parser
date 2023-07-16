@@ -60,14 +60,9 @@ $non_eol = [\x09 \x20-\x7E $non_ascii]
 @comment = $comment_start_symbol $non_eol*
 
 $literal_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
-@literal_string = "'" $literal_char* "'"
 
-@ml_literal_string_delim = "'''"
 $mll_char = [\x09 \x20-\x26 \x28-\x7E]
-@mll_quotes = "'" "'"?
 @mll_content = $mll_char | @newline
-@ml_literal_body = @mll_content* (@mll_quotes @mll_content+)* @mll_quotes?
-@ml_literal_string = @ml_literal_string_delim @newline? @ml_literal_body @ml_literal_string_delim
 
 @mlb_escaped_nl = \\ @ws @newline ($wschar | @newline)*
 $unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
@@ -122,10 +117,6 @@ toml :-
 @comment;
 $wschar+;
 
-@literal_string     { token mkLiteralString             }
-
-@ml_literal_string  { token mkMlLiteralString           }
-
 "="                 { token_ TokEquals                  }
 "."                 { token_ TokPeriod                  }
 ","                 { token_ TokComma                   }
@@ -137,14 +128,27 @@ $wschar+;
 
 @barekey            { token TokBareKey                  }
 
-\"{3} @newline?     { startMlStr                        }
-\"                  { startStr                          }
+\"{3} @newline?     { startMlBstr                       }
+\"                  { startBstr                         }
+"'''" @newline?     { startMlLstr                       }
+"'"                 { startLstr                         }
 
+}
+
+<lstr> {
+  $literal_char+    { strFrag                           }
+  "'"               { endStr . fmap (drop 1)            }
 }
 
 <bstr> {
   $unescaped+       { strFrag                           }
   \"                { endStr . fmap (drop 1)            }
+}
+
+<mllstr> {
+  @mll_content+     { strFrag                           }
+  "'" {1,2}         { strFrag                           }
+  "'" {3,5}         { endStr . fmap (drop 3)            }
 }
 
 <mlbstr> {
@@ -190,11 +194,13 @@ scanToken st str =
         EmitToken  t -> Right (t, str')
 
 stateInt :: Context -> Int
-stateInt TopContext     = 0
-stateInt TableContext   = tab
-stateInt ValueContext   = val
-stateInt StrContext  {} = bstr
-stateInt MlStrContext{} = mlbstr
+stateInt TopContext      = 0
+stateInt TableContext    = tab
+stateInt ValueContext    = val
+stateInt BstrContext  {} = bstr
+stateInt MlBstrContext{} = mlbstr
+stateInt LstrContext  {} = lstr
+stateInt MlLstrContext{} = mllstr
 
 -- | Lex a single token in a value context. This is mostly useful for testing.
 lexValue :: String -> Either String Token
