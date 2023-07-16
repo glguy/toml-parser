@@ -1,3 +1,4 @@
+{-# Language TypeFamilies #-}
 {-|
 Module      : Toml.FromValue
 Description : Automation for converting TOML values to application values.
