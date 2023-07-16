@@ -1,6 +1,6 @@
 # Revision history for toml-parser
 
-## 1.3.0.0  --
+## 1.3.0.0  --  2023-07-16
 
 * Make more structured error messages available in the low-level modules.
   Consumers of the `Toml` module can keep getting simple error strings

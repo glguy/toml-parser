@@ -198,7 +198,7 @@ instance FromValue Float where
     fromValue v = typeError "float" v
 
 -- | Matches floating-point and integer values.
--- 
+--
 -- TOML specifies @Floats should be implemented as IEEE 754 binary64 values.@
 -- so note that the given 'Rational' will be converted from a double
 -- representation and will often be an approximation rather than the exact
