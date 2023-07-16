@@ -15,11 +15,10 @@ This approach would work just the same when parameterized in that same way.
 -}
 module HieDemoSpec where
 
-import Control.Applicative (optional)
 import GHC.Generics ( Generic )
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
-import Toml (Value(Table, Array), Table, Result(..), decode)
+import Toml (Value(Table, Array), Table, decode)
 import Toml.FromValue
 import Toml.FromValue.Generic (genericParseTable)
 

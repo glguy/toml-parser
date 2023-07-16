@@ -60,7 +60,6 @@ import Data.Map qualified as Map
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Data.String (IsString (fromString))
 import Data.Text qualified
 import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)

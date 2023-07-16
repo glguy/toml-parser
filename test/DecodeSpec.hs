@@ -1,13 +1,12 @@
 {-# Language DuplicateRecordFields #-}
 module DecodeSpec (spec) where
 
-import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (decode, Result(Success), encode)
-import Toml.FromValue (FromValue(..), runParseTable, reqKey, optKey)
+import Toml (decode, Result, encode)
+import Toml.FromValue (FromValue(..), reqKey, optKey)
 import Toml.FromValue.Generic (genericParseTable)
 import Toml.ToValue (ToTable(..), ToValue(toValue), table, (.=), defaultTableToValue)
 import Toml.ToValue.Generic (genericToTable)
