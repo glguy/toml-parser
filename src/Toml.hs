@@ -32,13 +32,10 @@ module Toml (
     Result(..),
     ) where
 
-import Text.Printf (printf)
 import Toml.FromValue (FromValue (fromValue), Result(..))
 import Toml.FromValue.Matcher (runMatcher)
-import Toml.Located (Located(Located))
 import Toml.Parser (parseRawToml)
-import Toml.Position (Position(posColumn, posLine))
-import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage)
+import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage, prettyLocated)
 import Toml.Semantics (semantics)
 import Toml.ToValue (ToTable (toTable))
 import Toml.Value (Table, Value(..))
@@ -47,11 +44,10 @@ import Toml.Value (Table, Value(..))
 parse :: String -> Either String Table
 parse str =
     case parseRawToml str of
-        Left (Located p e) -> Left (printf "%d:%d: %s" (posLine p) (posColumn p) e)
+        Left e -> Left (prettyLocated e)
         Right exprs ->
             case semantics exprs of
-                Left (Located p e) ->
-                    Left (printf "%d:%d: %s" (posLine p) (posColumn p) (prettySemanticError e))
+                Left e -> Left (prettyLocated (prettySemanticError <$> e))
                 Right tab -> Right tab
 
 -- | Use the 'FromValue' instance to decode a value from a TOML string.

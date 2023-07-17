@@ -1,0 +1,23 @@
+[advisory]
+id = "HSEC-2023-0001"
+cwe = [328, 400]
+keywords = ["json", "dos"]
+aliases = ["CVE-2022-3433"]
+
+[[affected]]
+package = "aeson"
+cvss = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+
+[[affected.versions]]
+introduced = "0.4.0.0"
+fixed = "2.0.1.0"
+
+[[references]]
+type = "ARTICLE"
+url = "https://cs-syd.eu/posts/2021-09-11-json-vulnerability"
+[[references]]
+type = "ARTICLE"
+url = "https://frasertweedale.github.io/blog-fp/posts/2021-10-12-aeson-hash-flooding-protection.html"
+[[references]]
+type = "DISCUSSION"
+url = "https://github.com/haskell/aeson/issues/864"

@@ -11,14 +11,21 @@ Decode TOML into JSON for use with <https://github.com/BurntSushi/toml-test>
 module Main (main) where
 
 import Prettyprinter.Render.Terminal
-import Toml (parse, prettyToml, DocClass(..))
+import Toml.Parser (parseRawToml)
+import Toml.Pretty (prettyTomlOrdered, DocClass(..), prettyLocated, prettySemanticError)
+import Toml.Semantics (semantics)
+import Toml.Semantics.Ordered (extractTableOrder, projectKey)
 
 main :: IO ()
 main =
  do txt <- getContents
-    case parse txt of
-        Left e  -> fail e
-        Right t -> putDoc (style <$> prettyToml t)
+    case parseRawToml txt of
+        Left e -> fail (prettyLocated e)
+        Right exprs ->
+            let to = extractTableOrder exprs in
+            case semantics exprs of
+                Left e -> fail (prettyLocated (prettySemanticError <$> e))
+                Right toml -> putDoc (style <$> prettyTomlOrdered (projectKey to) toml)
 
 style :: DocClass -> AnsiStyle
 style TableClass  = colorDull Yellow <> bold

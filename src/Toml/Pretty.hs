@@ -36,6 +36,7 @@ module Toml.Pretty (
     -- * Pretty errors
     prettySemanticError,
     prettyMatchMessage,
+    prettyLocated,
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
@@ -54,6 +55,8 @@ import Toml.Lexer (Token(..))
 import Toml.Parser.Types (SectionKind(..))
 import Toml.Semantics (SemanticError (..), SemanticErrorKind (..))
 import Toml.Value (Value(..), Table)
+import Toml.Located (Located(..))
+import Toml.Position (Position(..))
 
 -- | Annotation used to enable styling pretty-printed TOML
 data DocClass
@@ -304,3 +307,6 @@ prettyMatchMessage (MatchMessage scope msg) =
     where
         f (ScopeIndex i) = ('[' :) . shows i . (']':)
         f (ScopeKey key) = ('.' :) . shows (prettySimpleKey key)
+
+prettyLocated :: Located String -> String
+prettyLocated (Located p s) = printf "%d:%d: %s" (posLine p) (posColumn p) s
