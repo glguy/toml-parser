@@ -41,18 +41,27 @@ This file uses [markdown-unlit](https://hackage.haskell.org/package/markdown-unl
 to ensure that its code typechecks and stays in sync with the rest of the package.
 
 ```haskell
-import Toml (parse, decode, Value(..))
-import Toml.FromValue (FromValue(fromValue), parseTableFromValue, reqKey, optKey)
-import Toml.FromValue.Generic (genericParseTable)
-import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue)
-import Toml.ToValue.Generic (genericToTable)
 import GHC.Generics (Generic)
-main = pure ()
+import QuoteStr (quoteStr)
+import Test.Hspec (Spec, hspec, it, shouldBe)
+import Toml (parse, decode, encode, Value(..))
+import Toml.FromValue (Result(Success), FromValue(fromValue), parseTableFromValue, reqKey)
+import Toml.FromValue.Generic (genericParseTable)
+import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue, table, (.=))
+import Toml.ToValue.Generic (genericToTable)
+
+main :: IO ()
+main = hspec (parses >> decodes >> encodes)
 ```
 
 ### Using the raw parser
 
-Consider this sample TOML text from the specification.
+Consider this sample TOML text from the TOML specification.
+
+```haskell
+fruitStr :: String
+fruitStr = [quoteStr|
+```
 
 ```toml
 [[fruits]]
@@ -76,52 +85,58 @@ name = "banana"
 name = "plantain"
 ```
 
-Parsing using this package generates the following value
-
-```haskell ignore
->>> parse fruitStr
-Right (fromList [
-    ("fruits",Array [
-        Table (fromList [
-            ("name",String "apple"),
-            ("physical",Table (fromList [
-                ("color",String "red"),
-                ("shape",String "round")])),
-            ("varieties",Array [
-                Table (fromList [("name",String "red delicious")]),
-                Table (fromList [("name",String "granny smith")])])]),
-        Table (fromList [
-            ("name",String "banana"),
-            ("varieties",Array [
-                Table (fromList [("name",String "plantain")])])])])])
+```haskell
+|]
 ```
 
-We can render this parsed value back to TOML text using `prettyToml fruitToml`.
-In this case the input was already sorted, so the generated text will happen
-to match almost exactly.
+Parsing using this package generates the following value
+
+```haskell
+parses :: Spec
+parses = it "parses" $
+    parse fruitStr
+    `shouldBe`
+    Right (table [
+        ("fruits", Array [
+            Table (table [
+                ("name", String "apple"),
+                ("physical", Table (table [
+                    ("color", String "red"),
+                    ("shape", String "round")])),
+                ("varieties", Array [
+                    Table (table [("name", String "red delicious")]),
+                    Table (table [("name", String "granny smith")])])]),
+            Table (table [
+                ("name", String "banana"),
+                ("varieties", Array [
+                    Table (table [("name", String "plantain")])])])])])
+```
 
 ### Using decoding classes
 
 Here's an example of defining datatypes and deserializers for the TOML above.
+The `FromValue` typeclass is used to encode each datatype into a TOML value.
+Instances can be derived for simple record types. More complex examples can
+be manually derived.
 
 ```haskell
-newtype Fruits = Fruits [Fruit]
-    deriving (Eq, Show)
+newtype Fruits = Fruits { fruits :: [Fruit] }
+    deriving (Eq, Show, Generic)
 
-data Fruit = Fruit String (Maybe Physical) [Variety]
-    deriving (Eq, Show)
+data Fruit = Fruit { name :: String, physical :: Maybe Physical, varieties :: [Variety] }
+    deriving (Eq, Show, Generic)
 
-data Physical = Physical String String
-    deriving (Eq, Show)
+data Physical = Physical { color :: String, shape :: String }
+    deriving (Eq, Show, Generic)
 
 newtype Variety = Variety String
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
 
 instance FromValue Fruits where
-    fromValue = parseTableFromValue (Fruits <$> reqKey "fruits")
+    fromValue = parseTableFromValue genericParseTable
 
 instance FromValue Fruit where
-    fromValue = parseTableFromValue (Fruit <$> reqKey "name" <*> optKey "physical" <*> reqKey "varieties")
+    fromValue = parseTableFromValue genericParseTable
 
 instance FromValue Physical where
     fromValue = parseTableFromValue (Physical <$> reqKey "color" <*> reqKey "shape")
@@ -132,32 +147,67 @@ instance FromValue Variety where
 
 We can run this example on the original value to deserialize it into domain-specific datatypes.
 
-```haskell ignore
->>> decode fruitStr :: Result Fruits
-Success [] (Fruits [
-    Fruit "apple" (Just (Physical "red" "round")) [Variety "red delicious", Variety "granny smith"],
-    Fruit "banana" Nothing [Variety "plantain"]])
+```haskell
+decodes :: Spec
+decodes = it "decodes" $
+    decode fruitStr
+    `shouldBe`
+    Success [] (Fruits [
+        Fruit
+            "apple"
+            (Just (Physical "red" "round"))
+            [Variety "red delicious", Variety "granny smith"],
+        Fruit "banana" Nothing [Variety "plantain"]])
 ```
 
-### Generics
+### Using encoding classes
 
-Code for generating and matching tables to records can be derived
-using GHC.Generics. This will generate tables using the field names
-as table keys.
+The `ToValue` class is for all datatypes that can be encoded into TOML.
+The more specialized `ToTable` class is for datatypes that encode into
+tables and are thus elligible to be top-level types (all TOML documents
+are tables at the top-level).
+
+Generics can be used to derive `ToTable` for simple record types.
+Manually defined instances are available for the more complex cases.
 
 ```haskell
-data ExampleRecord = ExampleRecord {
-  exString :: String,
-  exList   :: [Int],
-  exOpt    :: Maybe Bool}
-  deriving (Show, Generic, Eq)
+instance ToValue Fruits   where toValue = defaultTableToValue
+instance ToValue Fruit    where toValue = defaultTableToValue
+instance ToValue Physical where toValue = defaultTableToValue
+instance ToValue Variety  where toValue = defaultTableToValue
 
-instance FromValue ExampleRecord where fromValue = parseTableFromValue genericParseTable
-instance ToTable   ExampleRecord where toTable   = genericToTable
-instance ToValue   ExampleRecord where toValue   = defaultTableToValue
+instance ToTable Fruits   where toTable = genericToTable
+instance ToTable Fruit    where toTable = genericToTable
+instance ToTable Physical where toTable x = table ["color" .= color x, "shape" .= shape x]
+instance ToTable Variety  where toTable (Variety x) = table ["name" .= x]
+
+encodes :: Spec
+encodes = it "encodes" $
+    show (encode (Fruits [Fruit
+            "apple"
+            (Just (Physical "red" "round"))
+            [Variety "red delicious", Variety "granny smith"]]))
+    `shouldBe` [quoteStr|
+        [[fruits]]
+        name = "apple"
+
+        [fruits.physical]
+        color = "red"
+        shape = "round"
+
+        [[fruits.varieties]]
+        name = "red delicious"
+
+        [[fruits.varieties]]
+        name = "granny smith"|]
 ```
 
-### Larger Example
+## More Examples
 
 A demonstration of using this package at a more realistic scale
-can be found in [HieDemoSpec](test/HieDemoSpec.hs).
+can be found in [HieDemoSpec](test/HieDemoSpec.hs). The various unit
+test files demonstrate what you can do with this library and what
+outputs you can expect.
+
+See the low-level operations used to build a TOML syntax highlighter
+in [TomlHighlighter](test-drivers/highlighter/Main.hs).

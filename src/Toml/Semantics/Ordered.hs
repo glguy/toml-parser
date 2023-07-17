@@ -50,14 +50,14 @@ projectKey ::
     [String] {- ^ table path -} ->
     String {- ^ key -} ->
     Either Int String {- ^ either an ordering number or the key -}
-projectKey (TO to) [] k =
+projectKey (TO to) [] = \k ->
     case Map.lookup k to of
-        Nothing -> Right k
-        Just (KeyOrder i _) -> Left i
-projectKey (TO to) (p:ps) k =
+        Just (KeyOrder i _)     -> Left i
+        Nothing                 -> Right k
+projectKey (TO to) (p:ps) =
     case Map.lookup p to of
-        Nothing -> Right k
-        Just (KeyOrder _ to') -> projectKey to' ps k
+        Just (KeyOrder _ to')   -> projectKey to' ps
+        Nothing                 -> Right
 
 emptyOrder :: TableOrder
 emptyOrder = TO Map.empty
