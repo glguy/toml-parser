@@ -31,6 +31,7 @@ module Toml.Semantics.Ordered (
     TableOrder,
     extractTableOrder,
     projectKey,
+    ProjectedKey,
     ) where
 
 import Data.Foldable (foldl', toList)
@@ -44,20 +45,23 @@ newtype TableOrder = TO (Map String KeyOrder)
 
 data KeyOrder = KeyOrder !Int TableOrder
 
+newtype ProjectedKey = PK (Either Int String)
+    deriving (Eq, Ord)
+
 -- | Generate a projection function for use with 'Toml.Pretty.prettyTomlOrdered'
 projectKey ::
     TableOrder {- ^ table order -} ->
     [String] {- ^ table path -} ->
     String {- ^ key -} ->
-    Either Int String {- ^ either an ordering number or the key -}
+    ProjectedKey {- ^ type suitable for ordering table keys -}
 projectKey (TO to) [] = \k ->
     case Map.lookup k to of
-        Just (KeyOrder i _)     -> Left i
-        Nothing                 -> Right k
+        Just (KeyOrder i _)     -> PK (Left i)
+        Nothing                 -> PK (Right k)
 projectKey (TO to) (p:ps) =
     case Map.lookup p to of
         Just (KeyOrder _ to')   -> projectKey to' ps
-        Nothing                 -> Right
+        Nothing                 -> PK . Right
 
 emptyOrder :: TableOrder
 emptyOrder = TO Map.empty
