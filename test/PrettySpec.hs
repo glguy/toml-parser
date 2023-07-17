@@ -29,9 +29,10 @@ spec =
     it "renders empty tables" $
         fmap tomlString (parse "x.y.z={}\nz.y.w=false")
         `shouldBe` Right [quoteStr|
-            z.y.w = false
+            [x.y.z]
 
-            [x.y.z]|]
+            [z]
+            y.w = false|]
 
     it "renders empty tables in array of tables" $
         fmap tomlString (parse "ex=[{},{},{a=9}]")
@@ -106,3 +107,15 @@ spec =
         `shouldBe` Right [quoteStr|
             x = [ [ {a = "this is a longer example", b = "and it will linewrap"}
                   , {c = "all on its own"} ] ]|]
+
+    it "factors out unique table prefixes in leaf tables" $
+        fmap tomlString (parse [quoteStr|
+            [x]
+            i = 1
+            p.q = "a"
+            y.z = "c"|])
+        `shouldBe` Right [quoteStr|
+            [x]
+            i = 1
+            p.q = "a"
+            y.z = "c"|]

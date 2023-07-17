@@ -42,7 +42,7 @@ module Toml.Pretty (
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
 import Data.Foldable (fold)
 import Data.List (partition, sortOn)
-import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.String (fromString)
@@ -52,11 +52,11 @@ import Prettyprinter
 import Text.Printf (printf)
 import Toml.FromValue.Matcher (MatchMessage(..), Scope (..))
 import Toml.Lexer (Token(..))
+import Toml.Located (Located(..))
 import Toml.Parser.Types (SectionKind(..))
+import Toml.Position (Position(..))
 import Toml.Semantics (SemanticError (..), SemanticErrorKind (..))
 import Toml.Value (Value(..), Table)
-import Toml.Located (Located(..))
-import Toml.Position (Position(..))
 
 -- | Annotation used to enable styling pretty-printed TOML
 data DocClass
@@ -167,7 +167,22 @@ prettyValue = \case
     LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
     Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
 
--- | Predicate for values that should be completely rendered on the
+-- | Predicate for values that CAN rendered on the
+-- righthand-side of an @=@.
+isSimple :: Value -> Bool
+isSimple = \case
+    Integer   _ -> True
+    Float     _ -> True
+    Bool      _ -> True
+    String    _ -> True
+    TimeOfDay _ -> True
+    ZonedTime _ -> True
+    LocalTime _ -> True
+    Day       _ -> True
+    Table     x -> isSingularTable x -- differs from isAlwaysSimple
+    Array     x -> null x || not (all isTable x)
+
+-- | Predicate for values that can be MUST rendered on the
 -- righthand-side of an @=@.
 isAlwaysSimple :: Value -> Bool
 isAlwaysSimple = \case
@@ -179,7 +194,7 @@ isAlwaysSimple = \case
     ZonedTime _ -> True
     LocalTime _ -> True
     Day       _ -> True
-    Table     x -> isSingularTable x
+    Table     _ -> False -- differs from isSimple
     Array     x -> null x || not (all isTable x)
 
 -- | Predicate for table values.
@@ -191,7 +206,7 @@ isTable _        = False
 -- These can be collapsed using dotted-key notation on the lefthand-side
 -- of a @=@.
 isSingularTable :: Table -> Bool
-isSingularTable (Map.elems -> [v])  = isAlwaysSimple v
+isSingularTable (Map.elems -> [v])  = isSimple v
 isSingularTable _                   = False
 
 -- | Render a complete TOML document using top-level table and array of
@@ -262,30 +277,30 @@ prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
                 NoProjection    -> id
                 KeyProjection f -> sortOn (f prefix . fst)
 
-        (simple, sections) = partition (isAlwaysSimple . snd) (order (Map.assocs t))
+        kvs = order (Map.assocs t)
+
+        -- this table will require no subsequent tables to be defined
+        simpleToml = all isSimple t
+
+        (simple, sections) = partition (isAlwaysSimple . snd) kvs
 
         topLines = [fold topElts | let topElts = headers ++ assignments, not (null topElts)]
 
         headers =
             case NonEmpty.nonEmpty prefix of
-                Just key | not (null simple) || null sections || kind == ArrayTableKind ->
+                Just key | simpleToml || not (null simple) || null sections || kind == ArrayTableKind ->
                     [prettySectionKind kind key <> hardline]
                 _ -> []
 
-        assignments = [prettyAssignment k v <> hardline | (k,v) <- simple]
+        assignments = [prettyAssignment k v <> hardline | (k,v) <- if simpleToml then kvs else simple]
 
-        subtables = [prettySection (prefix `snoc` k) v | (k,v) <- sections]
+        subtables = [prettySection (prefix ++ [k]) v | not simpleToml, (k,v) <- sections]
 
         prettySection key (Table tab) =
-            prettyToml_ mbKeyProj TableKind (NonEmpty.toList key) tab
+            prettyToml_ mbKeyProj TableKind key tab
         prettySection key (Array a) =
-            vcat [prettyToml_ mbKeyProj ArrayTableKind (NonEmpty.toList key) tab | Table tab <- a]
+            vcat [prettyToml_ mbKeyProj ArrayTableKind key tab | Table tab <- a]
         prettySection _ _ = error "prettySection applied to simple value"
-
--- | Create a 'NonEmpty' with a given prefix and last element.
-snoc :: [a] -> a -> NonEmpty a
-snoc []       y = y :| []
-snoc (x : xs) y = x :| xs ++ [y]
 
 -- | Render a semantic TOML error in a human-readable string.
 --

@@ -32,9 +32,11 @@ module Toml.Semantics.Ordered (
     extractTableOrder,
     projectKey,
     ProjectedKey,
+    debugTableOrder,
     ) where
 
 import Data.Foldable (foldl', toList)
+import Data.List (sortOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Toml.Located (Located(locThing))
@@ -94,3 +96,18 @@ addKey (TO to) (x:xs) = TO (Map.alter f x to)
 
 keyPath :: Key -> [String]
 keyPath = map locThing . toList
+
+-- | Render a white-space nested representation of the key ordering extracted
+-- by 'extractTableOrder'. This is provided for debugging and understandability.
+debugTableOrder :: TableOrder -> String
+debugTableOrder to = unlines (go 0 to [])
+    where
+        go i (TO m) z =
+            foldr (go1 i) z
+                (sortOn p (Map.assocs m))
+                
+        go1 i (k, KeyOrder _ v) z =
+            (replicate (4*i) ' ' ++ k) :
+            go (i+1) v z
+            
+        p (_, KeyOrder i _) = i
