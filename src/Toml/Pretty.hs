@@ -105,6 +105,25 @@ quoteString = ('"':) . go
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
+-- | Quote a string using basic string literal syntax.
+quoteMlString :: String -> String
+quoteMlString = ("\"\"\"\n"++) . go
+    where
+        go = \case
+            "" -> "\"\"\"" -- terminator
+            '"' : '"' : '"' : xs -> "\"\"\\\"" ++ go xs
+            '\\' : xs -> '\\' : '\\' : go xs
+            '\b' : xs -> '\\' : 'b' : go xs
+            '\f' : xs -> '\\' : 'f' : go xs
+            '\t' : xs -> '\\' : 't' : go xs
+            '\n' : xs -> '\n' : go xs
+            '\r' : '\n' : xs -> '\r' : '\n' : go xs
+            '\r' : xs -> '\\' : 'r' : go xs
+            x    : xs
+                | isPrint x     -> x : go xs
+                | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
+                | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
+
 -- | Pretty-print a section heading. The result is annotated as a 'TableClass'.
 prettySectionKind :: SectionKind -> NonEmpty String -> TomlDoc
 prettySectionKind TableKind      key =
@@ -158,7 +177,7 @@ prettyValue = \case
     Table t             -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,v) <- Map.assocs t] <> rbrace
     Bool True           -> annotate BoolClass "true"
     Bool False          -> annotate BoolClass "false"
-    String str          -> annotate StringClass (fromString (quoteString str))
+    String str          -> prettySmartString str
     TimeOfDay tod       -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
     ZonedTime zt
         | timeZoneMinutes (zonedTimeZone zt) == 0 ->
@@ -166,6 +185,22 @@ prettyValue = \case
         | otherwise     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt))
     LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
     Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
+
+prettySmartString :: String -> TomlDoc
+prettySmartString str
+    | '\n' `elem` str =
+        column \i ->
+        pageWidth \case
+            AvailablePerLine n _ | length str > n - i ->
+                prettyMlString str
+            _ -> prettyString str
+    | otherwise = prettyString str
+
+prettyMlString :: String -> TomlDoc
+prettyMlString str = annotate StringClass (column \i -> hang (-i) (fromString (quoteMlString str)))
+
+prettyString :: String -> TomlDoc
+prettyString str = annotate StringClass (fromString (quoteString str))
 
 -- | Predicate for values that CAN rendered on the
 -- righthand-side of an @=@.

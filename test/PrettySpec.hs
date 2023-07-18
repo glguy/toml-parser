@@ -60,6 +60,24 @@ spec =
         `shouldBe` Right [quoteStr|
             a = "\\\b\t\r\n\f\"\u007F\U0001000C"|]
 
+    it "renders multiline strings" $
+        fmap tomlString (parse [quoteStr|
+            Everything-I-Touch = "Everything I touch\nwith tenderness, alas,\npricks like a bramble."
+            Two-More = [
+                "The west wind whispered,\nAnd touched the eyelids of spring:\nHer eyes, Primroses.",
+                "Plum flower temple:\nVoices rise\nFrom the foothills",
+            ]|])
+        `shouldBe` Right [quoteStr|
+            Everything-I-Touch = """
+            Everything I touch
+            with tenderness, alas,
+            pricks like a bramble."""
+            Two-More = [ """
+            The west wind whispered,
+            And touched the eyelids of spring:
+            Her eyes, Primroses."""
+                       , "Plum flower temple:\nVoices rise\nFrom the foothills" ]|]
+
     it "renders floats" $
         fmap tomlString (parse "a=0.0\nb=-0.1\nc=0.1\nd=3.141592653589793\ne=4e123")
         `shouldBe` Right [quoteStr|
