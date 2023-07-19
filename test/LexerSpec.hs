@@ -9,7 +9,17 @@ spec =
  do it "handles special cased control character" $
         parse "x = '\SOH'"
         `shouldBe`
-        Left "1:6: lexical error: unexpected '\\SOH'"
+        Left "1:6: lexical error: control characters prohibited"
+
+    it "recommends escapes for control characters (1)" $
+        parse "x = \"\SOH\""
+        `shouldBe`
+        Left "1:6: lexical error: control characters must be escaped, use: \\u0001"
+
+    it "recommends escapes for control characters (2)" $
+        parse "x = \"\DEL\""
+        `shouldBe`
+        Left "1:6: lexical error: control characters must be escaped, use: \\u007F"
 
     -- These seem boring, but they provide test coverage of an error case in the state machine
     it "handles unexpected '}'" $

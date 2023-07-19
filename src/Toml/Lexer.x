@@ -37,6 +37,7 @@ $digit            = [0-9]
 $hexdig           = [ $digit A-F a-f ]
 $basic_unescaped  = [ $wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii ]
 $comment_start_symbol = \#
+$control          = [\x00-\x1F \x7F]
 
 @barekey = [0-9 A-Z a-z \- _]+
 
@@ -88,6 +89,7 @@ $time_delim     = [Tt\ ]
 @local_time = @partial_time
 
 toml :-
+
 
 <val> {
 
@@ -170,6 +172,7 @@ $wschar+;
   \\ b              { strFrag . ("\b" <$)               }
   \\ \\             { strFrag . ("\\" <$)               }
   \\ \"             { strFrag . ("\"" <$)               }
+  $control # [\t\r\n] { recommendEscape                 }
 }
 
 {

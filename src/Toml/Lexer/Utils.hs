@@ -40,18 +40,19 @@ module Toml.Lexer.Utils (
     startLstr,
     endStr,
     unicodeEscape,
+    recommendEscape,
 
     mkError,
     ) where
 
-import Data.Char (ord, chr, isAscii)
+import Data.Char (ord, chr, isAscii, isControl)
 import Data.Foldable (asum)
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
 import Numeric (readHex)
-
+import Text.Printf (printf)
+import Toml.Lexer.Token (Token(..))
 import Toml.Located (Located(..))
 import Toml.Position (move, Position)
-import Toml.Lexer.Token (Token(..))
 
 -- | Type of actions associated with lexer patterns
 type Action = Located String -> Context -> Outcome
@@ -115,6 +116,10 @@ unicodeEscape (Located p lexeme) ctx =
       | otherwise                     -> strFrag (Located p [chr n]) ctx
     _                                 -> error "unicodeEscape: panic"
 
+recommendEscape :: Action
+recommendEscape (Located p x) _ =
+  LexerError (Located p (printf "control characters must be escaped, use: \\u%04X" (ord (head x))))
+
 -- | Emit a token ignoring the current lexeme
 token_ :: Token -> Action
 token_ t x _ = EmitToken (t <$ x)
@@ -167,4 +172,6 @@ mkError :: String -> String
 mkError ""    = "unexpected end-of-input"
 mkError ('\n':_) = "unexpected end-of-line"
 mkError ('\r':'\n':_) = "unexpected end-of-line"
-mkError (x:_) = "unexpected " ++ show x
+mkError (x:_)
+    | isControl x = "control characters prohibited"
+    | otherwise   = "unexpected " ++ show x
