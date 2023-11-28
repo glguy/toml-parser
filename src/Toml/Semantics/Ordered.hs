@@ -105,9 +105,9 @@ debugTableOrder to = unlines (go 0 to [])
         go i (TO m) z =
             foldr (go1 i) z
                 (sortOn p (Map.assocs m))
-                
+
         go1 i (k, KeyOrder _ v) z =
             (replicate (4*i) ' ' ++ k) :
             go (i+1) v z
-            
+
         p (_, KeyOrder i _) = i
