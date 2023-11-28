@@ -3,6 +3,7 @@
 ## 1.3.1.0
 
 * Added `Toml.Semantics.Ordered` for preserving input TOML orderings
+* Added support for pretty-printing multi-line strings
 
 ## 1.3.0.0  --  2023-07-16
 
