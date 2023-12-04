@@ -181,10 +181,10 @@ prettyValue = \case
     TimeOfDay tod       -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
     ZonedTime zt
         | timeZoneMinutes (zonedTimeZone zt) == 0 ->
-                           annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" zt))
-        | otherwise     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q%Ez" zt))
-    LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Q" lt))
-    Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%Y-%m-%d" d))
+                           annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%QZ" zt))
+        | otherwise     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%Q%Ez" zt))
+    LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%Q" lt))
+    Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%d" d))
 
 prettySmartString :: String -> TomlDoc
 prettySmartString str
