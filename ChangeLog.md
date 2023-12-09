@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 1.3.1.1
+
+* Ensure years are rendered zero-padded
+
 ## 1.3.1.0
 
 * Added `Toml.Semantics.Ordered` for preserving input TOML orderings
