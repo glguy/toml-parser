@@ -11,6 +11,8 @@ cradle:
         component: "toml-test-drivers:exe:TomlDecoder"
       - path: "./test-drivers/highlighter"
         component: "toml-test-drivers:exe:TomlHighlighter"
+      - path: "./benchmarker"
+        component: "toml-parser:exe:benchmarker"
 dependencies:
   - src/Toml/Lexer.x
   - src/Toml/Parser.y
