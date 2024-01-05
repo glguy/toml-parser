@@ -557,6 +557,16 @@ spec =
             type = { edible = false }  # INVALID|]
           `shouldBe` Left "3:1: key error: type is already assigned"
 
+        it "checks that inline keys aren't reassigned" $
+          parse [quoteStr|
+            x = {a = 1, a = 2}|]
+          `shouldBe` Left "1:13: key error: a is already assigned"
+
+        it "checks that inline keys don't overlap with implicit inline tables" $
+          parse [quoteStr|
+            x = {a.b = 1, a = 2}|]
+          `shouldBe` Left "1:15: key error: a is already assigned"
+
     describe "array of tables"
      do it "supports array of tables syntax" $
           decode [quoteStr|

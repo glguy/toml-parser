@@ -1,5 +1,10 @@
 # Revision history for toml-parser
 
+## 1.3.1.2
+
+* Bugfix: In some cases overlapping keys in inline tables could throw an exception
+  instead instead of returning the proper semantic error value.
+
 ## 1.3.1.1
 
 * Ensure years are rendered zero-padded

@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use list literal" #-}
 {-|
-Module      : Toml.Sematics
+Module      : Toml.Semantics
 Description : Semantic interpretation of raw TOML expressions
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -14,9 +14,7 @@ key assignments.
 -}
 module Toml.Semantics (SemanticError(..), SemanticErrorKind(..), semantics) where
 
-import Control.Applicative ((<|>))
 import Control.Monad (foldM)
-import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
@@ -25,8 +23,8 @@ import Toml.Located (locThing, Located)
 import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table, Value(..))
 
--- | The type of errors that can be generated when resolving all the key
--- used in a TOML document. These errors always pertain to some key to
+-- | The type of errors that can be generated when resolving all the keys
+-- used in a TOML document. These errors always pertain to some key that
 -- caused one of three conflicts.
 --
 -- @since 1.3.0.0
@@ -56,7 +54,7 @@ data SemanticErrorKind
 -- or report a semantic error.
 --
 -- @since 1.3.0.0
-semantics :: [Expr] -> Either (Located SemanticError) Table
+semantics :: [Expr] -> M Table
 semantics exprs =
  do let (topKVs, tables) = gather exprs
     m1 <- assignKeyVals topKVs Map.empty
@@ -82,22 +80,37 @@ gather = goTop []
         goTable kind key acc (ArrayTableExpr k   : exprs) = (kind, key, reverse acc) : goTable ArrayTableKind k [] exprs
         goTable kind key acc (KeyValExpr     k v : exprs) = goTable kind key ((k,v):acc) exprs
 
--- | Frames help distinguish tables and arrays written in block and inline
--- syntax. This allows us to enforce that inline tables and arrays can not
--- be extended by block syntax.
+-- | A top-level table used to distinguish top-level defined arrays
+-- and tables from inline values.
+type FrameTable = Map String Frame
+
+-- | M is the error-handling monad used through this module for
+-- propagating semantic errors through the 'semantics' function.
+type M = Either (Located SemanticError)
+
+-- | Frames are the top-level skeleton of the TOML file that mirror the
+-- subset of values that can be constructed with with top-level syntax.
+-- TOML syntax makes a distinction between tables and arrays that are
+-- defined at the top-level and those defined with inline syntax. This
+-- separate type keeps these syntactic differences separate while table
+-- and array resolution is still happening.
 data Frame
-    = FrameTable FrameKind (Map String Frame)
-    | FrameArray (NonEmpty (Map String Frame)) -- stored in reverse order for easy "append"
+    = FrameTable FrameKind FrameTable
+    | FrameArray (NonEmpty FrameTable) -- stored in reverse order for easy "append"
     | FrameValue Value
     deriving Show
 
+-- | Top-level tables can be in various states of completeness. This type
+-- keeps track of the current state of a top-level defined table.
 data FrameKind
     = Open   -- ^ table implicitly defined as supertable of [x.y.z]
     | Dotted -- ^ table implicitly defined using dotted key assignment
     | Closed -- ^ table closed to further extension
     deriving Show
 
-framesToTable :: Map String Frame -> Table
+-- | Convert a top-level table "frame" representation into the plain Value
+-- representation once the distinction is no longer needed.
+framesToTable :: FrameTable -> Table
 framesToTable =
     fmap \case
         FrameTable _ t -> Table (framesToTable t)
@@ -107,41 +120,34 @@ framesToTable =
         -- reverses the list while converting the frames to tables
         toArray = foldl (\acc frame -> Table (framesToTable frame) : acc) []
 
-constructTable :: [(Key, Value)] -> Either (Located SemanticError) Table
-constructTable entries =
-    case findBadKey (map fst entries) of
-        Just bad -> invalidKey bad AlreadyAssigned
-        Nothing -> Right (Map.unionsWith merge [singleValue (locThing k) (locThing <$> ks) v | (k:|ks, v) <- entries])
+-- | Build a 'Table' value out of a list of key-value pairs. These keys are
+-- checked to not overlap. In the case of overlap a 'SemanticError' is returned.
+constructTable :: [(Key, Value)] -> M Table
+constructTable = foldM (uncurry . addEntry) Map.empty
     where
-        merge (Table x) (Table y) = Table (Map.unionWith merge x y)
-        merge _ _ = error "constructFrame:merge: panic"
+        -- turns x.y.z = v into a nested table of one leaf value
+        singleCase = foldr (\k v -> Table (Map.singleton (locThing k) v))
 
-        singleValue k []      v = Map.singleton k v
-        singleValue k (k1:ks) v = Map.singleton k (Table (singleValue k1 ks v))
+        addEntry tab (key :| subkey) val = Map.alterF f (locThing key) tab
+            where
+                -- no existing assignment at this parent key - no more validation needed
+                f Nothing = pure (Just (singleCase val subkey))
 
--- | Finds a key that overlaps with another in the same list
-findBadKey :: [Key] -> Maybe (Located String)
-findBadKey = check . sortOn (fmap locThing)
-    where
-        check :: [Key] -> Maybe (Located String)
-        check (x:y:z) = check1 x y <|> check (y:z)
-        check _ = Nothing
+                -- there's already a table at this parent key, attempt to extend it
+                f (Just (Table subtab)) | Just subkey' <- NonEmpty.nonEmpty subkey =
+                    Just . Table <$> addEntry subtab subkey' val
 
-        check1 (x :| xs) (y1 :| y2 : ys)
-            | locThing x == locThing y1 =
-                case xs of
-                    [] -> Just y1
-                    x' : xs' -> check1 (x' :| xs') (y2 :| ys)
-        check1 _ _ = Nothing
+                -- attempted to overwrite an existing assignment, abort
+                f _ = invalidKey key AlreadyAssigned
 
 -- | Attempts to insert the key-value pairs given into a new section
 -- located at the given key-path in a frame map.
 addSection ::
-    SectionKind                      {- ^ section kind        -} ->
-    KeyVals                          {- ^ values to install   -} ->
-    Key                              {- ^ section key         -} ->
-    Map String Frame                 {- ^ local frame map     -} ->
-    Either (Located SemanticError) (Map String Frame) {- ^ error message or updated local frame map -}
+    SectionKind  {- ^ section kind                               -} ->
+    KeyVals      {- ^ values to install                          -} ->
+    Key          {- ^ section key                                -} ->
+    FrameTable   {- ^ local frame map                            -} ->
+    M FrameTable {- ^ error message or updated local frame table -}
 addSection kind kvs = walk
     where
         walk (k1 :| []) = flip Map.alterF (locThing k1) \case
@@ -179,20 +185,23 @@ addSection kind kvs = walk
                 go g t = Just . g <$> walk (k2 :| ks) t
 
 -- | Close all of the tables that were implicitly defined with
--- dotted prefixes.
-closeDots :: Map String Frame -> Map String Frame
+-- dotted prefixes. These tables are only eligible for extension
+-- within the @[table]@ section in which they were introduced.
+closeDots :: FrameTable -> FrameTable
 closeDots =
     fmap \case
         FrameTable Dotted t -> FrameTable Closed (closeDots t)
         frame               -> frame
 
-assignKeyVals :: KeyVals -> Map String Frame -> Either (Located SemanticError) (Map String Frame)
+-- | Extend the given frame table with a list of key-value pairs.
+-- Either the updated frame table will be returned
+assignKeyVals :: KeyVals -> FrameTable -> M FrameTable
 assignKeyVals kvs t = closeDots <$> foldM f t kvs
     where
         f m (k,v) = assign k v m
 
 -- | Assign a single dotted key in a frame.
-assign :: Key -> Val -> Map String Frame -> Either (Located SemanticError) (Map String Frame)
+assign :: Key -> Val -> FrameTable -> M FrameTable
 
 assign (key :| []) val = flip Map.alterF (locThing key) \case
     Nothing -> Just . FrameValue <$> valToValue val
@@ -210,7 +219,7 @@ assign (key :| k1 : keys) val = flip Map.alterF (locThing key) \case
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
 -- it has inline tables with key-conflicts.
-valToValue :: Val -> Either (Located SemanticError) Value
+valToValue :: Val -> M Value
 valToValue = \case
     ValInteger   x    -> Right (Integer   x)
     ValFloat     x    -> Right (Float     x)
@@ -224,5 +233,9 @@ valToValue = \case
     ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
                             Table <$> constructTable entries
 
-invalidKey :: Located String -> SemanticErrorKind -> Either (Located SemanticError) a
+-- | Abort validation by reporting an error about the given key.
+invalidKey ::
+    Located String    {- ^ subkey     -} ->
+    SemanticErrorKind {- ^ error kind -} ->
+    M a
 invalidKey key kind = Left ((`SemanticError` kind) <$> key)
