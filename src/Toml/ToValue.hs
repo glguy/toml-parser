@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
 {-|
 Module      : Toml.ToValue
 Description : Automation for converting application values to TOML.
@@ -11,7 +10,7 @@ application-specific to TOML values.
 
 Because the top-level TOML document is always a table,
 the 'ToTable' class is for types that specifically support
-conversion from a 'Table'.
+conversion to a 'Table'.
 
 "Toml.ToValue.Generic" can be used to derive instances of 'ToTable'
 automatically for record types.
@@ -73,8 +72,21 @@ class ToValue a where
 
 -- | Class for things that can be embedded into a TOML table.
 --
--- Implement this for things that embed into a 'Table' and then
+-- Implement this for things that always embed into a 'Table' and then
 -- the 'ToValue' instance can be derived with 'defaultTableToValue'.
+--
+-- @
+-- instance ToValue Example where
+--     toValue = defaultTableToValue
+--
+-- -- Option 1: Manual instance
+-- instance ToTable Example where
+--     toTable x = 'table' ["field1" '.=' field1 x, "field2" '.=' field2 x]
+--
+-- -- Option 2: GHC.Generics derived instance using Toml.ToValue.Generic
+-- instance ToTable Example where
+--     toTable = genericToTable
+-- @
 class ToValue a => ToTable a where
 
     -- | Convert a single value into a table
@@ -88,7 +100,8 @@ instance (ToKey k, ToValue v) => ToTable (Map k v) where
 instance (ToKey k, ToValue v) => ToValue (Map k v) where
     toValue = defaultTableToValue
 
--- | Convert to a table key
+-- | Convert to a table key. This class enables various string types to be
+-- used as the keys of a 'Map' when converting into TOML tables.
 --
 -- @since 1.3.0.0
 class ToKey a where
@@ -104,7 +117,7 @@ instance Char ~ a => ToKey [a] where
 --
 -- @since 1.3.0.0
 instance ToKey Data.Text.Text where
-    toKey =Data.Text.unpack
+    toKey = Data.Text.unpack
 
 -- | toKey = unpack
 --
