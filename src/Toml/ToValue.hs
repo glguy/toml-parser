@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-} -- needed for type equality on old GHC
 {-|
 Module      : Toml.ToValue
 Description : Automation for converting application values to TOML.
