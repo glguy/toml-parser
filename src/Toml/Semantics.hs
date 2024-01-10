@@ -54,7 +54,7 @@ data SemanticErrorKind
 -- or report a semantic error.
 --
 -- @since 1.3.0.0
-semantics :: [Expr] -> M Table
+semantics :: [Expr] -> Either (Located SemanticError) Table
 semantics exprs =
  do let (topKVs, tables) = gather exprs
     m1 <- assignKeyVals topKVs Map.empty
