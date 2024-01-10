@@ -120,26 +120,6 @@ framesToTable =
         -- reverses the list while converting the frames to tables
         toArray = foldl (\acc frame -> Table (framesToTable frame) : acc) []
 
--- | Build a 'Table' value out of a list of key-value pairs. These keys are
--- checked to not overlap. In the case of overlap a 'SemanticError' is returned.
-constructInlineTable :: [(Key, Value)] -> M Table
-constructInlineTable kvs = framesToTable <$> foldM (uncurry . addEntry) Map.empty kvs
-    where
-        -- turns x.y.z = v into a nested table of one leaf value
-        singleCase = foldr (\k v -> FrameTable Open (Map.singleton (locThing k) v))
-
-        addEntry tab (key :| subkey) val = Map.alterF f (locThing key) tab
-            where
-                -- no existing assignment at this parent key - no more validation needed
-                f Nothing = pure (Just (singleCase (FrameValue val) subkey))
-
-                -- there's already a table at this parent key, attempt to extend it
-                f (Just (FrameTable _ subtab)) | Just subkey' <- NonEmpty.nonEmpty subkey =
-                    Just . FrameTable Open <$> addEntry subtab subkey' val
-
-                -- attempted to overwrite an existing assignment, abort
-                f _ = invalidKey key AlreadyAssigned
-
 -- | Attempts to insert the key-value pairs given into a new section
 -- located at the given key-path in a frame map.
 addSection ::
@@ -174,7 +154,7 @@ addSection kind kvs = walk
             Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
             Just (FrameValue {})       -> invalidKey k1 AlreadyAssigned
             where
-                go g t = Just . g . closeDots <$> assignKeyVals kvs t
+                go g t = Just . g <$> assignKeyVals kvs t
 
         walk (k1 :| k2 : ks) = flip Map.alterF (locThing k1) \case
             Nothing                     -> go (FrameTable Open     ) Map.empty
@@ -230,8 +210,7 @@ valToValue = \case
     ValLocalTime x    -> Right (LocalTime x)
     ValDay       x    -> Right (Day       x)
     ValArray xs       -> Array <$> traverse valToValue xs
-    ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
-                            Table <$> constructInlineTable entries
+    ValTable kvs      -> Table . framesToTable <$> assignKeyVals kvs Map.empty
 
 -- | Abort validation by reporting an error about the given key.
 invalidKey ::
