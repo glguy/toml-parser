@@ -113,12 +113,15 @@ data FrameKind
 framesToTable :: FrameTable -> Table
 framesToTable =
     fmap \case
-        FrameTable _ t -> Table (framesToTable t)
-        FrameArray a   -> Array (toArray a)
-        FrameValue v   -> v
+        FrameTable _ t       -> framesToValue t
+        FrameArray (t :| ts) -> Array (rev (map framesToValue (t : ts)))
+        FrameValue v         -> v
     where
-        -- reverses the list while converting the frames to tables
-        toArray = foldl (\acc frame -> Table (framesToTable frame) : acc) []
+        rev = foldl (flip (:)) [] -- GHC fails to inline reverse
+
+-- | Convert frames to a 'Value'
+framesToValue :: FrameTable -> Value
+framesToValue = Table . framesToTable
 
 -- | Attempts to insert the key-value pairs given into a new section
 -- located at the given key-path in a frame map.
@@ -146,8 +149,8 @@ addSection kind kvs = walk
             -- Add a new array element to an existing table array
             Just (FrameArray a) ->
                 case kind of
-                    ArrayTableKind -> go (FrameArray . (`NonEmpty.cons` a)) Map.empty
                     TableKind      -> invalidKey k1 ClosedTable
+                    ArrayTableKind -> go (FrameArray . (`NonEmpty.cons` a)) Map.empty
 
             -- failure cases
             Just (FrameTable Closed _) -> invalidKey k1 ClosedTable
@@ -210,7 +213,7 @@ valToValue = \case
     ValLocalTime x    -> Right (LocalTime x)
     ValDay       x    -> Right (Day       x)
     ValArray xs       -> Array <$> traverse valToValue xs
-    ValTable kvs      -> Table . framesToTable <$> assignKeyVals kvs Map.empty
+    ValTable kvs      -> framesToValue <$> assignKeyVals kvs Map.empty
 
 -- | Abort validation by reporting an error about the given key.
 invalidKey ::
