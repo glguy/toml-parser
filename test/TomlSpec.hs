@@ -566,6 +566,16 @@ spec =
           parse [quoteStr|
             x = {a.b = 1, a = 2}|]
           `shouldBe` Left "1:15: key error: a is already assigned"
+        
+        it "checks for overwrites from other inline tables" $
+          parse [quoteStr|
+            tab = { inner = { dog = "best" }, inner.cat = "worst" }|]
+          `shouldBe` Left "1:35: key error: inner is already assigned"
+        
+        it "checks for overlaps of other inline tables" $
+          parse [quoteStr|
+            tbl = { fruit = { apple.color = "red" }, fruit.apple.texture = { smooth = true } }|]
+          `shouldBe` Left "1:42: key error: fruit is already assigned"
 
     describe "array of tables"
      do it "supports array of tables syntax" $

@@ -122,20 +122,20 @@ framesToTable =
 
 -- | Build a 'Table' value out of a list of key-value pairs. These keys are
 -- checked to not overlap. In the case of overlap a 'SemanticError' is returned.
-constructTable :: [(Key, Value)] -> M Table
-constructTable = foldM (uncurry . addEntry) Map.empty
+constructInlineTable :: [(Key, Value)] -> M Table
+constructInlineTable kvs = framesToTable <$> foldM (uncurry . addEntry) Map.empty kvs
     where
         -- turns x.y.z = v into a nested table of one leaf value
-        singleCase = foldr (\k v -> Table (Map.singleton (locThing k) v))
+        singleCase = foldr (\k v -> FrameTable Open (Map.singleton (locThing k) v))
 
         addEntry tab (key :| subkey) val = Map.alterF f (locThing key) tab
             where
                 -- no existing assignment at this parent key - no more validation needed
-                f Nothing = pure (Just (singleCase val subkey))
+                f Nothing = pure (Just (singleCase (FrameValue val) subkey))
 
                 -- there's already a table at this parent key, attempt to extend it
-                f (Just (Table subtab)) | Just subkey' <- NonEmpty.nonEmpty subkey =
-                    Just . Table <$> addEntry subtab subkey' val
+                f (Just (FrameTable _ subtab)) | Just subkey' <- NonEmpty.nonEmpty subkey =
+                    Just . FrameTable Open <$> addEntry subtab subkey' val
 
                 -- attempted to overwrite an existing assignment, abort
                 f _ = invalidKey key AlreadyAssigned
@@ -231,7 +231,7 @@ valToValue = \case
     ValDay       x    -> Right (Day       x)
     ValArray xs       -> Array <$> traverse valToValue xs
     ValTable kvs      -> do entries <- (traverse . traverse) valToValue kvs
-                            Table <$> constructTable entries
+                            Table <$> constructInlineTable entries
 
 -- | Abort validation by reporting an error about the given key.
 invalidKey ::

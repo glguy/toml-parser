@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 1.3.1.3
+
+* Bugfix: Previous fix admitted some invalid inline tables - these are now rejected
+
 ## 1.3.1.2
 
 * Bugfix: In some cases overlapping keys in inline tables could throw an exception
