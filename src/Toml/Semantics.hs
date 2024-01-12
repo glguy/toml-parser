@@ -54,27 +54,16 @@ data SemanticErrorKind
 --
 -- @since 1.3.0.0
 semantics :: [Expr] -> Either (Located SemanticError) Table
-semantics exprs =
- do let (topKVs, tables) = gather exprs
-    m1 <- assignKeyVals topKVs mempty
-    m2 <- foldM (\m (kind, key, kvs) ->
-        addSection kind kvs key m) m1 tables
-    pure (framesToTable m2)
-
--- | Arrange the expressions in a TOML file into the top-level key-value pairs
--- and then all the key-value pairs for each subtable.
-gather :: [Expr] -> ([(Key, Val)], [(SectionKind, Key, [(Key, Val)])])
-gather = goTop []
+semantics xs =
+ do f <- foldM processExpr (flip assignKeyVals Map.empty) xs
+    framesToTable <$> f []
     where
-        goTop acc []                           = (reverse acc, [])
-        goTop acc (ArrayTableExpr key : exprs) = (reverse acc, goTable ArrayTableKind key [] exprs)
-        goTop acc (TableExpr      key : exprs) = (reverse acc, goTable TableKind      key [] exprs)
-        goTop acc (KeyValExpr     k v : exprs) = goTop ((k,v):acc) exprs
-
-        goTable kind key acc []                           = (kind, key, reverse acc) : []
-        goTable kind key acc (TableExpr      k   : exprs) = (kind, key, reverse acc) : goTable TableKind k [] exprs
-        goTable kind key acc (ArrayTableExpr k   : exprs) = (kind, key, reverse acc) : goTable ArrayTableKind k [] exprs
-        goTable kind key acc (KeyValExpr     k v : exprs) = goTable kind key ((k,v):acc) exprs
+        processExpr f = \case
+            KeyValExpr   k v -> pure (f . ((k,v):))
+            TableExpr      k -> processSection TableKind      k
+            ArrayTableExpr k -> processSection ArrayTableKind k
+            where
+                processSection kind k = flip (addSection kind k) <$> f []
 
 -- | A top-level table used to distinguish top-level defined arrays
 -- and tables from inline values.
@@ -125,45 +114,46 @@ framesToValue = Table . framesToTable
 -- located at the given key-path in a frame map.
 addSection ::
     SectionKind  {- ^ section kind                               -} ->
-    [(Key, Val)] {- ^ values to install                          -} ->
     Key          {- ^ section key                                -} ->
+    [(Key, Val)] {- ^ values to install                          -} ->
     FrameTable   {- ^ local frame map                            -} ->
     M FrameTable {- ^ error message or updated local frame table -}
-addSection kind kvs = walk
-    where
-        walk (k :| []) = alterFrame k \case
-            -- defining a new table
-            Nothing ->
-                case kind of
-                    TableKind      -> FrameTable Closed <$> go mempty
-                    ArrayTableKind -> FrameArray . pure <$> go mempty
 
-            -- defining a super table of a previously defined subtable
-            Just (FrameTable Open t) ->
-                case kind of
-                    TableKind      -> FrameTable Closed <$> go t
-                    ArrayTableKind -> invalidKey k ImplicitlyTable
+addSection kind (k :| []) kvs =
+    alterFrame k \case
+        -- defining a new table
+        Nothing ->
+            case kind of
+                TableKind      -> FrameTable Closed <$> go mempty
+                ArrayTableKind -> FrameArray . (:| []) <$> go mempty
 
-            -- Add a new array element to an existing table array
-            Just (FrameArray (t :| ts)) ->
-                case kind of
-                    TableKind      -> invalidKey k ClosedTable
-                    ArrayTableKind -> FrameArray . (:| t : ts) <$> go mempty
+        -- defining a super table of a previously defined subtable
+        Just (FrameTable Open t) ->
+            case kind of
+                TableKind      -> FrameTable Closed <$> go t
+                ArrayTableKind -> invalidKey k ImplicitlyTable
 
-            -- failure cases
-            Just (FrameTable Closed _) -> invalidKey k ClosedTable
-            Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
-            Just (FrameValue {})       -> invalidKey k AlreadyAssigned
-            where
-                go = assignKeyVals kvs
+        -- Add a new array element to an existing table array
+        Just (FrameArray (t :| ts)) ->
+            case kind of
+                TableKind      -> invalidKey k ClosedTable
+                ArrayTableKind -> FrameArray . (:| t : ts) <$> go mempty
 
-        walk (k1 :| k2 : ks) = alterFrame k1 \case
-            Nothing                     -> FrameTable Open      <$> go mempty
-            Just (FrameTable tk t)      -> FrameTable tk        <$> go t
-            Just (FrameArray (t :| ts)) -> FrameArray . (:| ts) <$> go t
-            Just (FrameValue _)         -> invalidKey k1 AlreadyAssigned
-            where
-                go = walk (k2 :| ks)
+        -- failure cases
+        Just (FrameTable Closed _) -> invalidKey k ClosedTable
+        Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
+        Just (FrameValue {})       -> invalidKey k AlreadyAssigned
+        where
+            go = assignKeyVals kvs
+
+addSection kind (k1 :| k2 : ks) kvs =
+    alterFrame k1 \case
+        Nothing                     -> FrameTable Open      <$> go mempty
+        Just (FrameTable tk t)      -> FrameTable tk        <$> go t
+        Just (FrameArray (t :| ts)) -> FrameArray . (:| ts) <$> go t
+        Just (FrameValue _)         -> invalidKey k1 AlreadyAssigned
+        where
+            go = addSection kind (k2 :| ks) kvs
 
 -- | Close all of the tables that were implicitly defined with
 -- dotted prefixes. These tables are only eligible for extension
