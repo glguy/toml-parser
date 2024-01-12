@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use list literal" #-}
+{-# HLINT ignore "Use section" #-}
 {-|
 Module      : Toml.Semantics
 Description : Semantic interpretation of raw TOML expressions
@@ -7,7 +7,7 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
-This module extracts the nested Map representation of a TOML
+This module extracts a nested Map representation of a TOML
 file. It detects invalid key assignments and resolves dotted
 key assignments.
 
@@ -22,9 +22,8 @@ import Toml.Located (locThing, Located)
 import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table, Value(..))
 
--- | The type of errors that can be generated when resolving all the keys
--- used in a TOML document. These errors always pertain to some key that
--- caused one of three conflicts.
+-- | This type represents errors generated when resolving keys in a TOML
+-- document.
 --
 -- @since 1.3.0.0
 data SemanticError = SemanticError {
@@ -49,17 +48,17 @@ data SemanticErrorKind
         Eq   {- ^ Default instance -},
         Ord  {- ^ Default instance -})
 
--- | Extract semantic value from sequence of raw TOML expressions
--- or report a semantic error.
+-- | Extracts a semantic value from a sequence of raw TOML expressions,
+-- or reports a semantic error if one occurs.
 --
 -- @since 1.3.0.0
 semantics :: [Expr] -> Either (Located SemanticError) Table
-semantics xs =
- do f <- foldM processExpr (flip assignKeyVals Map.empty) xs
+semantics exprs =
+ do f <- foldM processExpr (flip assignKeyVals Map.empty) exprs
     framesToTable <$> f []
     where
         processExpr f = \case
-            KeyValExpr   k v -> pure (f . ((k,v):))
+            KeyValExpr   k v -> Right (f . ((k,v):))
             TableExpr      k -> processSection TableKind      k
             ArrayTableExpr k -> processSection ArrayTableKind k
             where
@@ -166,33 +165,35 @@ closeDots =
 
 -- | Extend the given frame table with a list of key-value pairs.
 -- Any tables created through dotted keys will be closed after
--- all of the key-value pairs and processed.
+-- all of the key-value pairs are processed.
 assignKeyVals :: [(Key, Val)] -> FrameTable -> M FrameTable
 assignKeyVals kvs t = closeDots <$> foldM f t kvs
     where
         f m (k,v) = assign k v m
 
--- | Assign a single dotted key in a frame. Any table traversed
+-- | Assign a single dotted key in a frame. Any open table traversed
 -- by a dotted key will be marked as dotted so that it will become
 -- closed at the end of the current call to 'assignKeyVals'.
 assign :: Key -> Val -> FrameTable -> M FrameTable
 
-assign (key :| []) val = alterFrame key \case
-    Nothing -> FrameValue <$> valToValue val
-    Just{}  -> invalidKey key AlreadyAssigned
+assign (key :| []) val =
+    alterFrame key \case
+        Nothing -> FrameValue <$> valToValue val
+        Just{}  -> invalidKey key AlreadyAssigned
 
-assign (key :| k1 : keys) val = alterFrame key \case
-    Nothing                    -> go mempty
-    Just (FrameTable Open   t) -> go t
-    Just (FrameTable Dotted t) -> go t
-    Just (FrameTable Closed _) -> invalidKey key ClosedTable
-    Just (FrameArray        _) -> invalidKey key ClosedTable
-    Just (FrameValue        _) -> invalidKey key AlreadyAssigned
+assign (key :| k1 : keys) val =
+    alterFrame key \case
+        Nothing                    -> go mempty
+        Just (FrameTable Open   t) -> go t
+        Just (FrameTable Dotted t) -> go t
+        Just (FrameTable Closed _) -> invalidKey key ClosedTable
+        Just (FrameArray        _) -> invalidKey key ClosedTable
+        Just (FrameValue        _) -> invalidKey key AlreadyAssigned
     where
         go t = FrameTable Dotted <$> assign (k1 :| keys) val t
 
 -- | Convert 'Val' to 'Value' potentially raising an error if
--- it has inline tables with key-conflicts.
+-- it contains inline tables with key-conflicts.
 valToValue :: Val -> M Value
 valToValue = \case
     ValInteger   x    -> Right (Integer   x)
