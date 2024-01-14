@@ -46,9 +46,8 @@ import QuoteStr (quoteStr)
 import Test.Hspec (Spec, hspec, it, shouldBe)
 import Toml (parse, decode, encode, Value(..))
 import Toml.FromValue (Result(Success), FromValue(fromValue), parseTableFromValue, reqKey)
-import Toml.FromValue.Generic (genericParseTable)
+import Toml.Generic (GenericToml(..))
 import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue, table, (.=))
-import Toml.ToValue.Generic (genericToTable)
 
 main :: IO ()
 main = hspec (parses >> decodes >> encodes)
@@ -122,21 +121,21 @@ be manually derived.
 ```haskell
 newtype Fruits = Fruits { fruits :: [Fruit] }
     deriving (Eq, Show, Generic)
+    deriving FromValue via GenericToml Fruits
+    deriving ToValue   via GenericToml Fruits
+    deriving ToTable   via GenericToml Fruits
 
 data Fruit = Fruit { name :: String, physical :: Maybe Physical, varieties :: [Variety] }
     deriving (Eq, Show, Generic)
+    deriving FromValue via GenericToml Fruit
+    deriving ToValue   via GenericToml Fruit
+    deriving ToTable   via GenericToml Fruit
 
 data Physical = Physical { color :: String, shape :: String }
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Show)
 
 newtype Variety = Variety String
-    deriving (Eq, Show, Generic)
-
-instance FromValue Fruits where
-    fromValue = parseTableFromValue genericParseTable
-
-instance FromValue Fruit where
-    fromValue = parseTableFromValue genericParseTable
+    deriving (Eq, Show)
 
 instance FromValue Physical where
     fromValue = parseTableFromValue (Physical <$> reqKey "color" <*> reqKey "shape")
@@ -171,14 +170,9 @@ Generics can be used to derive `ToTable` for simple record types.
 Manually defined instances are available for the more complex cases.
 
 ```haskell
-instance ToValue Fruits   where toValue = defaultTableToValue
-instance ToValue Fruit    where toValue = defaultTableToValue
 instance ToValue Physical where toValue = defaultTableToValue
-instance ToValue Variety  where toValue = defaultTableToValue
-
-instance ToTable Fruits   where toTable = genericToTable
-instance ToTable Fruit    where toTable = genericToTable
 instance ToTable Physical where toTable x = table ["color" .= color x, "shape" .= shape x]
+instance ToValue Variety  where toValue = defaultTableToValue
 instance ToTable Variety  where toTable (Variety x) = table ["name" .= x]
 
 encodes :: Spec

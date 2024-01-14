@@ -98,6 +98,7 @@ test-suite unittests
         toml-parser,
     other-modules:
         DecodeSpec
+        DerivingViaSpec
         FromValueSpec
         HieDemoSpec
         LexerSpec
@@ -113,6 +114,7 @@ test-suite readme
     ghc-options:        -pgmL markdown-unlit -optL "haskell toml"
     default-extensions:
         QuasiQuotes
+        DerivingVia
     other-modules:
         QuoteStr
     hs-source-dirs:

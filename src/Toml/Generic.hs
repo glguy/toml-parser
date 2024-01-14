@@ -41,7 +41,7 @@ import Toml.Value (Value, Table)
 newtype GenericToml a = GenericToml a
 
 -- | Instance derived from 'ToTable' instance using 'defaultTableToValue'
-instance ToTable (GenericToml a) => ToValue (GenericToml a) where
+instance (Generic a, GToTable (Rep a)) => ToValue (GenericToml a) where
     toValue = defaultTableToValue
     {-# INLINE toValue #-}
 
