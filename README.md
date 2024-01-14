@@ -121,15 +121,11 @@ be manually derived.
 ```haskell
 newtype Fruits = Fruits { fruits :: [Fruit] }
     deriving (Eq, Show, Generic)
-    deriving FromValue via GenericToml Fruits
-    deriving ToValue   via GenericToml Fruits
-    deriving ToTable   via GenericToml Fruits
+    deriving (ToTable, ToValue, FromValue) via GenericToml Fruits
 
 data Fruit = Fruit { name :: String, physical :: Maybe Physical, varieties :: [Variety] }
     deriving (Eq, Show, Generic)
-    deriving FromValue via GenericToml Fruit
-    deriving ToValue   via GenericToml Fruit
-    deriving ToTable   via GenericToml Fruit
+    deriving (ToTable, ToValue, FromValue) via GenericToml Fruit
 
 data Physical = Physical { color :: String, shape :: String }
     deriving (Eq, Show)

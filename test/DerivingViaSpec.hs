@@ -28,9 +28,7 @@ data Physical = Physical {
     shape :: String
     }
     deriving (Eq, Show, Generic)
-    deriving ToValue   via GenericToml Physical
-    deriving ToTable   via GenericToml Physical
-    deriving FromValue via GenericToml Physical
+    deriving (ToTable, FromValue, ToValue) via GenericToml Physical
 
 spec :: Spec
 spec =
