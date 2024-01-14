@@ -1,4 +1,12 @@
 {-# Language DuplicateRecordFields #-}
+{-|
+Module      : DecodeSpec
+Description : Show that decoding TOML works using the various provided classes
+Copyright   : (c) Eric Mertens, 2023
+License     : ISC
+Maintainer  : emertens@gmail.com
+
+-}
 module DecodeSpec (spec) where
 
 import Data.Maybe (fromMaybe)

@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 1.3.2
+
+* Added `Toml.Generic` to make instances easily derivable via DerivingVia.
+
 ## 1.3.1.3
 
 * Bugfix: Previous fix admitted some invalid inline tables - these are now rejected

@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-|
 Module      : Toml.FromValue.Matcher
 Description : A type for building results while tracking scopes
@@ -37,11 +38,7 @@ module Toml.FromValue.Matcher (
     ) where
 
 import Control.Applicative (Alternative(..))
-import Control.Monad (MonadPlus)
-import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Except (Except, runExcept, throwE)
-import Control.Monad.Trans.Reader (asks, local, ReaderT(..))
-import Control.Monad.Trans.Writer.CPS (runWriterT, tell, WriterT)
+import Control.Monad (MonadPlus, ap, liftM)
 import Data.Monoid (Endo(..))
 
 -- | Computations that result in a 'Result' and which track a list
@@ -49,8 +46,31 @@ import Data.Monoid (Endo(..))
 -- messages.
 --
 -- Use 'withScope' to run a 'Matcher' in a new, nested scope.
-newtype Matcher a = Matcher (ReaderT [Scope] (WriterT (DList MatchMessage) (Except (DList MatchMessage))) a)
-    deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
+newtype Matcher a = Matcher {
+    unMatcher ::
+        forall r.
+        [Scope] ->
+        DList MatchMessage ->
+        (DList MatchMessage -> r) ->
+        (DList MatchMessage -> a -> r) ->
+        r
+    }
+
+instance Functor Matcher where
+    fmap = liftM
+
+instance Applicative Matcher where
+    pure x = Matcher (\_env warn _err ok -> ok warn x)
+    (<*>) = ap
+
+instance Monad Matcher where
+    m >>= f = Matcher (\env warn err ok -> unMatcher m env warn err (\warn' x -> unMatcher (f x) env warn' err ok))
+
+instance Alternative Matcher where
+    empty = Matcher (\_env _warn err _ok -> err mempty)
+    Matcher x <|> Matcher y = Matcher (\env warn err ok -> x env warn (\errs1 -> y env warn (\errs2 -> err (errs1 <> errs2)) ok) ok)
+
+instance MonadPlus Matcher
 
 -- | Scopes for TOML message.
 --
@@ -108,34 +128,31 @@ data Result e a
 --
 -- @since 1.3.0.0
 runMatcher :: Matcher a -> Result MatchMessage a
-runMatcher (Matcher m) =
-    case runExcept (runWriterT (runReaderT m [])) of
-        Left e      -> Failure (runDList e)
-        Right (x,w) -> Success (runDList w) x
+runMatcher (Matcher m) = m [] mempty (Failure . runDList) (\w x -> Success (runDList w) x)
 
 -- | Run a 'Matcher' with a locally extended scope.
 --
 -- @since 1.3.0.0
 withScope :: Scope -> Matcher a -> Matcher a
-withScope ctx (Matcher m) = Matcher (local (ctx :) m)
+withScope ctx (Matcher m) = Matcher (\env -> m (ctx : env))
 
 -- | Get the current list of scopes.
 --
 -- @since 1.3.0.0
 getScope :: Matcher [Scope]
-getScope = Matcher (asks reverse)
+getScope = Matcher (\env warn _err ok -> ok warn (reverse env))
 
 -- | Emit a warning mentioning the current scope.
 warning :: String -> Matcher ()
 warning w =
  do loc <- getScope
-    Matcher (lift (tell (one (MatchMessage loc w))))
+    Matcher (\_env warn _err ok -> ok (warn <> one (MatchMessage loc w)) ())
 
 -- | Fail with an error message annotated to the current location.
 instance MonadFail Matcher where
     fail e =
      do loc <- getScope
-        Matcher (lift (lift (throwE (one (MatchMessage loc e)))))
+        Matcher (\_env _warn err _ok -> err (one (MatchMessage loc e)))
 
 -- | Update the scope with the message corresponding to a table key
 --
