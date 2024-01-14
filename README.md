@@ -163,7 +163,7 @@ decodes = it "decodes" $
 
 The `ToValue` class is for all datatypes that can be encoded into TOML.
 The more specialized `ToTable` class is for datatypes that encode into
-tables and are thus elligible to be top-level types (all TOML documents
+tables and are thus eligible to be top-level types (all TOML documents
 are tables at the top-level).
 
 Generics can be used to derive `ToTable` for simple record types.
