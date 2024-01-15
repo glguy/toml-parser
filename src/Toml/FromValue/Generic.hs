@@ -21,19 +21,19 @@ module Toml.FromValue.Generic (
     genericFromArray,
     ) where
 
+import Control.Monad.Trans.State (StateT(..))
+import Data.Coerce (coerce)
 import GHC.Generics
-
-import Toml.FromValue.ParseTable (ParseTable)
 import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
-import Toml.FromValue.Matcher
-import Toml
-import Data.Coerce
+import Toml.FromValue.Matcher (Matcher)
+import Toml.FromValue.ParseTable (ParseTable)
+import Toml.Value (Value)
 
 -- | Match a 'Table' using the field names in a record.
 --
 -- @since 1.2.0.0
 genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable a
-genericParseTable = gParseTable (pure . to)
+genericParseTable = to <$> gParseTable
 {-# INLINE genericParseTable #-}
 
 -- | Match a 'Value' as an array positionally matching field fields
@@ -43,11 +43,12 @@ genericParseTable = gParseTable (pure . to)
 genericFromArray :: (Generic a, GFromArray (Rep a)) => Value -> Matcher a
 genericFromArray v =
  do xs <- fromValue v
-    (xs', gen) <- gFromArray xs
+    (gen, xs') <- runStateT gFromArray xs
     if null xs' then
         pure (to gen)
     else
         fail ("array " ++ show (length xs') ++ " elements too long")
+{-# INLINE genericFromArray #-}
 
 -- gParseTable is written in continuation passing style because
 -- it allows all the GHC.Generics constructors to inline into
@@ -60,64 +61,70 @@ genericFromArray v =
 -- @since 1.0.2.0
 class GParseTable f where
     -- | Convert a value and apply the continuation to the result.
-    gParseTable :: (f a -> ParseTable b) -> ParseTable b
+    gParseTable :: ParseTable (f a)
 
 -- | Ignores type constructor name
 instance GParseTable f => GParseTable (D1 c f) where
-    gParseTable f = gParseTable (f . M1)
+    gParseTable = M1 <$>  gParseTable
     {-# INLINE gParseTable #-}
 
 -- | Ignores value constructor name - only supports record constructors
 instance GParseTable f => GParseTable (C1 ('MetaCons sym fix 'True) f) where
-    gParseTable f = gParseTable (f . M1)
+    gParseTable = M1 <$> gParseTable
     {-# INLINE gParseTable #-}
 
 -- | Matches left then right component
 instance (GParseTable f, GParseTable g) => GParseTable (f :*: g) where
-    gParseTable f = gParseTable \x -> gParseTable \y -> f (x :*: y)
+    gParseTable =
+     do x <- gParseTable
+        y <- gParseTable
+        pure (x :*: y)
     {-# INLINE gParseTable #-}
 
 -- | Omits the key from the table on nothing, includes it on just
 instance {-# OVERLAPS #-} (Selector s, FromValue a) => GParseTable (S1 s (K1 i (Maybe a))) where
-    gParseTable f = f . M1 . K1 =<< optKey (selName (M1 [] :: S1 s [] ()))
+    gParseTable =
+     do x <- optKey (selName (M1 [] :: S1 s [] ()))
+        pure (M1 (K1 x))
     {-# INLINE gParseTable #-}
 
 -- | Uses record selector name as table key
 instance (Selector s, FromValue a) => GParseTable (S1 s (K1 i a)) where
-    gParseTable f = f . M1 . K1 =<< reqKey (selName (M1 [] :: S1 s [] ()))
+    gParseTable =
+     do x <- reqKey (selName (M1 [] :: S1 s [] ()))
+        pure (M1 (K1 x))
     {-# INLINE gParseTable #-}
 
 -- | Emits empty table
 instance GParseTable U1 where
-    gParseTable f = f U1
+    gParseTable = pure U1
     {-# INLINE gParseTable #-}
 
 -- | Supports conversion of TOML arrays into product-type values.
 --
 -- @since 1.3.2.0
 class GFromArray f where
-    gFromArray :: [Value] -> Matcher ([Value], f a)
+    gFromArray :: StateT [Value] Matcher (f a)
 
 instance GFromArray f => GFromArray (M1 i c f) where
-    gFromArray :: forall a. [Value] -> Matcher ([Value], M1 i c f a)
-    gFromArray = coerce (gFromArray :: [Value] -> Matcher ([Value], f a))
+    gFromArray :: forall a. StateT [Value] Matcher (M1 i c f a)
+    gFromArray = coerce (gFromArray :: StateT [Value] Matcher (f a))
     {-# INLINE gFromArray #-}
 
 instance (GFromArray f, GFromArray g) => GFromArray (f :*: g) where
-    gFromArray xs =
-     do (xs1, x) <- gFromArray xs
-        (xs2, y) <- gFromArray xs1
-        pure (xs2, x :*: y)
+    gFromArray =
+     do x <- gFromArray
+        y <- gFromArray
+        pure (x :*: y)
     {-# INLINE gFromArray #-}
 
 instance FromValue a => GFromArray (K1 i a) where
-    gFromArray [] = fail "Array too short"
-    gFromArray (x:xs) =
-     do v <- fromValue x
-        pure (xs, K1 v)
+    gFromArray = StateT \case
+        [] -> fail "array too short"
+        x:xs -> (\v -> (K1 v, xs)) <$> fromValue x
     {-# INLINE gFromArray #-}
 
 -- | Uses no array elements
 instance GFromArray U1 where
-    gFromArray xs = pure (xs, U1)
+    gFromArray = pure U1
     {-# INLINE gFromArray #-}

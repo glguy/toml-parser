@@ -65,6 +65,7 @@ instance Applicative Matcher where
 
 instance Monad Matcher where
     m >>= f = Matcher (\env warn err ok -> unMatcher m env warn err (\warn' x -> unMatcher (f x) env warn' err ok))
+    {-# INLINE (>>=) #-}
 
 instance Alternative Matcher where
     empty = Matcher (\_env _warn err _ok -> err mempty)
@@ -128,7 +129,7 @@ data Result e a
 --
 -- @since 1.3.0.0
 runMatcher :: Matcher a -> Result MatchMessage a
-runMatcher (Matcher m) = m [] mempty (Failure . runDList) (\w x -> Success (runDList w) x)
+runMatcher (Matcher m) = m [] mempty (Failure . runDList) (Success . runDList)
 
 -- | Run a 'Matcher' with a locally extended scope.
 --

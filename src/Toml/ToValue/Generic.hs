@@ -32,7 +32,7 @@ import Toml.ToValue (ToValue(..))
 --
 -- @since 1.0.2.0
 genericToTable :: (Generic a, GToTable (Rep a)) => a -> Table
-genericToTable = gToTable . from
+genericToTable x = Map.fromList (gToTable (from x) [])
 {-# INLINE genericToTable #-}
 
 -- | Use a record's field names to generate a 'Table'
@@ -47,7 +47,7 @@ genericToArray a = Array (gToArray (from a) [])
 --
 -- @since 1.0.2.0
 class GToTable f where
-    gToTable :: f a -> Table
+    gToTable :: f a -> [(String, Value)] -> [(String, Value)]
 
 -- | Ignores type constructor names
 instance GToTable f => GToTable (D1 c f) where
@@ -65,18 +65,18 @@ instance (GToTable f, GToTable g) => GToTable (f :*: g) where
 
 -- | Omits the key from the table on nothing, includes it on just
 instance {-# OVERLAPS #-} (Selector s, ToValue a) => GToTable (S1 s (K1 i (Maybe a))) where
-    gToTable (M1 (K1 Nothing)) = Map.empty
-    gToTable s@(M1 (K1 (Just x))) = Map.singleton (selName s) (toValue x)
+    gToTable (M1 (K1 Nothing)) = id
+    gToTable s@(M1 (K1 (Just x))) = ((selName s, toValue x):)
     {-# INLINE gToTable #-}
 
 -- | Uses record selector name as table key
 instance (Selector s, ToValue a) => GToTable (S1 s (K1 i a)) where
-    gToTable s@(M1 (K1 x)) = Map.singleton (selName s) (toValue x)
+    gToTable s@(M1 (K1 x)) = ((selName s, toValue x):)
     {-# INLINE gToTable #-}
 
 -- | Emits empty table
 instance GToTable U1 where
-    gToTable _ = Map.empty
+    gToTable _ = id
     {-# INLINE gToTable #-}
 
 instance GToTable V1 where
