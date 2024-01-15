@@ -202,7 +202,7 @@ optAlts xs = pickKey $
     [Else (pure Nothing)]
 
 instance FromValue NoneConfig where
-    fromValue = parseTableFromValue genericParseTable
+    fromValue = parseTableFromValue (pure NoneConfig)
 
 spec :: Spec
 spec =

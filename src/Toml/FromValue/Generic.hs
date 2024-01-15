@@ -1,3 +1,4 @@
+{-# Language DataKinds, InstanceSigs, ScopedTypeVariables, TypeOperators #-}
 {-|
 Module      : Toml.FromValue.Generic
 Description : GHC.Generics derived table parsing
@@ -11,13 +12,22 @@ to derive a 'Toml.FromValue.FromValue' instance.
 
 -}
 module Toml.FromValue.Generic (
+    -- * Record from table
     GParseTable(..),
     genericParseTable,
+
+    -- * Product type from array 
+    GFromArray(..),
+    genericFromArray,
     ) where
 
 import GHC.Generics
+
 import Toml.FromValue.ParseTable (ParseTable)
-import Toml.FromValue (FromValue, optKey, reqKey)
+import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
+import Toml.FromValue.Matcher
+import Toml
+import Data.Coerce
 
 -- | Match a 'Table' using the field names in a record.
 --
@@ -26,13 +36,26 @@ genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable a
 genericParseTable = gParseTable (pure . to)
 {-# INLINE genericParseTable #-}
 
+-- | Match a 'Value' as an array positionally matching field fields
+-- of a constructor to the elements of the array.
+--
+-- @since 1.3.2.0
+genericFromArray :: (Generic a, GFromArray (Rep a)) => Value -> Matcher a
+genericFromArray v =
+ do xs <- fromValue v
+    (xs', gen) <- gFromArray xs
+    if null xs' then
+        pure (to gen)
+    else
+        fail ("array " ++ show (length xs') ++ " elements too long")
+
 -- gParseTable is written in continuation passing style because
 -- it allows all the GHC.Generics constructors to inline into
 -- a single location which allows the optimizer to optimize them
 -- complete away.
 
--- | Supports conversion of product types with field selector names to
--- TOML values.
+-- | Supports conversion of TOML tables into record values using
+-- field selector names as TOML keys.
 --
 -- @since 1.0.2.0
 class GParseTable f where
@@ -44,8 +67,8 @@ instance GParseTable f => GParseTable (D1 c f) where
     gParseTable f = gParseTable (f . M1)
     {-# INLINE gParseTable #-}
 
--- | Ignores value constructor name
-instance GParseTable f => GParseTable (C1 c f) where
+-- | Ignores value constructor name - only supports record constructors
+instance GParseTable f => GParseTable (C1 ('MetaCons sym fix 'True) f) where
     gParseTable f = gParseTable (f . M1)
     {-# INLINE gParseTable #-}
 
@@ -68,3 +91,33 @@ instance (Selector s, FromValue a) => GParseTable (S1 s (K1 i a)) where
 instance GParseTable U1 where
     gParseTable f = f U1
     {-# INLINE gParseTable #-}
+
+-- | Supports conversion of TOML arrays into product-type values.
+--
+-- @since 1.3.2.0
+class GFromArray f where
+    gFromArray :: [Value] -> Matcher ([Value], f a)
+
+instance GFromArray f => GFromArray (M1 i c f) where
+    gFromArray :: forall a. [Value] -> Matcher ([Value], M1 i c f a)
+    gFromArray = coerce (gFromArray :: [Value] -> Matcher ([Value], f a))
+    {-# INLINE gFromArray #-}
+
+instance (GFromArray f, GFromArray g) => GFromArray (f :*: g) where
+    gFromArray xs =
+     do (xs1, x) <- gFromArray xs
+        (xs2, y) <- gFromArray xs1
+        pure (xs2, x :*: y)
+    {-# INLINE gFromArray #-}
+
+instance FromValue a => GFromArray (K1 i a) where
+    gFromArray [] = fail "Array too short"
+    gFromArray (x:xs) =
+     do v <- fromValue x
+        pure (xs, K1 v)
+    {-# INLINE gFromArray #-}
+
+-- | Uses no array elements
+instance GFromArray U1 where
+    gFromArray xs = pure (xs, U1)
+    {-# INLINE gFromArray #-}

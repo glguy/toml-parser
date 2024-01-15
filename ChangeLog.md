@@ -1,8 +1,9 @@
 # Revision history for toml-parser
 
-## 1.3.2
+## 1.3.2.0
 
 * Added `Toml.Generic` to make instances easily derivable via DerivingVia.
+* Added GHC.Generics support for switching between product types and TOML arrays.
 
 ## 1.3.1.3
 

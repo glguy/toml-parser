@@ -17,10 +17,10 @@ module DerivingViaSpec (spec) where
 
 import GHC.Generics (Generic)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (Value(Table))
+import Toml (Value(..))
 import Toml.FromValue ( FromValue(fromValue) )
 import Toml.FromValue.Matcher (runMatcher, Result(Success))
-import Toml.Generic (GenericToml(..))
+import Toml.Generic (GenericTomlTable(..), GenericTomlArray(..))
 import Toml.ToValue (ToTable(toTable), (.=), table, ToValue(toValue))
 
 data Physical = Physical {
@@ -28,13 +28,17 @@ data Physical = Physical {
     shape :: String
     }
     deriving (Eq, Show, Generic)
-    deriving (ToTable, FromValue, ToValue) via GenericToml Physical
+    deriving (ToTable, FromValue, ToValue) via GenericTomlTable Physical
+
+data TwoThings = TwoThings Int String
+    deriving (Eq, Show, Generic)
+    deriving (FromValue, ToValue) via GenericTomlArray TwoThings
 
 spec :: Spec
 spec =
  do let sem = Physical "red" "round"
         tab = table ["color" .= "red", "shape" .= "round"]
-    
+
     it "supports toValue" $
         toValue sem
         `shouldBe`
@@ -44,8 +48,18 @@ spec =
         toTable sem
         `shouldBe`
         tab
-    
+
     it "supports fromValue" $
         runMatcher (fromValue (Table tab))
         `shouldBe`
         Success [] sem
+
+    it "converts from arrays positionally" $
+        runMatcher (fromValue (Array [Integer 42, String "forty-two"]))
+        `shouldBe`
+        Success [] (TwoThings 42 "forty-two")
+
+    it "converts to arrays positionally" $
+        toValue (TwoThings 42 "forty-two")
+        `shouldBe`
+        Array [Integer 42, String "forty-two"]

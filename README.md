@@ -46,7 +46,7 @@ import QuoteStr (quoteStr)
 import Test.Hspec (Spec, hspec, it, shouldBe)
 import Toml (parse, decode, encode, Value(..))
 import Toml.FromValue (Result(Success), FromValue(fromValue), parseTableFromValue, reqKey)
-import Toml.Generic (GenericToml(..))
+import Toml.Generic (GenericTomlTable(..))
 import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue, table, (.=))
 
 main :: IO ()
@@ -121,11 +121,11 @@ be manually derived.
 ```haskell
 newtype Fruits = Fruits { fruits :: [Fruit] }
     deriving (Eq, Show, Generic)
-    deriving (ToTable, ToValue, FromValue) via GenericToml Fruits
+    deriving (ToTable, ToValue, FromValue) via GenericTomlTable Fruits
 
 data Fruit = Fruit { name :: String, physical :: Maybe Physical, varieties :: [Variety] }
     deriving (Eq, Show, Generic)
-    deriving (ToTable, ToValue, FromValue) via GenericToml Fruit
+    deriving (ToTable, ToValue, FromValue) via GenericTomlTable Fruit
 
 data Physical = Physical { color :: String, shape :: String }
     deriving (Eq, Show)

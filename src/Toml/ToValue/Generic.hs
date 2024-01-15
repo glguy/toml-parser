@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.ToValue.Matcher
+Module      : Toml.ToValue.Generic
 Description : GHC.Generics derived table generation
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -8,15 +8,24 @@ Maintainer  : emertens@gmail.com
 Use 'genericToTable' to derive an instance of 'Toml.ToValue.ToTable'
 using the field names of a record.
 
+Use 'genericToArray' to derive an instance of 'Toml.ToValue.ToValue'
+using the positions of data in a constructor.
+
 -}
 module Toml.ToValue.Generic (
+
+    -- * Records to Tables
     GToTable(..),
     genericToTable,
+
+    -- * Product types to Arrays
+    GToArray(..),
+    genericToArray,
     ) where
 
 import Data.Map qualified as Map
 import GHC.Generics
-import Toml.Value (Table)
+import Toml.Value (Table, Value(Array))
 import Toml.ToValue (ToValue(..))
 
 -- | Use a record's field names to generate a 'Table'
@@ -25,6 +34,13 @@ import Toml.ToValue (ToValue(..))
 genericToTable :: (Generic a, GToTable (Rep a)) => a -> Table
 genericToTable = gToTable . from
 {-# INLINE genericToTable #-}
+
+-- | Use a record's field names to generate a 'Table'
+--
+-- @since 1.3.2.0
+genericToArray :: (Generic a, GToArray (Rep a)) => a -> Value
+genericToArray a = Array (gToArray (from a) [])
+{-# INLINE genericToArray #-}
 
 -- | Supports conversion of product types with field selector names
 -- to TOML values.
@@ -66,3 +82,24 @@ instance GToTable U1 where
 instance GToTable V1 where
     gToTable v = case v of {}
     {-# INLINE gToTable #-}
+
+-- | Convert product types to arrays positionally.
+--
+-- @since 1.3.2.0
+class GToArray f where
+    gToArray :: f a -> [Value] -> [Value]
+
+-- | Ignore metadata
+instance GToArray f => GToArray (M1 i c f) where
+    gToArray (M1 x) = gToArray x
+    {-# INLINE gToArray #-}
+
+-- | Convert left and then right
+instance (GToArray f, GToArray g) => GToArray (f :*: g) where
+    gToArray (x :*: y) = gToArray x . gToArray y
+    {-# INLINE gToArray #-}
+
+-- | Convert fields using 'ToValue' instances
+instance ToValue a => GToArray (K1 i a) where
+    gToArray (K1 x) = (toValue x :)
+    {-# INLINE gToArray #-}
