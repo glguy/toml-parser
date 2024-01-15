@@ -79,6 +79,8 @@ library
     build-tool-depends:
         alex:alex       >= 3.2,
         happy:happy     >= 1.19,
+    if impl(ghc >= 9.8)
+        ghc-options: -Wno-x-partial
 
 test-suite unittests
     import:             extensions
