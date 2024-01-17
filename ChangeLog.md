@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 1.3.3.0
+
+* Added `IsString Value` instance.
+
 ## 1.3.2.0
 
 * Added `Toml.Generic` to make instances easily derivable via DerivingVia.

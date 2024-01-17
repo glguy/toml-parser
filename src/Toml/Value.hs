@@ -17,6 +17,7 @@ module Toml.Value (
 
 import Data.Data (Data)
 import Data.Map (Map)
+import Data.String (IsString(fromString))
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 import GHC.Generics (Generic)
 
@@ -61,3 +62,13 @@ instance Eq Value where
 -- Extract the relevant parts to build an Eq instance
 projectZT :: ZonedTime -> (LocalTime, Int)
 projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
+
+-- | Constructs a TOML string literal.
+--
+-- @
+-- fromString = String
+-- @
+--
+-- @since 1.3.3.0
+instance IsString Value where
+    fromString = String
