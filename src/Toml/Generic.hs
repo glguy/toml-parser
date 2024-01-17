@@ -20,7 +20,8 @@ data Physical = Physical {
     deriving (ToTable, ToValue, FromValue) via GenericTomlTable Physical
 @
 
-These derived instances would allow you to match TOML @{color="red", shape="round"}@ to value @Coord 1 2@.
+These derived instances would allow you to match TOML
+@{color="red", shape="round"}@ to value @Physical "red" "round"@.
 
 @
 data Coord = Coord Int Int
