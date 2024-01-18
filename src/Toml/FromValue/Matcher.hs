@@ -31,6 +31,10 @@ module Toml.FromValue.Matcher (
     getScope,
     warning,
 
+    -- * Run helpers
+    runMatcherIgnoreWarn,
+    runMatcherFatalWarn,
+
     -- * Scope helpers
     Scope(..),
     inKey,
@@ -89,6 +93,8 @@ data Scope
 -- with the path to the value that was in focus when the message was
 -- generated. These message get used for both warnings and errors.
 --
+-- For a convenient way to render these to a string, see 'Toml.Pretty.prettyMatchMessage'.
+--
 -- @since 1.3.0.0
 data MatchMessage = MatchMessage {
     matchPath :: [Scope], -- ^ path to message location
@@ -130,6 +136,25 @@ data Result e a
 -- @since 1.3.0.0
 runMatcher :: Matcher a -> Result MatchMessage a
 runMatcher (Matcher m) = m [] mempty (Failure . runDList) (Success . runDList)
+
+-- | Run 'Matcher' and ignore warnings.
+--
+-- @since 1.3.3.0
+runMatcherIgnoreWarn :: Matcher a -> Either [MatchMessage] a
+runMatcherIgnoreWarn m =
+    case runMatcher m of
+        Failure err -> Left err
+        Success _ x -> Right x
+
+-- | Run 'Matcher' and treat warnings as errors.
+--
+-- @since 1.3.3.0
+runMatcherFatalWarn :: Matcher a -> Either [MatchMessage] a
+runMatcherFatalWarn m =
+    case runMatcher m of
+        Success [] x   -> Right x
+        Success warn _ -> Left warn
+        Failure err    -> Left err
 
 -- | Run a 'Matcher' with a locally extended scope.
 --

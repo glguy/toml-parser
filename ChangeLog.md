@@ -3,6 +3,8 @@
 ## 1.3.3.0
 
 * Added `IsString Value` instance.
+* Addded helpers for `runMatcher` for ignoring and failing on warning
+  `runMatcherIgnoreWarn` and `runMatcherFatalWarn`
 
 ## 1.3.2.0
 
