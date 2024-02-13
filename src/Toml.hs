@@ -20,16 +20,14 @@ module Toml (
     Value(..),
 
     -- * Parsing
+    decode,
+    Result(..),
     parse,
 
     -- * Printing
+    encode,
     prettyToml,
     DocClass(..),
-
-    -- * Serialization
-    decode,
-    encode,
-    Result(..),
     ) where
 
 import Toml.FromValue (FromValue (fromValue), Result(..))
