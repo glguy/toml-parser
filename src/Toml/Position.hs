@@ -18,6 +18,8 @@ module Toml.Position (
     move,
     ) where
 
+import Data.Data ( Data )
+
 -- | A position in a text file
 data Position = Position {
     posIndex  :: {-# UNPACK #-} !Int, -- ^ code-point index (zero-based)
@@ -27,7 +29,8 @@ data Position = Position {
         Read    {- ^ Default instance -},
         Show    {- ^ Default instance -},
         Ord     {- ^ Default instance -},
-        Eq      {- ^ Default instance -})
+        Eq      {- ^ Default instance -},
+        Data    {- ^ Default instance -})
 
 -- | The initial 'Position' for the start of a file
 startPos :: Position

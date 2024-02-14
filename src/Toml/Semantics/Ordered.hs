@@ -79,13 +79,15 @@ addExpr (prefix, to) = \case
     ArrayTableExpr k -> let k' = keyPath k in (k', addKey to k')
     KeyValExpr k v   -> (prefix, addVal prefix (addKey to (prefix ++ keyPath k)) v)
 
-addVal :: [String] -> TableOrder -> Val -> TableOrder
-addVal prefix to = \case
-    ValArray xs -> foldl' (addVal prefix) to xs
-    ValTable kvs -> foldl' (\acc (k,v) ->
-                              let k' = prefix ++ keyPath k in
-                                 addVal k' (addKey acc k') v) to kvs
-    _ -> to
+addVal :: [String] -> TableOrder -> Located Val -> TableOrder
+addVal prefix to lval =
+    case locThing lval of
+        ValArray xs -> foldl' (addVal prefix) to xs
+        ValTable kvs ->
+            foldl' (\acc (k,v) ->
+                let k' = prefix ++ keyPath k in
+                addVal k' (addKey acc k') v) to kvs
+        _ -> to
 
 addKey :: TableOrder -> [String] -> TableOrder
 addKey to [] = to

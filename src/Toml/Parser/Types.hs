@@ -30,18 +30,19 @@ type Key = NonEmpty (Located String)
 
 -- | Headers and assignments corresponding to lines of a TOML file
 data Expr
-    = KeyValExpr     Key Val -- ^ key value assignment: @key = value@
+    = KeyValExpr     Key (Located Val) -- ^ key value assignment: @key = value@
     | TableExpr      Key     -- ^ table: @[key]@
     | ArrayTableExpr Key     -- ^ array of tables: @[[key]]@
     deriving (Read, Show)
+
 
 -- | Unvalidated TOML values. Table are represented as a list of
 -- assignments rather than as resolved maps.
 data Val
     = ValInteger   Integer
     | ValFloat     Double
-    | ValArray     [Val]
-    | ValTable     [(Key, Val)]
+    | ValArray     [Located Val]
+    | ValTable     [(Key, Located Val)]
     | ValBool      Bool
     | ValString    String
     | ValTimeOfDay TimeOfDay

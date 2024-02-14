@@ -13,6 +13,7 @@ module Toml.Located (
     Located(..)
     ) where
 
+import Data.Data (Data)
 import Toml.Position (Position)
 
 -- | A value annotated with its text file position
@@ -25,4 +26,5 @@ data Located a = Located
         Show        {- ^ Default instance -},
         Functor     {- ^ Default instance -},
         Foldable    {- ^ Default instance -},
-        Traversable {- ^ Default instance -})
+        Traversable {- ^ Default instance -},
+        Data        {- ^ Default instance -})

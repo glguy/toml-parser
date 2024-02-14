@@ -18,6 +18,17 @@ module Toml.Parser.Utils (
     pureP,
     thenP,
     asString,
+    asMlString,
+    asBareKey,
+    asInteger,
+    asBool,
+    asFloat,
+    asOffsetDateTime,
+    asLocalDate,
+    asLocalTime,
+    asLocalDateTime,
+
+
     lexerP,
     errorP,
 
@@ -26,10 +37,12 @@ module Toml.Parser.Utils (
     pop,
     ) where
 
+import Data.Time
 import Toml.Lexer (scanToken, Context(..))
-import Toml.Lexer.Token (Token(TokBareKey, TokString))
+import Toml.Lexer.Token (Token(..))
 import Toml.Located (Located)
 import Toml.Pretty (prettyToken)
+import Toml.Parser.Types
 
 -- continuation passing implementation of a state monad with errors
 newtype Parser r a = P {
@@ -79,9 +92,70 @@ lexerP f = P \st str k ->
         Right (t, str') -> getP (f t) st str' k
 {-# Inline lexerP #-}
 
--- | Extract the string content of a bare-key or a quoted string.
-asString :: Token -> String
-asString (TokString x) = x
-asString (TokBareKey x) = x
-asString _ = error "simpleKeyLexeme: panic"
-{-# Inline asString #-}
+
+asString :: Token -> Maybe String
+asString =
+    \case
+        TokString i -> Just i
+        _ -> Nothing
+
+asBareKey :: Token -> Maybe String
+asBareKey =
+    \case
+        TokBareKey i -> Just i
+        _ -> Nothing
+
+asMlString :: Token -> Maybe String
+asMlString =
+    \case
+        TokMlString i -> Just i
+        _ -> Nothing
+
+
+asInteger :: Token -> Maybe Integer
+asInteger =
+    \case
+        TokInteger i -> Just i
+        _ -> Nothing
+
+asBool :: Token -> Maybe Bool
+asBool =
+    \case
+        TokTrue -> Just True
+        TokFalse -> Just False
+        _ -> Nothing
+
+asFloat :: Token -> Maybe Double
+asFloat =
+    \case
+        TokFloat x -> Just x
+        _ -> Nothing
+
+asOffsetDateTime :: Token -> Maybe ZonedTime
+asOffsetDateTime =
+    \case
+        TokOffsetDateTime x -> Just x
+        _ -> Nothing
+
+
+asLocalDateTime :: Token -> Maybe LocalTime
+asLocalDateTime =
+    \case
+        TokLocalDateTime x -> Just x
+        _ -> Nothing
+
+
+asLocalDate :: Token -> Maybe Day
+asLocalDate =
+    \case
+        TokLocalDate x -> Just x
+        _ -> Nothing
+
+asLocalTime :: Token -> Maybe TimeOfDay
+asLocalTime =
+    \case
+        TokLocalTime x -> Just x
+        _ -> Nothing
+
+
+

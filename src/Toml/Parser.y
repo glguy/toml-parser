@@ -27,34 +27,33 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Toml.Lexer (Context(..), Token(..))
 import Toml.Located (Located(Located, locThing))
 import Toml.Parser.Types (Expr(..), Key, Val(..), SectionKind(..))
-import Toml.Parser.Utils (Parser, runParser, lexerP, errorP, push, pop, thenP, pureP, asString)
+import Toml.Parser.Utils
 import Toml.Position (startPos)
 
 }
 
 %tokentype      { Located Token                     }
 %token
-'true'          { Located _ TokTrue                 }
-'false'         { Located _ TokFalse                }
-','             { Located _ TokComma                }
-'='             { Located _ TokEquals               }
-NEWLINE         { Located _ TokNewline              }
-'.'             { Located _ TokPeriod               }
-'['             { Located _ TokSquareO              }
-']'             { Located _ TokSquareC              }
-'[['            { Located _ Tok2SquareO             }
-']]'            { Located _ Tok2SquareC             }
-'{'             { Located _ TokCurlyO               }
-'}'             { Located _ TokCurlyC               }
-BAREKEY         { Located _ (TokBareKey        _ )  }
-STRING          { Located _ (TokString         _ )  }
-MLSTRING        { Located _ (TokMlString       $$)  }
-INTEGER         { Located _ (TokInteger        $$)  }
-FLOAT           { Located _ (TokFloat          $$)  }
-OFFSETDATETIME  { Located _ (TokOffsetDateTime $$)  }
-LOCALDATETIME   { Located _ (TokLocalDateTime  $$)  }
-LOCALDATE       { Located _ (TokLocalDate      $$)  }
-LOCALTIME       { Located _ (TokLocalTime      $$)  }
+','             { Located $$ TokComma                }
+'='             { Located $$ TokEquals               }
+NEWLINE         { Located $$ TokNewline              }
+'.'             { Located $$ TokPeriod               }
+'['             { Located $$ TokSquareO              }
+']'             { Located $$ TokSquareC              }
+'[['            { Located $$ Tok2SquareO             }
+']]'            { Located $$ Tok2SquareC             }
+'{'             { Located $$ TokCurlyO               }
+'}'             { Located $$ TokCurlyC               }
+BAREKEY         { (traverse asBareKey        -> Just $$) }
+STRING          { (traverse asString         -> Just $$) }
+MLSTRING        { (traverse asMlString       -> Just $$) }
+BOOL            { (traverse asBool           -> Just $$) }
+INTEGER         { (traverse asInteger        -> Just $$) }
+FLOAT           { (traverse asFloat          -> Just $$) }
+OFFSETDATETIME  { (traverse asOffsetDateTime -> Just $$) }
+LOCALDATETIME   { (traverse asLocalDateTime  -> Just $$) }
+LOCALDATE       { (traverse asLocalDate      -> Just $$) }
+LOCALTIME       { (traverse asLocalTime      -> Just $$) }
 
 %monad          { Parser r } { thenP } { pureP }
 %lexer          { lexerP } { Located _ TokEOF }
@@ -73,40 +72,39 @@ expression ::       { [Expr]                  }
   | '['  key ']'    { [TableExpr      $2    ] }
   | '[[' key ']]'   { [ArrayTableExpr $2    ] }
 
-keyval ::           { (Key, Val)              }
+keyval ::           { (Key, Located Val)      }
   : key rhs '=' pop val { ($1,$5)             }
 
 key ::              { Key                     }
   : sepBy1(simplekey, '.') { $1               }
 
 simplekey ::        { Located String          }
-  : BAREKEY         { fmap asString $1        }
-  | STRING          { fmap asString $1        }
+  : BAREKEY         { $1        }
+  | STRING          { $1        }
 
-val ::              { Val                     }
-  : INTEGER         { ValInteger    $1        }
-  | FLOAT           { ValFloat      $1        }
-  | 'true'          { ValBool       True      }
-  | 'false'         { ValBool       False     }
-  | STRING          { ValString (asString (locThing $1)) }
-  | MLSTRING        { ValString     $1        }
-  | LOCALDATE       { ValDay        $1        }
-  | LOCALTIME       { ValTimeOfDay  $1        }
-  | OFFSETDATETIME  { ValZonedTime  $1        }
-  | LOCALDATETIME   { ValLocalTime  $1        }
-  | array           { ValArray      $1        }
-  | inlinetable     { ValTable      $1        }
+val ::              { Located Val             }
+  : INTEGER         { fmap ValInteger    $1 }
+  | FLOAT           { fmap ValFloat      $1 }
+  | BOOL            { fmap ValBool       $1 }
+  | STRING          { fmap ValString     $1 }
+  | MLSTRING        { fmap ValString     $1 }
+  | LOCALDATE       { fmap ValDay        $1 }
+  | LOCALTIME       { fmap ValTimeOfDay  $1 }
+  | OFFSETDATETIME  { fmap ValZonedTime  $1 }
+  | LOCALDATETIME   { fmap ValLocalTime  $1 }
+  | array           { fmap ValArray      $1 }
+  | inlinetable     { fmap ValTable      $1 }
 
-inlinetable ::      { [(Key, Val)]            }
+inlinetable ::      { Located [(Key, Located Val)]    }
   : lhs '{' sepBy(keyval, ',') pop '}'
-                    { $3                      }
+                    { Located $2 $3 }
 
-array ::            { [Val]                   }
-  : rhs '[' newlines                          pop ']' { []          }
-  | rhs '[' newlines arrayvalues              pop ']' { reverse $4  }
-  | rhs '[' newlines arrayvalues ',' newlines pop ']' { reverse $4  }
+array ::            { Located [Located Val]  }
+  : rhs '[' newlines                          pop ']' { Located $2 [] }
+  | rhs '[' newlines arrayvalues              pop ']' { Located $2 (reverse $4) }
+  | rhs '[' newlines arrayvalues ',' newlines pop ']' { Located $2 (reverse $4)  }
 
-arrayvalues ::      { [Val]                   }
+arrayvalues ::      { [Located Val]                 }
   :                          val newlines { [$1]    }
   | arrayvalues ',' newlines val newlines { $4 : $1 }
 

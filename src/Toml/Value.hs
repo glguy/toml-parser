@@ -11,8 +11,12 @@ is a Map with a single level of keys.
 
 -}
 module Toml.Value (
+    -- * Unlocated values
     Value(..),
     Table,
+    -- * Located values
+    Value'(..),
+    Table',
     ) where
 
 import Data.Data (Data)
@@ -20,6 +24,31 @@ import Data.Map (Map)
 import Data.String (IsString(fromString))
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 import GHC.Generics (Generic)
+import Toml.Position
+import Toml.Located
+
+
+-- | Semantic TOML value with all table assignments resolved.
+data Value'
+    = Integer'   Integer
+    | Float'     Double
+    | Array'     [Located Value']
+    | Table'     Table'
+    | Bool'      Bool
+    | String'    String
+    | TimeOfDay' TimeOfDay
+    | ZonedTime' ZonedTime
+    | LocalTime' LocalTime
+    | Day'       Day
+    deriving (
+        Show {- ^ Default instance -},
+        Read {- ^ Default instance -},
+        Data {- ^ Default instance -},
+        Generic {- ^ Default instance -})
+
+-- | A table with located values.
+-- The position in each entry refers to the *key*.
+type Table' = Map String (Position, Located Value')
 
 -- | Representation of a TOML key-value table.
 type Table = Map String Value
