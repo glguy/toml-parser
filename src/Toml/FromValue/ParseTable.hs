@@ -38,8 +38,9 @@ import Control.Monad.Trans.State.Strict (StateT(..), get, put)
 import Data.List (intercalate)
 import Data.Map qualified as Map
 import Toml.FromValue.Matcher (warning, Matcher, inKey)
+import Toml.Located (Located)
 import Toml.Pretty (prettySimpleKey)
-import Toml.Value (Table, Value)
+import Toml.Value (Table', Value')
 
 -- | A 'Matcher' that tracks a current set of unmatched key-value
 -- pairs from a table.
@@ -48,7 +49,7 @@ import Toml.Value (Table, Value)
 --
 -- Use 'getTable' and 'setTable' to override the table and implement
 -- other primitives.
-newtype ParseTable a = ParseTable (StateT Table Matcher a)
+newtype ParseTable a = ParseTable (StateT Table' Matcher a)
     deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
 
 -- | Implemented in terms of 'fail' on 'Matcher'
@@ -63,7 +64,7 @@ liftMatcher = ParseTable . lift
 -- Unused tables will generate a warning. To change this behavior
 -- 'getTable' and 'setTable' can be used to discard or generate
 -- error messages.
-runParseTable :: ParseTable a -> Table -> Matcher a
+runParseTable :: ParseTable a -> Table' -> Matcher a
 runParseTable (ParseTable p) t =
  do (x, t') <- runStateT p t
     case Map.keys t' of
@@ -72,11 +73,11 @@ runParseTable (ParseTable p) t =
         ks  -> x <$ warning ("unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
 
 -- | Return the remaining portion of the table being matched.
-getTable :: ParseTable Table
+getTable :: ParseTable Table'
 getTable = ParseTable get
 
 -- | Replace the remaining portion of the table being matched.
-setTable :: Table -> ParseTable ()
+setTable :: Table' -> ParseTable ()
 setTable = ParseTable . put
 
 -- | Emit a warning at the current location.
@@ -88,7 +89,7 @@ warnTable = ParseTable . lift . warning
 --
 -- @since 1.2.0.0
 data KeyAlt a
-    = Key String (Value -> Matcher a) -- ^ pick alternative based on key match
+    = Key String (Located Value' -> Matcher a) -- ^ pick alternative based on key match
     | Else (Matcher a) -- ^ default case when no previous cases matched
 
 -- | Take the first option from a list of table keys and matcher functions.
@@ -114,7 +115,7 @@ pickKey xs =
         f t (Key k c) continue =
             case Map.lookup k t of
                 Nothing -> continue
-                Just v ->
+                Just (_, v) ->
                  do setTable $! Map.delete k t
                     liftMatcher (inKey k (c v))
 

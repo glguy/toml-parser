@@ -19,7 +19,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Toml.Position
-import Toml.Located (locThing, Located)
+import Toml.Located (Located(..))
 import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table', Value'(..))
 
@@ -53,10 +53,10 @@ data SemanticErrorKind
 -- or reports a semantic error if one occurs.
 --
 -- @since 1.3.0.0
-semantics :: [Expr] -> Either (Located SemanticError) Table'
+semantics :: [Expr] -> Either (Located SemanticError) (Located Table')
 semantics exprs =
  do f <- foldM processExpr (flip assignKeyVals Map.empty) exprs
-    framesToTable <$> f []
+    Located startPos . framesToTable <$> f []
     where
         processExpr f = \case
             KeyValExpr   k v -> Right (f . ((k,v):))
@@ -100,7 +100,7 @@ framesToTable :: FrameTable -> Table'
 framesToTable =
     fmap $ fmap $ fmap \case
         FrameTable _ t       -> framesToValue t
-        FrameArray (t :| ts) -> Array' (rev (map framesToValue (t : ts)))
+        FrameArray (t :| ts) -> Array' (rev (map (fmap framesToValue) (t : ts)))
         FrameValue v         -> v
     where
         rev = foldl (flip (:)) [] -- GHC fails to inline reverse
@@ -120,38 +120,39 @@ addSection ::
     M FrameTable {- ^ error message or updated local frame table -}
 
 addSection kind (k :| []) kvs =
-    alterFrame k \case
+    alterFrame k
         -- defining a new table
-        Nothing ->
-            case kind of
-                TableKind      -> FrameTable Closed <$> go mempty
-                ArrayTableKind -> FrameArray . (:| []) <$> go mempty
-
+        (case kind of
+                TableKind      -> Located (locPosition k) . FrameTable Closed <$> go mempty
+                ArrayTableKind -> Located (locPosition k) . FrameArray . (\x -> Located (locPosition k) x :| []) <$> go mempty)
+        
+        \case   
         -- defining a super table of a previously defined subtable
-        Just (FrameTable Open t) ->
+        FrameTable Open t ->
             case kind of
                 TableKind      -> FrameTable Closed <$> go t
                 ArrayTableKind -> invalidKey k ImplicitlyTable
 
         -- Add a new array element to an existing table array
-        Just (FrameArray (t :| ts)) ->
+        FrameArray (t :| ts) ->
             case kind of
                 TableKind      -> invalidKey k ClosedTable
-                ArrayTableKind -> FrameArray . (:| t : ts) <$> go mempty
+                ArrayTableKind -> FrameArray . (\x -> Located (locPosition k) x :| t : ts) <$> go mempty
 
         -- failure cases
-        Just (FrameTable Closed _) -> invalidKey k ClosedTable
-        Just (FrameTable Dotted _) -> error "addSection: dotted table left unclosed"
-        Just (FrameValue {})       -> invalidKey k AlreadyAssigned
+        FrameTable Closed _ -> invalidKey k ClosedTable
+        FrameTable Dotted _ -> error "addSection: dotted table left unclosed"
+        FrameValue {}       -> invalidKey k AlreadyAssigned
         where
             go = assignKeyVals kvs
 
 addSection kind (k1 :| k2 : ks) kvs =
-    alterFrame k1 \case
-        Nothing                     -> FrameTable Open      <$> go mempty
-        Just (FrameTable tk t)      -> FrameTable tk        <$> go t
-        Just (FrameArray (t :| ts)) -> FrameArray . (:| ts) <$> go t
-        Just (FrameValue _)         -> invalidKey k1 AlreadyAssigned
+    alterFrame k1
+        (Located (locPosition k1) . FrameTable Open      <$> go mempty)
+        \case
+        FrameTable tk t      -> FrameTable tk        <$> go t
+        FrameArray (t :| ts) -> FrameArray . (:| ts) <$> traverse go t
+        FrameValue _         -> invalidKey k1 AlreadyAssigned
         where
             go = addSection kind (k2 :| ks) kvs
 
@@ -160,7 +161,7 @@ addSection kind (k1 :| k2 : ks) kvs =
 -- within the @[table]@ section in which they were introduced.
 closeDots :: FrameTable -> FrameTable
 closeDots =
-    fmap \case
+    fmap $ fmap $ fmap \case
         FrameTable Dotted t -> FrameTable Closed (closeDots t)
         frame               -> frame
 
@@ -178,18 +179,18 @@ assignKeyVals kvs t = closeDots <$> foldM f t kvs
 assign :: Key -> Located Val -> FrameTable -> M FrameTable
 
 assign (key :| []) val =
-    alterFrame key \case
-        Nothing -> FrameValue <$> valToValue val
-        Just{}  -> invalidKey key AlreadyAssigned
+    alterFrame key 
+        (traverse (fmap FrameValue . valToValue) val)
+        (\_ -> invalidKey key AlreadyAssigned)
 
 assign (key :| k1 : keys) val =
-    alterFrame key \case
-        Nothing                    -> go mempty
-        Just (FrameTable Open   t) -> go t
-        Just (FrameTable Dotted t) -> go t
-        Just (FrameTable Closed _) -> invalidKey key ClosedTable
-        Just (FrameArray        _) -> invalidKey key ClosedTable
-        Just (FrameValue        _) -> invalidKey key AlreadyAssigned
+    alterFrame key (Located (locPosition key) <$> go mempty)
+        \case
+        FrameTable Open   t -> go t
+        FrameTable Dotted t -> go t
+        FrameTable Closed _ -> invalidKey key ClosedTable
+        FrameArray        _ -> invalidKey key ClosedTable
+        FrameValue        _ -> invalidKey key AlreadyAssigned
     where
         go t = FrameTable Dotted <$> assign (k1 :| keys) val t
 
@@ -217,5 +218,16 @@ invalidKey ::
 invalidKey key kind = Left ((`SemanticError` kind) <$> key)
 
 -- | Specialization of 'Map.alterF' used to adjust a location in a 'FrameTable'
-alterFrame :: Located String -> (Maybe Frame -> M Frame) -> FrameTable -> M FrameTable
-alterFrame k f = Map.alterF (fmap Just . f) (locThing k)
+alterFrame ::
+    Located String -> 
+    M (Located Frame) ->
+    (Frame -> M Frame) -> FrameTable -> M FrameTable
+alterFrame k create update = Map.alterF g (locThing k)
+    where
+        g :: Maybe (Position, Located Frame) -> M (Maybe (Position, Located Frame))
+        g Nothing =
+            do lf <- create
+               pure (Just (locPosition k, lf))
+        g (Just (op,ov)) =
+            do lf <- traverse update ov
+               pure (Just (op, lf))

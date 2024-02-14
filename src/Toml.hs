@@ -36,10 +36,11 @@ import Toml.Parser (parseRawToml)
 import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage, prettyLocated)
 import Toml.Semantics (semantics)
 import Toml.ToValue (ToTable (toTable))
-import Toml.Value (Table, Value(..))
+import Toml.Value (Table', Table, Value(..), Value'(..))
+import Toml.Located (Located(..))
 
 -- | Parse a TOML formatted 'String' or report an error message.
-parse :: String -> Either String Table
+parse :: String -> Either String (Located Table')
 parse str =
     case parseRawToml str of
         Left e -> Left (prettyLocated e)
@@ -54,7 +55,7 @@ decode str =
     case parse str of
         Left e -> Failure [e]
         Right tab ->
-            case runMatcher (fromValue (Table tab)) of
+            case runMatcher (fromValue (Table' <$> tab)) of
                 Failure es -> Failure (prettyMatchMessage <$> es)
                 Success ws x -> Success (prettyMatchMessage <$> ws) x
 
