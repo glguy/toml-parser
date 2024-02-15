@@ -1,3 +1,4 @@
+{-# Language PatternSynonyms, DeriveTraversable #-}
 {-|
 Module      : Toml.Value
 Description : Semantic TOML values
@@ -12,81 +13,160 @@ is a Map with a single level of keys.
 -}
 module Toml.Value (
     -- * Unlocated values
-    Value(..),
+    Value,
+    pattern Integer, pattern Float, pattern String, pattern Bool,
+    pattern ZonedTime, pattern Day, pattern LocalTime, pattern TimeOfDay,
+    pattern Array, pattern Table,
+
     Table,
     -- * Located values
     Value'(..),
-    Table',
+    Table'(..),
+    forgetValueAnns,
+    forgetTableAnns,
+    valueAnn,
+    valueType,
     ) where
 
-import Data.Data (Data)
 import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.String (IsString(fromString))
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
-import GHC.Generics (Generic)
-import Toml.Position
-import Toml.Located
 
+pattern Integer :: Integer -> Value
+pattern Integer x <- Integer' _ x
+    where Integer x = Integer' () x
+
+pattern Float :: Double -> Value
+pattern Float x <- Float' _ x
+    where Float x = Float' () x
+
+pattern Array :: [Value] -> Value
+pattern Array x <- Array' _ x
+    where Array x = Array' () x
+
+pattern Table :: Table -> Value
+pattern Table x <- Table' _ x
+    where Table x = Table' () x
+
+pattern Bool :: Bool -> Value
+pattern Bool x <- Bool' _ x
+    where Bool x = Bool' () x
+
+pattern String :: String -> Value
+pattern String x <- String' _ x
+    where String x = String' () x
+
+pattern TimeOfDay :: TimeOfDay -> Value
+pattern TimeOfDay x <- TimeOfDay' _ x
+    where TimeOfDay x = TimeOfDay' () x
+
+pattern ZonedTime :: ZonedTime -> Value
+pattern ZonedTime x <- ZonedTime' _ x
+    where ZonedTime x = ZonedTime' () x
+
+pattern LocalTime :: LocalTime -> Value
+pattern LocalTime x <- LocalTime' _ x
+    where LocalTime x = LocalTime' () x
+
+pattern Day :: Day -> Value
+pattern Day x <- Day' _ x
+    where Day x = Day' () x
+
+{-# Complete Array, Table, String, Bool, Integer, Float, Day, LocalTime, ZonedTime, TimeOfDay #-}
 
 -- | Semantic TOML value with all table assignments resolved.
-data Value'
-    = Integer'   Integer
-    | Float'     Double
-    | Array'     [Located Value']
-    | Table'     Table'
-    | Bool'      Bool
-    | String'    String
-    | TimeOfDay' TimeOfDay
-    | ZonedTime' ZonedTime
-    | LocalTime' LocalTime
-    | Day'       Day
+data Value' a
+    = Integer'   a Integer
+    | Float'     a Double
+    | Array'     a [Value' a]
+    | Table'     a (Table' a)
+    | Bool'      a Bool
+    | String'    a String
+    | TimeOfDay' a TimeOfDay
+    | ZonedTime' a ZonedTime
+    | LocalTime' a LocalTime
+    | Day'       a Day
     deriving (
         Show {- ^ Default instance -},
         Read {- ^ Default instance -},
-        Data {- ^ Default instance -},
-        Generic {- ^ Default instance -})
+        Functor, Foldable, Traversable)
+
+valueAnn :: Value' a -> a
+valueAnn = \case
+    Integer'   a _ -> a
+    Float'     a _ -> a
+    Array'     a _ -> a
+    Table'     a _ -> a
+    Bool'      a _ -> a
+    String'    a _ -> a
+    TimeOfDay' a _ -> a
+    ZonedTime' a _ -> a
+    LocalTime' a _ -> a
+    Day'       a _ -> a
+
+valueType :: Value' l -> String
+valueType = \case
+    Integer'   {} -> "integer"
+    Float'     {} -> "float"
+    Array'     {} -> "array"
+    Table'     {} -> "table"
+    Bool'      {} -> "boolean"
+    String'    {} -> "string"
+    TimeOfDay' {} -> "local time"
+    LocalTime' {} -> "local date-time"
+    Day'       {} -> "locate date"
+    ZonedTime' {} -> "offset date-time"
 
 -- | A table with located values.
 -- The position in each entry refers to the *key*.
-type Table' = Map String (Position, Located Value')
+newtype Table' a = MkTable (Map String (a, Value' a))
+    deriving (Read, Show, Functor, Foldable, Traversable)
 
--- | Representation of a TOML key-value table.
-type Table = Map String Value
+instance Eq (Table' a) where
+    MkTable x == MkTable y = [(k,v) | (k, (_, v)) <- Map.assocs x] == [(k,v) | (k, (_, v)) <- Map.assocs y]
 
--- | Semantic TOML value with all table assignments resolved.
-data Value
-    = Integer   Integer
-    | Float     Double
-    | Array     [Value]
-    | Table     Table
-    | Bool      Bool
-    | String    String
-    | TimeOfDay TimeOfDay
-    | ZonedTime ZonedTime
-    | LocalTime LocalTime
-    | Day       Day
-    deriving (
-        Show {- ^ Default instance -},
-        Read {- ^ Default instance -},
-        Data {- ^ Default instance -},
-        Generic {- ^ Default instance -})
+-- | A 'Table'' without annotations
+type Table = Table' ()
+
+-- | A 'Value'' without annotations
+type Value = Value' ()
+
+forgetTableAnns :: Table' a -> Table
+forgetTableAnns (MkTable t) = MkTable (fmap (\(_, v) -> ((), forgetValueAnns v)) t)
+
+forgetValueAnns :: Value' a -> Value
+forgetValueAnns =
+    \case
+        Integer'   _ x -> Integer'   () x
+        Float'     _ x -> Float'     () x
+        Array'     _ x -> Array'     () (map forgetValueAnns x)
+        Table'     _ x -> Table'     () (forgetTableAnns x)
+        Bool'      _ x -> Bool'      () x
+        String'    _ x -> String'    () x
+        TimeOfDay' _ x -> TimeOfDay' () x
+        ZonedTime' _ x -> ZonedTime' () x
+        LocalTime' _ x -> LocalTime' () x
+        Day'       _ x -> Day'       () x
 
 -- | Nearly default instance except 'ZonedTime' doesn't have an
 -- 'Eq' instance. 'ZonedTime' values are equal if their times and
 -- timezones are both equal.
+--
+-- Annotations are ignored
 
-instance Eq Value where
-    Integer   x == Integer   y = x == y
-    Float     x == Float     y = x == y
-    Array     x == Array     y = x == y
-    Table     x == Table     y = x == y
-    Bool      x == Bool      y = x == y
-    String    x == String    y = x == y
-    TimeOfDay x == TimeOfDay y = x == y
-    LocalTime x == LocalTime y = x == y
-    Day       x == Day       y = x == y
-    ZonedTime x == ZonedTime y = projectZT x == projectZT y
-    _           == _           = False
+instance Eq (Value' a) where
+    Integer'   _ x == Integer'   _ y = x == y
+    Float'     _ x == Float'     _ y = x == y
+    Array'     _ x == Array'     _ y = x == y
+    Table'     _ x == Table'     _ y = x == y
+    Bool'      _ x == Bool'      _ y = x == y
+    String'    _ x == String'    _ y = x == y
+    TimeOfDay' _ x == TimeOfDay' _ y = x == y
+    LocalTime' _ x == LocalTime' _ y = x == y
+    Day'       _ x == Day'       _ y = x == y
+    ZonedTime' _ x == ZonedTime' _ y = projectZT x == projectZT y
+    _              == _              = False
 
 -- Extract the relevant parts to build an Eq instance
 projectZT :: ZonedTime -> (LocalTime, Int)
@@ -100,4 +180,4 @@ projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
 --
 -- @since 1.3.3.0
 instance IsString Value where
-    fromString = String
+    fromString = String' ()

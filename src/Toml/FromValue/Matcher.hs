@@ -30,6 +30,8 @@ module Toml.FromValue.Matcher (
     withScope,
     getScope,
     warning,
+    warningAt,
+    failAt,
 
     -- * Run helpers
     runMatcherIgnoreWarn,
@@ -50,32 +52,32 @@ import Data.Monoid (Endo(..))
 -- messages.
 --
 -- Use 'withScope' to run a 'Matcher' in a new, nested scope.
-newtype Matcher a = Matcher {
+newtype Matcher l a = Matcher {
     unMatcher ::
         forall r.
         [Scope] ->
-        DList MatchMessage ->
-        (DList MatchMessage -> r) ->
-        (DList MatchMessage -> a -> r) ->
+        DList (MatchMessage l) ->
+        (DList (MatchMessage l) -> r) ->
+        (DList (MatchMessage l) -> a -> r) ->
         r
     }
 
-instance Functor Matcher where
+instance Functor (Matcher a) where
     fmap = liftM
 
-instance Applicative Matcher where
+instance Applicative (Matcher a) where
     pure x = Matcher (\_env warn _err ok -> ok warn x)
     (<*>) = ap
 
-instance Monad Matcher where
+instance Monad (Matcher a) where
     m >>= f = Matcher (\env warn err ok -> unMatcher m env warn err (\warn' x -> unMatcher (f x) env warn' err ok))
     {-# INLINE (>>=) #-}
 
-instance Alternative Matcher where
+instance Alternative (Matcher a) where
     empty = Matcher (\_env _warn err _ok -> err mempty)
     Matcher x <|> Matcher y = Matcher (\env warn err ok -> x env warn (\errs1 -> y env warn (\errs2 -> err (errs1 <> errs2)) ok) ok)
 
-instance MonadPlus Matcher
+instance MonadPlus (Matcher a)
 
 -- | Scopes for TOML message.
 --
@@ -96,14 +98,16 @@ data Scope
 -- For a convenient way to render these to a string, see 'Toml.Pretty.prettyMatchMessage'.
 --
 -- @since 1.3.0.0
-data MatchMessage = MatchMessage {
+data MatchMessage a = MatchMessage {
+    matchAnn :: Maybe a,
     matchPath :: [Scope], -- ^ path to message location
     matchMessage :: String -- ^ error and warning message body
     } deriving (
         Read {- ^ Default instance -},
         Show {- ^ Default instance -},
         Eq   {- ^ Default instance -},
-        Ord  {- ^ Default instance -})
+        Ord  {- ^ Default instance -},
+        Functor, Foldable, Traversable)
 
 -- | List of strings that supports efficient left- and right-biased append
 newtype DList a = DList (Endo [a])
@@ -134,13 +138,13 @@ data Result e a
 -- | Run a 'Matcher' with an empty scope.
 --
 -- @since 1.3.0.0
-runMatcher :: Matcher a -> Result MatchMessage a
+runMatcher :: Matcher l a -> Result (MatchMessage l) a
 runMatcher (Matcher m) = m [] mempty (Failure . runDList) (Success . runDList)
 
 -- | Run 'Matcher' and ignore warnings.
 --
 -- @since 1.3.3.0
-runMatcherIgnoreWarn :: Matcher a -> Either [MatchMessage] a
+runMatcherIgnoreWarn :: Matcher l a -> Either [MatchMessage l] a
 runMatcherIgnoreWarn m =
     case runMatcher m of
         Failure err -> Left err
@@ -149,7 +153,7 @@ runMatcherIgnoreWarn m =
 -- | Run 'Matcher' and treat warnings as errors.
 --
 -- @since 1.3.3.0
-runMatcherFatalWarn :: Matcher a -> Either [MatchMessage] a
+runMatcherFatalWarn :: Matcher l a -> Either [MatchMessage l] a
 runMatcherFatalWarn m =
     case runMatcher m of
         Success [] x   -> Right x
@@ -159,35 +163,41 @@ runMatcherFatalWarn m =
 -- | Run a 'Matcher' with a locally extended scope.
 --
 -- @since 1.3.0.0
-withScope :: Scope -> Matcher a -> Matcher a
-withScope ctx (Matcher m) = Matcher (\env -> m (ctx : env))
+withScope :: Scope -> Matcher l a -> Matcher l a
+withScope scope (Matcher m) = Matcher (\scopes -> m (scope : scopes))
 
 -- | Get the current list of scopes.
 --
 -- @since 1.3.0.0
-getScope :: Matcher [Scope]
+getScope :: Matcher a [Scope]
 getScope = Matcher (\env warn _err ok -> ok warn (reverse env))
 
 -- | Emit a warning mentioning the current scope.
-warning :: String -> Matcher ()
+warning :: String -> Matcher a ()
 warning w =
- do loc <- getScope
-    Matcher (\_env warn _err ok -> ok (warn <> one (MatchMessage loc w)) ())
+    Matcher (\scopes warn _err ok -> ok (warn <> one (MatchMessage Nothing (reverse scopes) w)) ())
+
+warningAt :: l -> String -> Matcher l ()
+warningAt loc w =
+    Matcher (\scopes warn _err ok -> ok (warn <> one (MatchMessage (Just loc) (reverse scopes) w)) ())
 
 -- | Fail with an error message annotated to the current location.
-instance MonadFail Matcher where
+instance MonadFail (Matcher a) where
     fail e =
-     do loc <- getScope
-        Matcher (\_env _warn err _ok -> err (one (MatchMessage loc e)))
+        Matcher (\scopes _warn err _ok -> err (one (MatchMessage Nothing (reverse scopes) e)))
+
+failAt :: l -> String -> Matcher l a
+failAt l e =
+    Matcher (\scopes _warn err _ok -> err (one (MatchMessage (Just l) (reverse scopes) e)))
 
 -- | Update the scope with the message corresponding to a table key
 --
 -- @since 1.3.0.0
-inKey :: String -> Matcher a -> Matcher a
+inKey :: String -> Matcher l a -> Matcher l a
 inKey = withScope . ScopeKey
 
 -- | Update the scope with the message corresponding to an array index
 --
 -- @since 1.3.0.0
-inIndex :: Int -> Matcher a -> Matcher a
+inIndex :: Int -> Matcher l a -> Matcher l a
 inIndex = withScope . ScopeIndex

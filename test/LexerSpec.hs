@@ -1,8 +1,8 @@
 module LexerSpec (spec) where
 
-import Data.Map qualified as Map
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (parse, Value(Integer))
+import Toml
+import Toml.ToValue
 
 spec :: Spec
 spec =
@@ -35,7 +35,7 @@ spec =
     it "accepts tabs" $
         parse "x\t=\t1"
         `shouldBe`
-        Right (Map.singleton "x" (Integer 1))
+        Right (table [("x" .= Integer 1)])
 
     it "computes columns correctly with tabs" $
         parse "x\t=\t="

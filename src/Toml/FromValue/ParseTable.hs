@@ -38,9 +38,8 @@ import Control.Monad.Trans.State.Strict (StateT(..), get, put)
 import Data.List (intercalate)
 import Data.Map qualified as Map
 import Toml.FromValue.Matcher (warning, Matcher, inKey)
-import Toml.Located (Located)
 import Toml.Pretty (prettySimpleKey)
-import Toml.Value (Table', Value')
+import Toml.Value (Table'(..), Value')
 
 -- | A 'Matcher' that tracks a current set of unmatched key-value
 -- pairs from a table.
@@ -49,48 +48,48 @@ import Toml.Value (Table', Value')
 --
 -- Use 'getTable' and 'setTable' to override the table and implement
 -- other primitives.
-newtype ParseTable a = ParseTable (StateT Table' Matcher a)
+newtype ParseTable l a = ParseTable (StateT (Table' l) (Matcher l) a)
     deriving (Functor, Applicative, Monad, Alternative, MonadPlus)
 
 -- | Implemented in terms of 'fail' on 'Matcher'
-instance MonadFail ParseTable where
+instance MonadFail (ParseTable l) where
     fail = ParseTable . fail
 
 -- | Lift a matcher into the current table parsing context.
-liftMatcher :: Matcher a -> ParseTable a
+liftMatcher :: Matcher l a -> ParseTable l a
 liftMatcher = ParseTable . lift
 
 -- | Run a 'ParseTable' computation with a given starting 'Table'.
 -- Unused tables will generate a warning. To change this behavior
 -- 'getTable' and 'setTable' can be used to discard or generate
 -- error messages.
-runParseTable :: ParseTable a -> Table' -> Matcher a
+runParseTable :: ParseTable l a -> Table' l -> Matcher l a
 runParseTable (ParseTable p) t =
- do (x, t') <- runStateT p t
+ do (x, MkTable t') <- runStateT p t
     case Map.keys t' of
         []  -> pure x
         [k] -> x <$ warning ("unexpected key: " ++ show (prettySimpleKey k))
         ks  -> x <$ warning ("unexpected keys: " ++ intercalate ", " (map (show . prettySimpleKey) ks))
 
 -- | Return the remaining portion of the table being matched.
-getTable :: ParseTable Table'
+getTable :: ParseTable l (Table' l)
 getTable = ParseTable get
 
 -- | Replace the remaining portion of the table being matched.
-setTable :: Table' -> ParseTable ()
+setTable :: Table' l -> ParseTable l ()
 setTable = ParseTable . put
 
 -- | Emit a warning at the current location.
-warnTable :: String -> ParseTable ()
+warnTable :: String -> ParseTable l ()
 warnTable = ParseTable . lift . warning
 
 
 -- | Key and value matching function
 --
 -- @since 1.2.0.0
-data KeyAlt a
-    = Key String (Located Value' -> Matcher a) -- ^ pick alternative based on key match
-    | Else (Matcher a) -- ^ default case when no previous cases matched
+data KeyAlt l a
+    = Key String (Value' l -> Matcher l a) -- ^ pick alternative based on key match
+    | Else (Matcher l a) -- ^ default case when no previous cases matched
 
 -- | Take the first option from a list of table keys and matcher functions.
 -- This operation will commit to the first table key that matches. If the
@@ -106,9 +105,9 @@ data KeyAlt a
 -- the error associate with the matched alternative.
 --
 -- @since 1.2.0.0
-pickKey :: [KeyAlt a] -> ParseTable a
+pickKey :: [KeyAlt l a] -> ParseTable l a
 pickKey xs =
- do t <- getTable
+ do MkTable t <- getTable
     foldr (f t) errCase xs
     where
         f _ (Else m) _ = liftMatcher m
@@ -116,7 +115,7 @@ pickKey xs =
             case Map.lookup k t of
                 Nothing -> continue
                 Just (_, v) ->
-                 do setTable $! Map.delete k t
+                 do setTable $! MkTable (Map.delete k t)
                     liftMatcher (inKey k (c v))
 
         errCase =

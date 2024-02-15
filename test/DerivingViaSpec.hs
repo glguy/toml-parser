@@ -17,9 +17,9 @@ module DerivingViaSpec (spec) where
 
 import GHC.Generics (Generic)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (Value(..))
+import Toml
+import Toml.FromValue.Matcher
 import Toml.FromValue ( FromValue(fromValue) )
-import Toml.FromValue.Matcher (runMatcher, Result(Success))
 import Toml.Generic (GenericTomlTable(..), GenericTomlArray(..))
 import Toml.ToValue (ToTable(toTable), (.=), table, ToValue(toValue))
 

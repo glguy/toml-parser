@@ -41,7 +41,7 @@ import Data.Text.Lazy qualified
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.Value (Value(..), Table)
+import Toml.Value
 
 -- | Build a 'Table' from a list of key-value pairs.
 --
@@ -49,7 +49,7 @@ import Toml.Value (Value(..), Table)
 --
 -- @since 1.3.0.0
 table :: [(String, Value)] -> Table
-table = Map.fromList
+table kvs = MkTable (Map.fromList [(k, ((), v)) | (k, v) <- kvs])
 {-# INLINE table #-}
 
 -- | Convenience function for building key-value pairs while
@@ -99,6 +99,12 @@ instance (ToKey k, ToValue v) => ToTable (Map k v) where
 
 -- | @since 1.0.1.0
 instance (ToKey k, ToValue v) => ToValue (Map k v) where
+    toValue = defaultTableToValue
+
+instance ToTable (Table' a) where
+    toTable = forgetTableAnns
+
+instance ToValue (Table' a) where
     toValue = defaultTableToValue
 
 -- | Convert to a table key. This class enables various string types to be

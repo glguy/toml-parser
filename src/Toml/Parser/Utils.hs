@@ -27,7 +27,7 @@ module Toml.Parser.Utils (
     asLocalDate,
     asLocalTime,
     asLocalDateTime,
-
+    locVal,
 
     lexerP,
     errorP,
@@ -40,9 +40,9 @@ module Toml.Parser.Utils (
 import Data.Time
 import Toml.Lexer (scanToken, Context(..))
 import Toml.Lexer.Token (Token(..))
-import Toml.Located (Located)
+import Toml.Located (Located(..))
 import Toml.Pretty (prettyToken)
-import Toml.Parser.Types
+import Toml.Position (Position)
 
 -- continuation passing implementation of a state monad with errors
 newtype Parser r a = P {
@@ -157,5 +157,5 @@ asLocalTime =
         TokLocalTime x -> Just x
         _ -> Nothing
 
-
-
+locVal :: (Position -> a -> b) -> Located a -> b
+locVal f (Located l x) = f l x

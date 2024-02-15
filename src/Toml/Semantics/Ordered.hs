@@ -39,7 +39,6 @@ import Data.Foldable (foldl', toList)
 import Data.List (sortOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Toml.Located (Located(locThing))
 import Toml.Parser.Types (Expr(..), Key, Val(ValTable, ValArray))
 
 -- | Summary of the order of the keys in a TOML document.
@@ -70,20 +69,20 @@ emptyOrder = TO Map.empty
 
 -- | Extract a 'TableOrder' from the output of 'Toml.Parser.parseRawToml'
 -- to be later used with 'projectKey'.
-extractTableOrder :: [Expr] -> TableOrder
+extractTableOrder :: [Expr a] -> TableOrder
 extractTableOrder = snd . foldl' addExpr ([], emptyOrder)
 
-addExpr :: ([String], TableOrder) -> Expr -> ([String], TableOrder)
+addExpr :: ([String], TableOrder) -> Expr a -> ([String], TableOrder)
 addExpr (prefix, to) = \case
     TableExpr k      -> let k' = keyPath k in (k', addKey to k')
     ArrayTableExpr k -> let k' = keyPath k in (k', addKey to k')
     KeyValExpr k v   -> (prefix, addVal prefix (addKey to (prefix ++ keyPath k)) v)
 
-addVal :: [String] -> TableOrder -> Located Val -> TableOrder
+addVal :: [String] -> TableOrder -> Val a -> TableOrder
 addVal prefix to lval =
-    case locThing lval of
-        ValArray xs -> foldl' (addVal prefix) to xs
-        ValTable kvs ->
+    case lval of
+        ValArray _ xs -> foldl' (addVal prefix) to xs
+        ValTable _ kvs ->
             foldl' (\acc (k,v) ->
                 let k' = prefix ++ keyPath k in
                 addVal k' (addKey acc k') v) to kvs
@@ -96,8 +95,8 @@ addKey (TO to) (x:xs) = TO (Map.alter f x to)
         f Nothing = Just (KeyOrder (Map.size to) (addKey emptyOrder xs))
         f (Just (KeyOrder i m)) = Just (KeyOrder i (addKey m xs))
 
-keyPath :: Key -> [String]
-keyPath = map locThing . toList
+keyPath :: Key a -> [String]
+keyPath = map snd . toList
 
 -- | Render a white-space nested representation of the key ordering extracted
 -- by 'extractTableOrder'. This is provided for debugging and understandability.

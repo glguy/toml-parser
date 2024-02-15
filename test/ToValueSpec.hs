@@ -1,7 +1,7 @@
 module ToValueSpec where
 
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (Value(..))
+import Toml
 import Toml.ToValue (ToValue(toValue))
 
 spec :: Spec

@@ -23,16 +23,15 @@ module Toml.ToValue.Generic (
     genericToArray,
     ) where
 
-import Data.Map qualified as Map
 import GHC.Generics
-import Toml.Value (Table, Value(Array))
-import Toml.ToValue (ToValue(..))
+import Toml.Value
+import Toml.ToValue (ToValue(..), table)
 
 -- | Use a record's field names to generate a 'Table'
 --
 -- @since 1.0.2.0
 genericToTable :: (Generic a, GToTable (Rep a)) => a -> Table
-genericToTable x = Map.fromList (gToTable (from x) [])
+genericToTable x = table (gToTable (from x) [])
 {-# INLINE genericToTable #-}
 
 -- | Use a record's field names to generate a 'Table'

@@ -26,6 +26,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 
 import Toml.Lexer (Context(..), Token(..))
 import Toml.Located (Located(Located, locThing))
+import Toml.Position (Position)
 import Toml.Parser.Types (Expr(..), Key, Val(..), SectionKind(..))
 import Toml.Parser.Utils
 import Toml.Position (startPos)
@@ -63,48 +64,48 @@ LOCALTIME       { (traverse asLocalTime      -> Just $$) }
 
 %%
 
-toml ::                         { [Expr]    }
+toml ::                         { [Expr Position] }
   : sepBy1(expression, NEWLINE) { concat $1 }
 
-expression ::       { [Expr]                  }
+expression ::       { [Expr Position]         }
   :                 { []                      }
   | keyval          { [KeyValExpr (fst $1) (snd $1)] }
   | '['  key ']'    { [TableExpr      $2    ] }
   | '[[' key ']]'   { [ArrayTableExpr $2    ] }
 
-keyval ::           { (Key, Located Val)      }
+keyval ::           { (Key Position, Val Position) }
   : key rhs '=' pop val { ($1,$5)             }
 
-key ::              { Key                     }
+key ::              { Key Position            }
   : sepBy1(simplekey, '.') { $1               }
 
-simplekey ::        { Located String          }
-  : BAREKEY         { $1        }
-  | STRING          { $1        }
+simplekey ::        { (Position, String)      }
+  : BAREKEY         { locVal (,) $1           }
+  | STRING          { locVal (,) $1           }
 
-val ::              { Located Val             }
-  : INTEGER         { fmap ValInteger    $1 }
-  | FLOAT           { fmap ValFloat      $1 }
-  | BOOL            { fmap ValBool       $1 }
-  | STRING          { fmap ValString     $1 }
-  | MLSTRING        { fmap ValString     $1 }
-  | LOCALDATE       { fmap ValDay        $1 }
-  | LOCALTIME       { fmap ValTimeOfDay  $1 }
-  | OFFSETDATETIME  { fmap ValZonedTime  $1 }
-  | LOCALDATETIME   { fmap ValLocalTime  $1 }
-  | array           { fmap ValArray      $1 }
-  | inlinetable     { fmap ValTable      $1 }
+val ::              { Val Position            }
+  : INTEGER         { locVal ValInteger    $1 }
+  | FLOAT           { locVal ValFloat      $1 }
+  | BOOL            { locVal ValBool       $1 }
+  | STRING          { locVal ValString     $1 }
+  | MLSTRING        { locVal ValString     $1 }
+  | LOCALDATE       { locVal ValDay        $1 }
+  | LOCALTIME       { locVal ValTimeOfDay  $1 }
+  | OFFSETDATETIME  { locVal ValZonedTime  $1 }
+  | LOCALDATETIME   { locVal ValLocalTime  $1 }
+  | array           { locVal ValArray      $1 }
+  | inlinetable     { locVal ValTable      $1 }
 
-inlinetable ::      { Located [(Key, Located Val)]    }
+inlinetable ::      { Located [(Key Position, Val Position)] }
   : lhs '{' sepBy(keyval, ',') pop '}'
                     { Located $2 $3 }
 
-array ::            { Located [Located Val]  }
+array ::            { Located [Val Position]  }
   : rhs '[' newlines                          pop ']' { Located $2 [] }
   | rhs '[' newlines arrayvalues              pop ']' { Located $2 (reverse $4) }
   | rhs '[' newlines arrayvalues ',' newlines pop ']' { Located $2 (reverse $4)  }
 
-arrayvalues ::      { [Located Val]                 }
+arrayvalues ::      { [Val Position]                 }
   :                          val newlines { [$1]    }
   | arrayvalues ',' newlines val newlines { $4 : $1 }
 
@@ -137,7 +138,7 @@ pop ::              { ()                      }
 -- | Parse a list of tokens either returning the first unexpected
 -- token or a list of the TOML statements in the file to be
 -- processed by "Toml.Semantics".
-parseRawToml :: String -> Either (Located String) [Expr]
+parseRawToml :: String -> Either (Located String) [Expr Position]
 parseRawToml = runParser parseRawToml_ TopContext . Located startPos
 
 }

@@ -65,33 +65,35 @@ import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), warning, inIndex, inKey)
+import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), warning, inIndex, inKey, failAt)
 import Toml.FromValue.ParseTable
-import Toml.Value (Value'(..), Value(..))
-import Toml.Located
-import Toml.Pretty (prettyLocated)
+import Toml.Value
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
     -- | Convert a 'Value' or report an error message
-    fromValue :: Located Value' -> Matcher a
+    fromValue :: Value' l -> Matcher l a
 
     -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
-    listFromValue :: Located Value' -> Matcher [a]
-    listFromValue (Located _ (Array' xs)) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
+    listFromValue :: Value' l -> Matcher l [a]
+    listFromValue (Array' _ xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
     listFromValue v = typeError "array" v
 
 instance (Ord k, FromKey k, FromValue v) => FromValue (Map k v) where
-    fromValue (Located _ (Table' t)) = Map.fromList <$> traverse f (Map.assocs t)
+    fromValue (Table' _ (MkTable t)) = Map.fromList <$> traverse f (Map.assocs t)
         where
             f (k,(_, v)) = (,) <$> fromKey k <*> inKey k (fromValue v)
+    fromValue v = typeError "table" v
+
+instance FromValue Table where
+    fromValue (Table' _ t) = pure (forgetTableAnns t)
     fromValue v = typeError "table" v
 
 -- | Convert from a table key
 --
 -- @since 1.3.0.0
 class FromKey a where
-    fromKey :: String -> Matcher a
+    fromKey :: String -> Matcher l a
 
 -- | Matches all strings
 --
@@ -112,30 +114,17 @@ instance FromKey Data.Text.Lazy.Text where
     fromKey = pure . Data.Text.Lazy.pack
 
 -- | Report a type error
-typeError :: String {- ^ expected type -} -> Located Value' {- ^ actual value -} -> Matcher a
-typeError wanted got = fail (prettyLocated (fmap (\v -> "type error. wanted: " ++ wanted ++ " got: " ++ valueType v) got))
+typeError :: String {- ^ expected type -} -> Value' l {- ^ actual value -} -> Matcher l a
+typeError wanted got = failAt (valueAnn got) ("type error. wanted: " ++ wanted ++ " got: " ++ valueType got)
 
 -- | Used to derive a 'fromValue' implementation from a 'ParseTable' matcher.
-parseTableFromValue :: ParseTable a -> Located Value' -> Matcher a
-parseTableFromValue p (Located _ (Table' t)) = runParseTable p t
+parseTableFromValue :: ParseTable l a -> Value' l -> Matcher l a
+parseTableFromValue p (Table' _ t) = runParseTable p t
 parseTableFromValue _ v = typeError "table" v
-
-valueType :: Value' -> String
-valueType = \case
-    Integer'   {} -> "integer"
-    Float'     {} -> "float"
-    Array'     {} -> "array"
-    Table'     {} -> "table"
-    Bool'      {} -> "boolean"
-    String'    {} -> "string"
-    TimeOfDay' {} -> "local time"
-    LocalTime' {} -> "local date-time"
-    Day'       {} -> "locate date"
-    ZonedTime' {} -> "offset date-time"
 
 -- | Matches integer values
 instance FromValue Integer where
-    fromValue (Located _ (Integer' x)) = pure x
+    fromValue (Integer' _ x) = pure x
     fromValue v = typeError "integer" v
 
 -- | Matches non-negative integer values
@@ -145,15 +134,15 @@ instance FromValue Natural where
         if 0 <= i then
             pure (fromInteger i)
         else
-            fail (prettyLocated (Located (locPosition v) "integer out of range for Natural"))
+            failAt (valueAnn v) "integer out of range for Natural"
 
-fromValueSized :: forall a. (Bounded a, Integral a) => String -> Located Value' -> Matcher a
+fromValueSized :: forall l a. (Bounded a, Integral a) => String -> Value' l -> Matcher l a
 fromValueSized name v =
  do i <- fromValue v
     if fromIntegral (minBound :: a) <= i && i <= fromIntegral (maxBound :: a) then
         pure (fromInteger i)
     else
-        fail (prettyLocated (Located (locPosition v) ("integer out of range for " ++ name)))
+        failAt (valueAnn v) ("integer out of range for " ++ name)
 
 instance FromValue Int    where fromValue = fromValueSized "Int"
 instance FromValue Int8   where fromValue = fromValueSized "Int8"
@@ -169,10 +158,10 @@ instance FromValue Word64 where fromValue = fromValueSized "Word64"
 -- | Matches single-character strings with 'fromValue' and arbitrary
 -- strings with 'listFromValue' to support 'Prelude.String'
 instance FromValue Char where
-    fromValue (Located _ (String' [c])) = pure c
+    fromValue (String' _ [c]) = pure c
     fromValue v = typeError "character" v
 
-    listFromValue (Located _ (String' xs)) = pure xs
+    listFromValue (String' _ xs) = pure xs
     listFromValue v = typeError "string" v
 
 -- | Matches string literals
@@ -189,14 +178,14 @@ instance FromValue Data.Text.Lazy.Text where
 
 -- | Matches floating-point and integer values
 instance FromValue Double where
-    fromValue (Located _ (Float' x)) = pure x
-    fromValue (Located _ (Integer' x)) = pure (fromInteger x)
+    fromValue (Float' _ x) = pure x
+    fromValue (Integer' _ x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
 -- | Matches floating-point and integer values
 instance FromValue Float where
-    fromValue (Located _ (Float' x)) = pure (realToFrac x)
-    fromValue (Located _ (Integer' x)) = pure (fromInteger x)
+    fromValue (Float' _ x) = pure (realToFrac x)
+    fromValue (Integer' _ x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
 -- | Matches floating-point and integer values.
@@ -208,10 +197,10 @@ instance FromValue Float where
 --
 -- @since 1.3.0.0
 instance Integral a => FromValue (Ratio a) where
-    fromValue (Located _ (Float' x))
+    fromValue (Float' _ x)
         | isNaN x || isInfinite x = fail "finite float required"
         | otherwise = pure (realToFrac x)
-    fromValue (Located _ (Integer' x)) = pure (fromInteger x)
+    fromValue (Integer' _ x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
 -- | Matches non-empty arrays or reports an error.
@@ -232,7 +221,7 @@ instance FromValue a => FromValue (Seq a) where
 
 -- | Matches @true@ and @false@
 instance FromValue Bool where
-    fromValue (Located _ (Bool' x)) = pure x
+    fromValue (Bool' _ x) = pure x
     fromValue v = typeError "boolean" v
 
 -- | Implemented in terms of 'listFromValue'
@@ -241,61 +230,40 @@ instance FromValue a => FromValue [a] where
 
 -- | Matches local date literals
 instance FromValue Day where
-    fromValue (Located _ (Day' x)) = pure x
+    fromValue (Day' _ x) = pure x
     fromValue v = typeError "local date" v
 
 -- | Matches local time literals
 instance FromValue TimeOfDay where
-    fromValue (Located _ (TimeOfDay' x)) = pure x
+    fromValue (TimeOfDay' _ x) = pure x
     fromValue v = typeError "local time" v
 
 -- | Matches offset date-time literals
 instance FromValue ZonedTime where
-    fromValue (Located _ (ZonedTime' x)) = pure x
+    fromValue (ZonedTime' _ x) = pure x
     fromValue v = typeError "offset date-time" v
 
 -- | Matches local date-time literals
 instance FromValue LocalTime where
-    fromValue (Located _ (LocalTime' x)) = pure x
+    fromValue (LocalTime' _ x) = pure x
     fromValue v = typeError "local date-time" v
 
 -- | Matches all values, used for pass-through
-instance FromValue Value' where
-    fromValue = pure . locThing
-
-instance FromValue a => FromValue (Located a) where
-    fromValue v = Located (locPosition v) <$> fromValue v
-
--- | Matches all values, used for pass-through
 instance FromValue Value where
-    fromValue = pure . forgetPositions
-
-forgetPositions :: Located Value' -> Value
-forgetPositions (Located _ v) =
-    case v of
-        Integer'   x -> Integer   x
-        Float'     x -> Float     x
-        Array'     x -> Array     (map forgetPositions x)
-        Table'     x -> Table     (fmap (\(_, y) -> forgetPositions y) x)
-        Bool'      x -> Bool      x
-        String'    x -> String    x
-        TimeOfDay' x -> TimeOfDay x
-        ZonedTime' x -> ZonedTime x
-        LocalTime' x -> LocalTime x
-        Day'       x -> Day       x
+    fromValue = pure . forgetValueAnns
 
 -- | Convenience function for matching an optional key with a 'FromValue'
 -- instance.
 --
 -- @optKey key = 'optKeyOf' key 'fromValue'@
-optKey :: FromValue a => String -> ParseTable (Maybe a)
+optKey :: FromValue a => String -> ParseTable l (Maybe a)
 optKey key = optKeyOf key fromValue
 
 -- | Convenience function for matching a required key with a 'FromValue'
 -- instance.
 --
 -- @reqKey key = 'reqKeyOf' key 'fromValue'@
-reqKey :: FromValue a => String -> ParseTable a
+reqKey :: FromValue a => String -> ParseTable l a
 reqKey key = reqKeyOf key fromValue
 
 -- | Match a table entry by key if it exists or return 'Nothing' if not.
@@ -304,8 +272,8 @@ reqKey key = reqKeyOf key fromValue
 -- See 'pickKey' for more complex cases.
 optKeyOf ::
     String {- ^ key -} ->
-    (Located Value' -> Matcher a) {- ^ value matcher -} ->
-    ParseTable (Maybe a)
+    (Value' l -> Matcher l a) {- ^ value matcher -} ->
+    ParseTable l (Maybe a)
 optKeyOf key k = pickKey [Key key (fmap Just . k), Else (pure Nothing)]
 
 -- | Match a table entry by key or report an error if missing.
@@ -313,6 +281,6 @@ optKeyOf key k = pickKey [Key key (fmap Just . k), Else (pure Nothing)]
 -- See 'pickKey' for more complex cases.
 reqKeyOf ::
     String {- ^ key -} ->
-    (Located Value' -> Matcher a) {- ^ value matcher -} ->
-    ParseTable a
+    (Value' l -> Matcher l a) {- ^ value matcher -} ->
+    ParseTable l a
 reqKeyOf key k = pickKey [Key key k]

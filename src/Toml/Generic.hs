@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, UndecidableInstances, ScopedTypeVariables, InstanceSigs #-}
 {-|
 Module      : Toml.Generic
 Description : Integration with DerivingVia extension
@@ -44,7 +44,7 @@ import Toml.FromValue.Generic (GParseTable, GFromArray, genericParseTable, gener
 import Toml.FromValue.Matcher (Matcher)
 import Toml.ToValue (ToTable(toTable), ToValue(toValue), defaultTableToValue)
 import Toml.ToValue.Generic (GToTable, GToArray, genericToTable, genericToArray)
-import Toml.Value (Value, Table)
+import Toml.Value (Value, Value', Table)
 
 -- | Helper type to use GHC's DerivingVia extension to derive
 -- 'ToValue', 'ToTable', 'FromValue' for records.
@@ -64,7 +64,8 @@ instance (Generic a, GToTable (Rep a)) => ToTable (GenericTomlTable a) where
 
 -- | Instance derived using 'genericParseTable'
 instance (Generic a, GParseTable (Rep a)) => FromValue (GenericTomlTable a) where
-    fromValue = coerce (parseTableFromValue genericParseTable :: Value -> Matcher a)
+    fromValue :: forall l. Value' l -> Matcher l (GenericTomlTable a)
+    fromValue = coerce (parseTableFromValue genericParseTable :: Value' l -> Matcher l a)
     {-# INLINE fromValue #-}
 
 -- | Helper type to use GHC's DerivingVia extension to derive
@@ -80,5 +81,6 @@ instance (Generic a, GToArray (Rep a)) => ToValue (GenericTomlArray a) where
 
 -- | Instance derived using 'genericFromArray'
 instance (Generic a, GFromArray (Rep a)) => FromValue (GenericTomlArray a) where
-    fromValue = coerce (genericFromArray :: Value -> Matcher a)
+    fromValue :: forall l. Value' l -> Matcher l (GenericTomlArray a)
+    fromValue = coerce (genericFromArray :: Value' l -> Matcher l a)
     {-# INLINE fromValue #-}

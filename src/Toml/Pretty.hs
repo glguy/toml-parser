@@ -37,6 +37,7 @@ module Toml.Pretty (
     prettySemanticError,
     prettyMatchMessage,
     prettyLocated,
+    prettyPosition,
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
@@ -56,7 +57,7 @@ import Toml.Located (Located(..))
 import Toml.Parser.Types (SectionKind(..))
 import Toml.Position (Position(..))
 import Toml.Semantics (SemanticError (..), SemanticErrorKind (..))
-import Toml.Value (Value(..), Table)
+import Toml.Value
 
 -- | Annotation used to enable styling pretty-printed TOML
 data DocClass
@@ -157,34 +158,34 @@ prettyToken = \case
     TokLocalTime      _ -> "local time"
     TokEOF              -> "end-of-input"
 
-prettyAssignment :: String -> Value -> TomlDoc
+prettyAssignment :: String -> Value' l -> TomlDoc
 prettyAssignment = go . pure
     where
-        go ks (Table (Map.assocs -> [(k,v)])) = go (NonEmpty.cons k ks) v
+        go ks (Table' _ (MkTable (Map.assocs -> [(k,(_, v))]))) = go (NonEmpty.cons k ks) v
         go ks v = prettyKey (NonEmpty.reverse ks) <+> equals <+> prettyValue v
 
 -- | Render a value suitable for assignment on the right-hand side
 -- of an equals sign. This value will always use inline table and list
 -- syntax.
-prettyValue :: Value -> TomlDoc
+prettyValue :: Value' l -> TomlDoc
 prettyValue = \case
-    Integer i           -> annotate NumberClass (pretty i)
-    Float   f
+    Integer' _ i           -> annotate NumberClass (pretty i)
+    Float' _   f
         | isNaN f       -> annotate NumberClass "nan"
         | isInfinite f  -> annotate NumberClass (if f > 0 then "inf" else "-inf")
         | otherwise     -> annotate NumberClass (pretty f)
-    Array a             -> align (list [prettyValue v | v <- a])
-    Table t             -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,v) <- Map.assocs t] <> rbrace
-    Bool True           -> annotate BoolClass "true"
-    Bool False          -> annotate BoolClass "false"
-    String str          -> prettySmartString str
-    TimeOfDay tod       -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
-    ZonedTime zt
+    Array' _ a          -> align (list [prettyValue v | v <- a])
+    Table' _ (MkTable t) -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,(_, v)) <- Map.assocs t] <> rbrace
+    Bool' _ True        -> annotate BoolClass "true"
+    Bool' _ False       -> annotate BoolClass "false"
+    String' _ str       -> prettySmartString str
+    TimeOfDay' _ tod    -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
+    ZonedTime' _ zt
         | timeZoneMinutes (zonedTimeZone zt) == 0 ->
                            annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%QZ" zt))
         | otherwise     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%Q%Ez" zt))
-    LocalTime lt        -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%Q" lt))
-    Day d               -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%d" d))
+    LocalTime' _ lt     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%Q" lt))
+    Day' _ d            -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%d" d))
 
 prettySmartString :: String -> TomlDoc
 prettySmartString str
@@ -204,45 +205,45 @@ prettyString str = annotate StringClass (fromString (quoteString str))
 
 -- | Predicate for values that CAN rendered on the
 -- righthand-side of an @=@.
-isSimple :: Value -> Bool
+isSimple :: Value' l -> Bool
 isSimple = \case
-    Integer   _ -> True
-    Float     _ -> True
-    Bool      _ -> True
-    String    _ -> True
-    TimeOfDay _ -> True
-    ZonedTime _ -> True
-    LocalTime _ -> True
-    Day       _ -> True
-    Table     x -> isSingularTable x -- differs from isAlwaysSimple
-    Array     x -> null x || not (all isTable x)
+    Integer'   {} -> True
+    Float'     {} -> True
+    Bool'      {} -> True
+    String'    {} -> True
+    TimeOfDay' {} -> True
+    ZonedTime' {} -> True
+    LocalTime' {} -> True
+    Day'       {} -> True
+    Table' _    x -> isSingularTable x -- differs from isAlwaysSimple
+    Array' _    x -> null x || not (all isTable x)
 
 -- | Predicate for values that can be MUST rendered on the
 -- righthand-side of an @=@.
-isAlwaysSimple :: Value -> Bool
+isAlwaysSimple :: Value' l -> Bool
 isAlwaysSimple = \case
-    Integer   _ -> True
-    Float     _ -> True
-    Bool      _ -> True
-    String    _ -> True
-    TimeOfDay _ -> True
-    ZonedTime _ -> True
-    LocalTime _ -> True
-    Day       _ -> True
-    Table     _ -> False -- differs from isSimple
-    Array     x -> null x || not (all isTable x)
+    Integer'   {} -> True
+    Float'     {} -> True
+    Bool'      {} -> True
+    String'    {} -> True
+    TimeOfDay' {} -> True
+    ZonedTime' {} -> True
+    LocalTime' {} -> True
+    Day'       {} -> True
+    Table'     {} -> False -- differs from isSimple
+    Array' _    x -> null x || not (all isTable x)
 
 -- | Predicate for table values.
-isTable :: Value -> Bool
-isTable Table {} = True
+isTable :: Value' l -> Bool
+isTable Table'{} = True
 isTable _        = False
 
 -- | Predicate for tables that can be rendered with a single assignment.
 -- These can be collapsed using dotted-key notation on the lefthand-side
 -- of a @=@.
-isSingularTable :: Table -> Bool
-isSingularTable (Map.elems -> [v])  = isSimple v
-isSingularTable _                   = False
+isSingularTable :: Table' l -> Bool
+isSingularTable (MkTable (Map.elems -> [(_, v)])) = isSimple v
+isSingularTable _ = False
 
 -- | Render a complete TOML document using top-level table and array of
 -- table sections where possible.
@@ -250,7 +251,7 @@ isSingularTable _                   = False
 -- Keys are sorted alphabetically. To provide a custom ordering, see
 -- 'prettyTomlOrdered'.
 prettyToml ::
-    Table {- ^ table to print -} ->
+    Table' a {- ^ table to print -} ->
     TomlDoc {- ^ TOML syntax -}
 prettyToml = prettyToml_ NoProjection TableKind []
 
@@ -293,7 +294,7 @@ prettyToml = prettyToml_ NoProjection TableKind []
 prettyTomlOrdered ::
   Ord a =>
   ([String] -> String -> a) {- ^ table path -> key -> projection -} ->
-  Table {- ^ table to print -} ->
+  Table' l {- ^ table to print -} ->
   TomlDoc {- ^ TOML syntax -}
 prettyTomlOrdered proj = prettyToml_ (KeyProjection proj) TableKind []
 
@@ -304,8 +305,8 @@ data KeyProjection where
     -- | Projection provided: table name and current key are available
     KeyProjection :: Ord a => ([String] -> String -> a) -> KeyProjection
 
-prettyToml_ :: KeyProjection -> SectionKind -> [String] -> Table -> TomlDoc
-prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
+prettyToml_ :: KeyProjection -> SectionKind -> [String] -> Table' l -> TomlDoc
+prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
     where
         order =
             case mbKeyProj of
@@ -315,9 +316,9 @@ prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
         kvs = order (Map.assocs t)
 
         -- this table will require no subsequent tables to be defined
-        simpleToml = all isSimple t
+        simpleToml = all (isSimple . snd) t
 
-        (simple, sections) = partition (isAlwaysSimple . snd) kvs
+        (simple, sections) = partition (isAlwaysSimple . snd . snd) kvs
 
         topLines = [fold topElts | let topElts = headers ++ assignments, not (null topElts)]
 
@@ -327,22 +328,22 @@ prettyToml_ mbKeyProj kind prefix t = vcat (topLines ++ subtables)
                     [prettySectionKind kind key <> hardline]
                 _ -> []
 
-        assignments = [prettyAssignment k v <> hardline | (k,v) <- if simpleToml then kvs else simple]
+        assignments = [prettyAssignment k v <> hardline | (k,(_, v)) <- if simpleToml then kvs else simple]
 
-        subtables = [prettySection (prefix ++ [k]) v | not simpleToml, (k,v) <- sections]
+        subtables = [prettySection (prefix ++ [k]) v | not simpleToml, (k,(_, v)) <- sections]
 
-        prettySection key (Table tab) =
+        prettySection key (Table' _ tab) =
             prettyToml_ mbKeyProj TableKind key tab
-        prettySection key (Array a) =
-            vcat [prettyToml_ mbKeyProj ArrayTableKind key tab | Table tab <- a]
+        prettySection key (Array' _ a) =
+            vcat [prettyToml_ mbKeyProj ArrayTableKind key tab | Table' _ tab <- a]
         prettySection _ _ = error "prettySection applied to simple value"
 
 -- | Render a semantic TOML error in a human-readable string.
 --
 -- @since 1.3.0.0
-prettySemanticError :: SemanticError -> String
-prettySemanticError (SemanticError key kind) =
-    printf "key error: %s %s" (show (prettySimpleKey key))
+prettySemanticError :: SemanticError String -> String
+prettySemanticError (SemanticError a key kind) =
+    printf "%s: key error: %s %s" a (show (prettySimpleKey key))
     case kind of
         AlreadyAssigned -> "is already assigned" :: String
         ClosedTable     -> "is a closed table"
@@ -351,12 +352,16 @@ prettySemanticError (SemanticError key kind) =
 -- | Render a TOML decoding error as a human-readable string.
 --
 -- @since 1.3.0.0
-prettyMatchMessage :: MatchMessage -> String
-prettyMatchMessage (MatchMessage scope msg) =
+prettyMatchMessage :: MatchMessage String -> String
+prettyMatchMessage (MatchMessage loc scope msg) =
+    (case loc of Nothing -> ""; Just l -> l ++ ": ") ++
     msg ++ " in top" ++ foldr f "" scope
     where
         f (ScopeIndex i) = ('[' :) . shows i . (']':)
         f (ScopeKey key) = ('.' :) . shows (prettySimpleKey key)
 
 prettyLocated :: Located String -> String
-prettyLocated (Located p s) = printf "%d:%d: %s" (posLine p) (posColumn p) s
+prettyLocated (Located p s) = printf "%s: %s" (prettyPosition p) s
+
+prettyPosition :: Position -> String
+prettyPosition p = printf "%d:%d" (posLine p) (posColumn p)

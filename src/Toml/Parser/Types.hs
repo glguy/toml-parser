@@ -23,32 +23,31 @@ module Toml.Parser.Types (
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
-import Toml.Located (Located)
 
 -- | Non-empty sequence of dotted simple keys
-type Key = NonEmpty (Located String)
+type Key a = NonEmpty (a, String)
 
 -- | Headers and assignments corresponding to lines of a TOML file
-data Expr
-    = KeyValExpr     Key (Located Val) -- ^ key value assignment: @key = value@
-    | TableExpr      Key     -- ^ table: @[key]@
-    | ArrayTableExpr Key     -- ^ array of tables: @[[key]]@
+data Expr a
+    = KeyValExpr     (Key a) (Val a) -- ^ key value assignment: @key = value@
+    | TableExpr      (Key a)         -- ^ table: @[key]@
+    | ArrayTableExpr (Key a)         -- ^ array of tables: @[[key]]@
     deriving (Read, Show)
 
 
 -- | Unvalidated TOML values. Table are represented as a list of
 -- assignments rather than as resolved maps.
-data Val
-    = ValInteger   Integer
-    | ValFloat     Double
-    | ValArray     [Located Val]
-    | ValTable     [(Key, Located Val)]
-    | ValBool      Bool
-    | ValString    String
-    | ValTimeOfDay TimeOfDay
-    | ValZonedTime ZonedTime
-    | ValLocalTime LocalTime
-    | ValDay       Day
+data Val a
+    = ValInteger   a Integer
+    | ValFloat     a Double
+    | ValArray     a [Val a]
+    | ValTable     a [(Key a, Val a)]
+    | ValBool      a Bool
+    | ValString    a String
+    | ValTimeOfDay a TimeOfDay
+    | ValZonedTime a ZonedTime
+    | ValLocalTime a LocalTime
+    | ValDay       a Day
     deriving (Read, Show)
 
 -- | Kinds of table headers.

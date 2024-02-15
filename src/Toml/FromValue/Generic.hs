@@ -25,14 +25,14 @@ import Control.Monad.Trans.State (StateT(..))
 import Data.Coerce (coerce)
 import GHC.Generics
 import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
-import Toml.FromValue.Matcher (Matcher)
+import Toml.FromValue.Matcher (Matcher, failAt)
 import Toml.FromValue.ParseTable (ParseTable)
-import Toml.Value (Value)
+import Toml.Value
 
 -- | Match a 'Table' using the field names in a record.
 --
 -- @since 1.2.0.0
-genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable a
+genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable l a
 genericParseTable = to <$> gParseTable
 {-# INLINE genericParseTable #-}
 
@@ -40,14 +40,15 @@ genericParseTable = to <$> gParseTable
 -- of a constructor to the elements of the array.
 --
 -- @since 1.3.2.0
-genericFromArray :: (Generic a, GFromArray (Rep a)) => Value -> Matcher a
-genericFromArray v =
- do xs <- fromValue v
-    (gen, xs') <- runStateT gFromArray xs
+genericFromArray :: (Generic a, GFromArray (Rep a)) => Value' l -> Matcher l a
+genericFromArray (Array' a xs) =
+ do (gen, xs') <- runStateT gFromArray xs
     if null xs' then
         pure (to gen)
     else
-        fail ("array " ++ show (length xs') ++ " elements too long")
+        failAt a ("array " ++ show (length xs') ++ " elements too long")
+genericFromArray v = failAt (valueAnn v) ("type error. wanted: array got: " ++ valueType v)
+
 {-# INLINE genericFromArray #-}
 
 -- gParseTable is written in continuation passing style because
@@ -61,7 +62,7 @@ genericFromArray v =
 -- @since 1.0.2.0
 class GParseTable f where
     -- | Convert a value and apply the continuation to the result.
-    gParseTable :: ParseTable (f a)
+    gParseTable :: ParseTable l (f a)
 
 -- | Ignores type constructor name
 instance GParseTable f => GParseTable (D1 c f) where
@@ -104,11 +105,11 @@ instance GParseTable U1 where
 --
 -- @since 1.3.2.0
 class GFromArray f where
-    gFromArray :: StateT [Value] Matcher (f a)
+    gFromArray :: StateT [Value' l] (Matcher l) (f a)
 
 instance GFromArray f => GFromArray (M1 i c f) where
-    gFromArray :: forall a. StateT [Value] Matcher (M1 i c f a)
-    gFromArray = coerce (gFromArray :: StateT [Value] Matcher (f a))
+    gFromArray :: forall a l. StateT [Value' l] (Matcher l) (M1 i c f a)
+    gFromArray = coerce (gFromArray :: StateT [Value' l] (Matcher l) (f a))
     {-# INLINE gFromArray #-}
 
 instance (GFromArray f, GFromArray g) => GFromArray (f :*: g) where

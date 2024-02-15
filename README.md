@@ -44,8 +44,8 @@ to ensure that its code typechecks and stays in sync with the rest of the packag
 import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, hspec, it, shouldBe)
-import Toml (parse, decode, encode, Value(..))
-import Toml.FromValue (Result(Success), FromValue(fromValue), parseTableFromValue, reqKey)
+import Toml
+import Toml.FromValue (FromValue(fromValue), parseTableFromValue, reqKey)
 import Toml.Generic (GenericTomlTable(..))
 import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue, table, (.=))
 

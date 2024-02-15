@@ -16,7 +16,7 @@ import Data.Map qualified as Map
 import Data.Time (Day)
 import QuoteStr (quoteStr)
 import Test.Hspec (describe, it, shouldBe, shouldSatisfy, Spec)
-import Toml (Value(..), parse, decode, Result(Success))
+import Toml
 import Toml.ToValue (table, (.=))
 
 spec :: Spec
@@ -32,7 +32,7 @@ spec =
 
     describe "key/value pair"
      do it "supports the most basic assignments" $
-          parse "key = \"value\"" `shouldBe` Right (Map.singleton "key" (String "value"))
+          parse "key = \"value\"" `shouldBe` Right (table ["key" .= String "value"])
 
         it "requires a value after equals" $
           parse "key = # INVALID"
@@ -140,14 +140,14 @@ spec =
           parse [quoteStr|
             str = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."|]
           `shouldBe`
-          Right (Map.singleton "str" (String "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."))
+          Right (table ["str" .= String "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."])
 
         it "strips the initial newline from multiline strings" $
           parse [quoteStr|
             str1 = """
             Roses are red
             Violets are blue"""|]
-          `shouldBe` Right (Map.singleton "str1" (String "Roses are red\nViolets are blue"))
+          `shouldBe` Right (table ["str1" .= String "Roses are red\nViolets are blue"])
 
         it "strips whitespace with a trailing escape" $
           parse [quoteStr|
@@ -330,7 +330,7 @@ spec =
             sf6 = -nan # valid, actual encoding is implementation-specific|]
           `shouldSatisfy` \case
             Left{} -> False
-            Right x -> all checkNaN x
+            Right (MkTable x) -> all (checkNaN . snd) x
 
         -- code using Numeric.readFloat can use significant
         -- resources. this makes sure this doesn't start happening
@@ -338,7 +338,7 @@ spec =
         it "parses huge floats without great delays" $
           parse "x = 1e1000000000000"
           `shouldBe`
-          Right (Map.singleton "x" (Float (1/0)))
+          Right (table ["x" .= Float (1/0)])
 
     describe "boolean"
      do it "parses boolean literals" $
@@ -387,7 +387,7 @@ spec =
           parse [quoteStr|
             ld1 = 1979-05-27|]
           `shouldBe`
-          Right (Map.singleton "ld1" (Day (read "1979-05-27")))
+          Right (table ["ld1" .= Day (read "1979-05-27")])
 
     describe "local time"
      do it "parses times" $
@@ -445,7 +445,7 @@ spec =
                 "integers3" .= [1, 2 :: Int]])
 
         it "disambiguates double brackets from array tables" $
-          parse "x = [[1]]" `shouldBe` Right (Map.singleton "x" (Array [Array [Integer 1]]))
+          parse "x = [[1]]" `shouldBe` Right (table ["x" .= Array [Array [Integer 1]]])
 
     describe "table"
      do it "allows empty tables" $
@@ -596,7 +596,7 @@ spec =
             table [
               "name" .= "Hammer",
               "sku"  .= Integer 738594937],
-            Map.empty,
+            MkTable Map.empty,
             table [
                 "color" .= "gray",
                 "name"  .= "Nail",

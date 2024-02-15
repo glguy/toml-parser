@@ -18,7 +18,7 @@ module HieDemoSpec where
 import GHC.Generics ( Generic )
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
-import Toml (Value(Table, Array), Table, decode)
+import Toml (decode, Value'(..), Table')
 import Toml.FromValue
 import Toml.FromValue.Generic (genericParseTable)
 
@@ -142,11 +142,11 @@ instance FromValue MultiSubComponent where
     fromValue = parseTableFromValue genericParseTable
 
 instance FromValue CabalConfig where
-    fromValue v@Toml.Array{} = CabalConfig Nothing . ManyComponents <$> fromValue v
-    fromValue (Toml.Table t)  = getComponentTable CabalConfig "cabalProject" t
+    fromValue v@Toml.Array'{} = CabalConfig Nothing . ManyComponents <$> fromValue v
+    fromValue (Toml.Table' _ t) = getComponentTable CabalConfig "cabalProject" t
     fromValue _               = fail "cabal configuration expects table or array"
 
-getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> String -> Toml.Table -> Matcher a
+getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> String -> Toml.Table' l -> Matcher l a
 getComponentTable con pathKey = runParseTable $ con
     <$> optKey pathKey
     <*> pickKey [
@@ -161,9 +161,9 @@ instance FromValue CabalComponent where
         <*> optKey "cabalProject"
 
 instance FromValue StackConfig where
-    fromValue v@Toml.Array{} = StackConfig Nothing . ManyComponents <$> fromValue v
-    fromValue (Toml.Table t) = getComponentTable StackConfig "stackYaml" t
-    fromValue _              = fail "stack configuration expects table or array"
+    fromValue v@Toml.Array'{} = StackConfig Nothing . ManyComponents <$> fromValue v
+    fromValue (Toml.Table' _ t) = getComponentTable StackConfig "stackYaml" t
+    fromValue _ = fail "stack configuration expects table or array"
 
 instance FromValue StackComponent where
     fromValue = parseTableFromValue $ StackComponent
@@ -192,11 +192,11 @@ instance FromValue BiosConfig where
 data KeyCase a where
     KeyCase :: FromValue b => (b -> a) -> String -> KeyCase a
 
-reqAlts :: [KeyCase a] -> ParseTable a
+reqAlts :: [KeyCase a] -> ParseTable l a
 reqAlts xs = pickKey
     [Key key (fmap con . fromValue) | KeyCase con key <- xs]
 
-optAlts :: [KeyCase a] -> ParseTable (Maybe a)
+optAlts :: [KeyCase a] -> ParseTable l (Maybe a)
 optAlts xs = pickKey $
     [Key key (fmap (Just . con) . fromValue) | KeyCase con key <- xs] ++
     [Else (pure Nothing)]
@@ -278,7 +278,7 @@ spec =
             component = 42
             |]
         `shouldBe`
-        (Failure ["type error. wanted: string got: integer in top.cradle.cabal.component"]
+        (Failure ["3:13: type error. wanted: string got: integer in top.cradle.cabal.component"]
             :: Result String CradleConfig)
 
     it "detects unusd keys" $
