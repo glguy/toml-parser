@@ -12,16 +12,18 @@ is a Map with a single level of keys.
 
 -}
 module Toml.Value (
-    -- * Unlocated values
+    -- * Unlocated value synonyms
     Value,
-    pattern Integer, pattern Float, pattern String, pattern Bool,
-    pattern ZonedTime, pattern Day, pattern LocalTime, pattern TimeOfDay,
-    pattern Array, pattern Table,
-
     Table,
-    -- * Located values
-    Value'(..),
+
+    -- * Annotated values
+    Value'(..,
+        Integer,  Float,  String,  Bool,
+        ZonedTime,  Day,  LocalTime,  TimeOfDay,
+        Array,  Table),
     Table'(..),
+
+    -- * Utilities
     forgetValueAnns,
     forgetTableAnns,
     valueAnn,
@@ -118,11 +120,11 @@ valueType = \case
     Day'       {} -> "locate date"
     ZonedTime' {} -> "offset date-time"
 
--- | A table with located values.
--- The position in each entry refers to the *key*.
+-- | A table with anontated keys and values.
 newtype Table' a = MkTable (Map String (a, Value' a))
     deriving (Read, Show, Functor, Foldable, Traversable)
 
+-- Annotations are ignored.
 instance Eq (Table' a) where
     MkTable x == MkTable y = [(k,v) | (k, (_, v)) <- Map.assocs x] == [(k,v) | (k, (_, v)) <- Map.assocs y]
 
@@ -132,9 +134,11 @@ type Table = Table' ()
 -- | A 'Value'' without annotations
 type Value = Value' ()
 
+-- | Replaces annotations with a unit.
 forgetTableAnns :: Table' a -> Table
 forgetTableAnns (MkTable t) = MkTable (fmap (\(_, v) -> ((), forgetValueAnns v)) t)
 
+-- | Replaces annotations with a unit.
 forgetValueAnns :: Value' a -> Value
 forgetValueAnns =
     \case
@@ -153,8 +157,7 @@ forgetValueAnns =
 -- 'Eq' instance. 'ZonedTime' values are equal if their times and
 -- timezones are both equal.
 --
--- Annotations are ignored
-
+-- Annotations are ignored.
 instance Eq (Value' a) where
     Integer'   _ x == Integer'   _ y = x == y
     Float'     _ x == Float'     _ y = x == y

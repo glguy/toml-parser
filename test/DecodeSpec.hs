@@ -127,15 +127,15 @@ spec =
             color = "yellow"|]
         `shouldBe`
         Success [
-            "4:1: unexpected key: count in top.fruits[0]",
-            "3:1: unexpected key: taste in top.fruits[0]",
-            "7:1: unexpected key: color in top.fruits[1]"]
+            "4:1: unexpected key: count in fruits[0]",
+            "3:1: unexpected key: taste in fruits[0]",
+            "7:1: unexpected key: color in fruits[1]"]
             (Fruits [Fruit "peach" Nothing [], Fruit "pineapple" Nothing []])
 
     it "handles missing key errors" $
         (decode "[[fruits]]" :: Result String Fruits)
         `shouldBe`
-        Failure ["1:3: missing key: name in top.fruits[0]"]
+        Failure ["1:3: missing key: name in fruits[0]"]
 
     it "handles parse errors while decoding" $
         (decode "x =" :: Result String Fruits)

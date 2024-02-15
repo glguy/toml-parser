@@ -19,9 +19,6 @@ module Toml (
     -- * Types
     Table,
     Value,
-    pattern Integer, pattern Float, pattern String, pattern Bool,
-    pattern ZonedTime, pattern Day, pattern LocalTime, pattern TimeOfDay,
-    pattern Array, pattern Table,
 
     -- * Located types
     Located(..),
@@ -46,7 +43,7 @@ import Toml.FromValue.Matcher (runMatcher)
 import Toml.Located (Located(..))
 import Toml.Parser (parseRawToml)
 import Toml.Position (Position(..), startPos)
-import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage, prettyLocated, prettyPosition)
+import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage, prettyLocated)
 import Toml.Semantics (semantics)
 import Toml.ToValue (ToTable (toTable))
 import Toml.Value
@@ -58,7 +55,7 @@ parse' str =
         Left e -> Left (prettyLocated e)
         Right exprs ->
             case semantics exprs of
-                Left e -> Left (prettySemanticError (fmap prettyPosition e))
+                Left e -> Left (prettySemanticError e)
                 Right tab -> Right tab
 
 -- | Parse a TOML formatted 'String' or report an error message.
@@ -72,8 +69,8 @@ decode str =
         Left e -> Failure [e]
         Right tab ->
             case runMatcher (fromValue (Table' startPos tab)) of
-                Failure es -> Failure (prettyMatchMessage . fmap prettyPosition <$> es)
-                Success ws x -> Success (prettyMatchMessage . fmap prettyPosition <$> ws) x
+                Failure es -> Failure (prettyMatchMessage <$> es)
+                Success ws x -> Success (prettyMatchMessage <$> ws) x
 
 -- | Use the 'ToTable' instance to encode a value to a TOML string.
 encode :: ToTable a => a -> TomlDoc

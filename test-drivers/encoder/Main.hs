@@ -1,4 +1,4 @@
-{-# Language OverloadedStrings #-}
+{-# Language OverloadedStrings, TypeOperators, TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-|
 Module      : Main
@@ -17,18 +17,20 @@ import Data.Aeson qualified as Aeson
 import Data.Aeson.Types qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
 import Data.Foldable (toList)
+import Data.Map qualified as Map
 import System.Exit (exitFailure)
-import Toml (prettyToml, Value(..))
+import Toml (prettyToml, Value(..), Value'(..), Table)
 import Toml.Lexer (lexValue, Token(..))
+import Toml.ToValue (table)
 
 main :: IO ()
 main =
  do txt <- BS.getContents
     case Aeson.decode txt of
+        Just (Toml.Table t) -> putStr (show (prettyToml t))
         Nothing -> exitFailure
-        Just t  -> putStr (show (prettyToml t))
 
-instance Aeson.FromJSON Toml.Value where
+instance a ~ () => Aeson.FromJSON (Toml.Value' a) where
     parseJSON =
         mconcat [
             Aeson.withArray "array" \xs ->
@@ -37,7 +39,7 @@ instance Aeson.FromJSON Toml.Value where
                 do ty <- o Aeson..: "type"
                    vl <- o Aeson..: "value"
                    decodeValue ty vl,
-            fmap Toml.Table . Aeson.parseJSON
+            fmap (Toml.Table . table . Map.assocs) . Aeson.parseJSON
         ]
 
 decodeValue :: String -> String -> Aeson.Parser Toml.Value

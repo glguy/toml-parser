@@ -341,9 +341,9 @@ prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
 -- | Render a semantic TOML error in a human-readable string.
 --
 -- @since 1.3.0.0
-prettySemanticError :: SemanticError String -> String
+prettySemanticError :: SemanticError Position -> String
 prettySemanticError (SemanticError a key kind) =
-    printf "%s: key error: %s %s" a (show (prettySimpleKey key))
+    printf "%s: key error: %s %s" (prettyPosition a) (show (prettySimpleKey key))
     case kind of
         AlreadyAssigned -> "is already assigned" :: String
         ClosedTable     -> "is a closed table"
@@ -352,16 +352,28 @@ prettySemanticError (SemanticError a key kind) =
 -- | Render a TOML decoding error as a human-readable string.
 --
 -- @since 1.3.0.0
-prettyMatchMessage :: MatchMessage String -> String
-prettyMatchMessage (MatchMessage loc scope msg) =
-    (case loc of Nothing -> ""; Just l -> l ++ ": ") ++
-    msg ++ " in top" ++ foldr f "" scope
+prettyMatchMessage :: MatchMessage Position -> String
+prettyMatchMessage (MatchMessage loc scope msg) = prefix ++ msg ++ " in " ++ path
     where
-        f (ScopeIndex i) = ('[' :) . shows i . (']':)
-        f (ScopeKey key) = ('.' :) . shows (prettySimpleKey key)
+        prefix =
+            case loc of
+                Nothing -> ""
+                Just l -> prettyPosition l ++ ": "
+        path =
+            case scope of
+                [] -> "<top-level>"
+                ScopeKey key : scope' -> shows (prettySimpleKey key) (foldr f "" scope')
+                ScopeIndex i : scope' -> foldr f "" (ScopeIndex i : scope') -- should be impossible
+        
+        f (ScopeIndex i) = showChar '[' . shows i . showChar ']'
+        f (ScopeKey key) = showChar '.' . shows (prettySimpleKey key)
 
+-- |
+-- @since 2.0.0.0
 prettyLocated :: Located String -> String
 prettyLocated (Located p s) = printf "%s: %s" (prettyPosition p) s
 
+-- |
+-- @since 2.0.0.0
 prettyPosition :: Position -> String
 prettyPosition p = printf "%d:%d" (posLine p) (posColumn p)

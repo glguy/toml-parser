@@ -197,8 +197,8 @@ instance FromValue Float where
 --
 -- @since 1.3.0.0
 instance Integral a => FromValue (Ratio a) where
-    fromValue (Float' _ x)
-        | isNaN x || isInfinite x = fail "finite float required"
+    fromValue (Float' a x)
+        | isNaN x || isInfinite x = failAt a "finite float required"
         | otherwise = pure (realToFrac x)
     fromValue (Integer' _ x) = pure (fromInteger x)
     fromValue v = typeError "float" v
@@ -210,7 +210,7 @@ instance FromValue a => FromValue (NonEmpty a) where
     fromValue v =
      do xs <- fromValue v
         case NonEmpty.nonEmpty xs of
-            Nothing -> fail "non-empty list required"
+            Nothing -> failAt (valueAnn v) "non-empty list required"
             Just ne -> pure ne
 
 -- | Matches arrays

@@ -24,7 +24,7 @@ main =
         Right exprs ->
             let to = extractTableOrder exprs in
             case semantics exprs of
-                Left e -> fail (prettyLocated (prettySemanticError <$> e))
+                Left e -> fail (prettySemanticError e)
                 Right toml -> putDoc (style <$> prettyTomlOrdered (projectKey to) toml)
 
 style :: DocClass -> AnsiStyle

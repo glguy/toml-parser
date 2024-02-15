@@ -14,7 +14,7 @@ module Main (main) where
 
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
-import Toml (Value(..), parse)
+import Toml (Value(..), Value'(..), parse, Table'(..))
 import Toml.Pretty (prettyValue)
 
 main :: IO ()
@@ -27,16 +27,19 @@ main =
 simple :: Aeson.Key -> String -> Aeson.Value
 simple ty value = Aeson.object ["type" Aeson..= ty, "value" Aeson..= value]
 
-instance Aeson.ToJSON Toml.Value where
+instance Aeson.ToJSON (Toml.Value' a) where
     toJSON v =
         case v of
-            Table     t -> Aeson.toJSON t
-            Array     a -> Aeson.toJSON a
-            String    s -> simple "string"         s
-            Integer   _ -> simple "integer"        (show (prettyValue v))
-            Float     _ -> simple "float"          (show (prettyValue v))
-            Bool      _ -> simple "bool"           (show (prettyValue v))
-            TimeOfDay _ -> simple "time-local"     (show (prettyValue v))
-            ZonedTime _ -> simple "datetime"       (show (prettyValue v))
-            LocalTime _ -> simple "datetime-local" (show (prettyValue v))
-            Day       _ -> simple "date-local"     (show (prettyValue v))
+            Table'     _ t -> Aeson.toJSON t
+            Array'     _ a -> Aeson.toJSON a
+            String'    _ s -> simple "string"         s
+            Integer'   _ _ -> simple "integer"        (show (prettyValue v))
+            Float'     _ _ -> simple "float"          (show (prettyValue v))
+            Bool'      _ _ -> simple "bool"           (show (prettyValue v))
+            TimeOfDay' _ _ -> simple "time-local"     (show (prettyValue v))
+            ZonedTime' _ _ -> simple "datetime"       (show (prettyValue v))
+            LocalTime' _ _ -> simple "datetime-local" (show (prettyValue v))
+            Day'       _ _ -> simple "date-local"     (show (prettyValue v))
+
+instance Aeson.ToJSON (Table' a) where
+    toJSON (MkTable t) = Aeson.toJSON (fmap snd t)

@@ -36,8 +36,8 @@ module Toml.FromValue.ParseTable (
 import Control.Applicative (Alternative, empty)
 import Control.Monad (MonadPlus)
 import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Reader (ReaderT(..), ask)
 import Control.Monad.Trans.State.Strict (StateT(..), get, put)
-import Control.Monad.Trans.Reader
 import Data.Foldable (for_)
 import Data.List (intercalate)
 import Data.Map qualified as Map

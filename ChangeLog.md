@@ -1,5 +1,10 @@
 # Revision history for toml-parser
 
+## 2.0.0.0
+
+* Pervasive annotations on the values added to allow for detailed
+  positional error reporting throughout parsing and validation.
+
 ## 1.3.3.0
 
 * Added `IsString Value` instance.

@@ -278,7 +278,7 @@ spec =
             component = 42
             |]
         `shouldBe`
-        (Failure ["3:13: type error. wanted: string got: integer in top.cradle.cabal.component"]
+        (Failure ["3:13: type error. wanted: string got: integer in cradle.cabal.component"]
             :: Result String CradleConfig)
 
     it "detects unusd keys" $
@@ -298,9 +298,9 @@ spec =
             |]
         `shouldBe`
         Success
-            [ "5:1: unexpected key: thing1 in top.cradle.multi[0].config.cradle.cabal"
-            , "11:1: unexpected key: thing2 in top.cradle.multi[1].config.cradle.stack"
-            , "12:1: unexpected key: thing3 in top.cradle.multi[1].config.cradle.stack"
+            [ "5:1: unexpected key: thing1 in cradle.multi[0].config.cradle.cabal"
+            , "11:1: unexpected key: thing2 in cradle.multi[1].config.cradle.stack"
+            , "12:1: unexpected key: thing3 in cradle.multi[1].config.cradle.stack"
 
             ]
             CradleConfig
