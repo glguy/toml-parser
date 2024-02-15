@@ -27,39 +27,40 @@ humanMatcher m =
 spec :: Spec
 spec =
  do it "handles one reqKey" $
-        humanMatcher (runParseTable (reqKey "test") (table ["test" .= "val"]))
+        humanMatcher (runParseTable (reqKey "test") () (table ["test" .= "val"]))
         `shouldBe`
         Success [] "val"
 
     it "handles one optKey" $
-        humanMatcher (runParseTable (optKey "test") (table ["test" .= "val"]))
+        humanMatcher (runParseTable (optKey "test") () (table ["test" .= "val"]))
         `shouldBe`
         Success [] (Just "val")
 
     it "handles one missing optKey" $
-        humanMatcher (runParseTable (optKey "test") (table ["nottest" .= "val"]))
+        humanMatcher (runParseTable (optKey "test") () (table ["nottest" .= "val"]))
         `shouldBe`
-        Success ["unexpected key: nottest in top"] (Nothing :: Maybe String)
+        Success ["testcase: unexpected key: nottest in top"] (Nothing :: Maybe String)
 
     it "handles one missing reqKey" $
-        humanMatcher (runParseTable (reqKey "test") (table ["nottest" .= "val"]))
+        humanMatcher (runParseTable (reqKey "test") () (table ["nottest" .= "val"]))
         `shouldBe`
-        (Failure ["missing key: test in top"] :: Result String String)
+        (Failure ["testcase: missing key: test in top"] :: Result String String)
 
     it "handles one mismatched reqKey" $
-        humanMatcher (runParseTable (reqKey "test") (table ["test" .= "val"]))
+        humanMatcher (runParseTable (reqKey "test") () (table ["test" .= "val"]))
         `shouldBe`
         (Failure ["testcase: type error. wanted: integer got: string in top.test"] :: Result String Integer)
 
     it "handles one mismatched optKey" $
-        humanMatcher (runParseTable (optKey "test") (table ["test" .= "val"]))
+        humanMatcher (runParseTable (optKey "test") () (table ["test" .= "val"]))
         `shouldBe`
         (Failure ["testcase: type error. wanted: integer got: string in top.test"] :: Result String (Maybe Integer))
 
     it "handles concurrent errors" $
-        humanMatcher (runParseTable (reqKey "a" <|> empty <|> reqKey "b") (table []))
+        humanMatcher (runParseTable (reqKey "a" <|> empty <|> reqKey "b") () (table []))
         `shouldBe`
-        (Failure ["missing key: a in top", "missing key: b in top"] :: Result String Integer)
+        (Failure ["testcase: missing key: a in top",
+                  "testcase: missing key: b in top"] :: Result String Integer)
 
     it "handles concurrent value mismatch" $
         let v = String "" in
@@ -71,7 +72,7 @@ spec =
             :: Result String (Either Bool Int))
 
     it "doesn't emit an error for empty" $
-        humanMatcher (runParseTable empty (table []))
+        humanMatcher (runParseTable empty () (table []))
         `shouldBe`
         (Failure [] :: Result String Integer)
 
@@ -93,20 +94,20 @@ spec =
                 when (odd n) (warnTable "k1 and k2 sum to an odd value")
                 pure n
         in
-        humanMatcher (runParseTable pt (table ["k1" .= (1 :: Integer), "k2" .= (2 :: Integer)]))
+        humanMatcher (runParseTable pt () (table ["k1" .= (1 :: Integer), "k2" .= (2 :: Integer)]))
         `shouldBe`
         Success ["k1 and k2 sum to an odd value in top"] (3 :: Integer)
 
     it "offers helpful messages when no keys match" $
         let pt = pickKey [Key "this" \_ -> pure 'a', Key "." \_ -> pure 'b']
         in
-        humanMatcher (runParseTable pt (MkTable mempty))
+        humanMatcher (runParseTable pt () (MkTable mempty))
         `shouldBe`
-        (Failure ["possible keys: this, \".\" in top"] :: Result String Char)
+        (Failure ["testcase: possible keys: this, \".\" in top"] :: Result String Char)
 
     it "generates an error message on an empty pickKey" $
         let pt = pickKey []
         in
-        humanMatcher (runParseTable pt (MkTable mempty))
+        humanMatcher (runParseTable pt () (MkTable mempty))
         `shouldBe`
         (Failure [] :: Result String Char)

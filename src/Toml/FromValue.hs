@@ -119,7 +119,7 @@ typeError wanted got = failAt (valueAnn got) ("type error. wanted: " ++ wanted +
 
 -- | Used to derive a 'fromValue' implementation from a 'ParseTable' matcher.
 parseTableFromValue :: ParseTable l a -> Value' l -> Matcher l a
-parseTableFromValue p (Table' _ t) = runParseTable p t
+parseTableFromValue p (Table' l t) = runParseTable p l t
 parseTableFromValue _ v = typeError "table" v
 
 -- | Matches integer values

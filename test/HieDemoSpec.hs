@@ -143,10 +143,10 @@ instance FromValue MultiSubComponent where
 
 instance FromValue CabalConfig where
     fromValue v@Toml.Array'{} = CabalConfig Nothing . ManyComponents <$> fromValue v
-    fromValue (Toml.Table' _ t) = getComponentTable CabalConfig "cabalProject" t
+    fromValue (Toml.Table' l t) = getComponentTable CabalConfig "cabalProject" l t
     fromValue _               = fail "cabal configuration expects table or array"
 
-getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> String -> Toml.Table' l -> Matcher l a
+getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> String -> l -> Toml.Table' l -> Matcher l a
 getComponentTable con pathKey = runParseTable $ con
     <$> optKey pathKey
     <*> pickKey [
@@ -162,7 +162,7 @@ instance FromValue CabalComponent where
 
 instance FromValue StackConfig where
     fromValue v@Toml.Array'{} = StackConfig Nothing . ManyComponents <$> fromValue v
-    fromValue (Toml.Table' _ t) = getComponentTable StackConfig "stackYaml" t
+    fromValue (Toml.Table' l t) = getComponentTable StackConfig "stackYaml" l t
     fromValue _ = fail "stack configuration expects table or array"
 
 instance FromValue StackComponent where
@@ -298,8 +298,10 @@ spec =
             |]
         `shouldBe`
         Success
-            [ "unexpected key: thing1 in top.cradle.multi[0].config.cradle.cabal"
-            , "unexpected keys: thing2, thing3 in top.cradle.multi[1].config.cradle.stack"
+            [ "5:1: unexpected key: thing1 in top.cradle.multi[0].config.cradle.cabal"
+            , "11:1: unexpected key: thing2 in top.cradle.multi[1].config.cradle.stack"
+            , "12:1: unexpected key: thing3 in top.cradle.multi[1].config.cradle.stack"
+
             ]
             CradleConfig
                 { cradle =
