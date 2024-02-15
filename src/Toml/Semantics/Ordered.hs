@@ -44,8 +44,13 @@ import Toml.Parser.Types (Expr(..), Key, Val(ValTable, ValArray))
 -- | Summary of the order of the keys in a TOML document.
 newtype TableOrder = TO (Map String KeyOrder)
 
+-- | Internal type used by 'TableOrder'
+--
+-- The 'Int' field determines the order of the current key and the
+-- 'TableOrder' determines the order of the children of this key.
 data KeyOrder = KeyOrder !Int TableOrder
 
+-- | Opaque type used by 'projectKey'
 newtype ProjectedKey = PK (Either Int String)
     deriving (Eq, Ord)
 

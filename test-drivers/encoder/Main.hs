@@ -21,7 +21,7 @@ import Data.Map qualified as Map
 import System.Exit (exitFailure)
 import Toml (prettyToml, Value(..), Value'(..), Table)
 import Toml.Lexer (lexValue, Token(..))
-import Toml.ToValue (table)
+import Toml.ToValue (toValue)
 
 main :: IO ()
 main =
@@ -39,7 +39,7 @@ instance a ~ () => Aeson.FromJSON (Toml.Value' a) where
                 do ty <- o Aeson..: "type"
                    vl <- o Aeson..: "value"
                    decodeValue ty vl,
-            fmap (Toml.Table . table . Map.assocs) . Aeson.parseJSON
+            fmap (toValue :: Map.Map String Value -> Value) . Aeson.parseJSON
         ]
 
 decodeValue :: String -> String -> Aeson.Parser Toml.Value
