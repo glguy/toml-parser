@@ -1,4 +1,4 @@
-{-# Language PatternSynonyms, DeriveTraversable #-}
+{-# Language PatternSynonyms, DeriveTraversable, TypeFamilies #-}
 {-|
 Module      : Toml.Value
 Description : Semantic TOML values
