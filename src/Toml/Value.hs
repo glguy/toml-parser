@@ -10,6 +10,13 @@ This module provides the type for the semantics of a TOML file.
 All dotted keys are resolved in this representation. Each table
 is a Map with a single level of keys.
 
+Values are parameterized over an annotation type to allow values
+to be attributed to a file location. When values are constructed
+programmatically, there might not be any interesting annotations.
+In this case a trivial @()@ unit annotation can be used. The
+'Value' type-synonym and related pattern synonyms can make using
+this case more convenient.
+
 -}
 module Toml.Value (
     -- * Unlocated value synonyms
@@ -78,6 +85,8 @@ pattern Day x <- Day' _ x
 {-# Complete Array, Table, String, Bool, Integer, Float, Day, LocalTime, ZonedTime, TimeOfDay #-}
 
 -- | Semantic TOML value with all table assignments resolved.
+--
+-- @since 2.0.0.0
 data Value' a
     = Integer'   a Integer
     | Float'     a Double
@@ -94,6 +103,9 @@ data Value' a
         Read {- ^ Default instance -},
         Functor, Foldable, Traversable)
 
+-- | Extract the top-level annotation from a value.
+--
+-- @since 2.0.0.0
 valueAnn :: Value' a -> a
 valueAnn = \case
     Integer'   a _ -> a
@@ -107,6 +119,9 @@ valueAnn = \case
     LocalTime' a _ -> a
     Day'       a _ -> a
 
+-- | String representation of the kind of value using TOML vocabulary
+--
+-- @since 2.0.0.0
 valueType :: Value' l -> String
 valueType = \case
     Integer'   {} -> "integer"
@@ -128,17 +143,21 @@ newtype Table' a = MkTable (Map String (a, Value' a))
 instance Eq (Table' a) where
     MkTable x == MkTable y = [(k,v) | (k, (_, v)) <- Map.assocs x] == [(k,v) | (k, (_, v)) <- Map.assocs y]
 
--- | A 'Table'' without annotations
+-- | A 'Table'' with trivial annotations
 type Table = Table' ()
 
--- | A 'Value'' without annotations
+-- | A 'Value'' with trivial annotations
 type Value = Value' ()
 
 -- | Replaces annotations with a unit.
+--
+-- @since 2.0.0.0
 forgetTableAnns :: Table' a -> Table
 forgetTableAnns (MkTable t) = MkTable (fmap (\(_, v) -> ((), forgetValueAnns v)) t)
 
 -- | Replaces annotations with a unit.
+--
+-- @since 2.0.0.0
 forgetValueAnns :: Value' a -> Value
 forgetValueAnns =
     \case
@@ -182,5 +201,5 @@ projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
 -- @
 --
 -- @since 1.3.3.0
-instance IsString Value where
+instance () ~ a => IsString (Value' a) where
     fromString = String' ()

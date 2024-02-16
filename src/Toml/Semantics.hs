@@ -16,6 +16,7 @@ module Toml.Semantics (SemanticError(..), SemanticErrorKind(..), semantics) wher
 
 import Control.Monad (foldM)
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
@@ -26,7 +27,7 @@ import Toml.Value (Table'(MkTable), Value'(..))
 --
 -- @since 1.3.0.0
 data SemanticError a = SemanticError {
-    errorAnn :: a,
+    errorAnn :: a, -- ^ Annotation associated with offending key
     errorKey :: String,
     errorKind :: SemanticErrorKind
     } deriving (
@@ -97,21 +98,21 @@ data FrameKind
 -- | Convert a top-level table "frame" representation into the plain Value
 -- representation once the distinction is no longer needed.
 framesToTable :: FrameTable a -> Table' a
-framesToTable =
-    MkTable . fmap (fmap \case
-        FrameTable a _ t     -> Table' a (framesToTable t)
-        FrameArray (t :| ts) -> Array' (fst t) (rev (map (\(a,fs) -> Table' a (framesToTable fs)) (t : ts)))
-        FrameValue v         -> v)
-    where
-        rev = foldl (flip (:)) [] -- GHC fails to inline reverse
+framesToTable = fmap MkTable $ fmap $ fmap
+    \case
+        FrameTable a _kind t -> Table' a (framesToTable t)
+        FrameArray (NonEmpty.reverse -> t :| ts) ->
+            -- the array itself is attributed to the first table defined
+            Array' (fst t) [Table' a (framesToTable x) | (a, x) <- t : ts]
+        FrameValue v -> v
 
 -- | Attempts to insert the key-value pairs given into a new section
 -- located at the given key-path in a frame map.
 addSection ::
-    SectionKind  {- ^ section kind                               -} ->
-    Key a        {- ^ section key                                -} ->
+    SectionKind      {- ^ section kind                           -} ->
+    Key a            {- ^ section key                            -} ->
     [(Key a, Val a)] {- ^ values to install                      -} ->
-    FrameTable a  {- ^ local frame map                           -} ->
+    FrameTable a     {- ^ local frame map                        -} ->
     M a (FrameTable a) {- ^ error message or updated local frame table -}
 
 addSection kind (k :| []) kvs =
@@ -119,7 +120,7 @@ addSection kind (k :| []) kvs =
         -- defining a new table
         (case kind of
                 TableKind      -> FrameTable (fst k) Closed <$> go mempty
-                ArrayTableKind -> FrameArray . (\x -> (fst k, x) :| []) <$> go mempty)
+                ArrayTableKind -> FrameArray . (:| []) . (,) (fst k) <$> go mempty)
         
         \case   
         -- defining a super table of a previously defined subtable
@@ -133,12 +134,12 @@ addSection kind (k :| []) kvs =
         FrameArray (t :| ts) ->
             case kind of
                 TableKind      -> invalidKey k ClosedTable
-                ArrayTableKind -> FrameArray . (\x -> (fst k, x) :| t : ts) <$> go mempty
+                ArrayTableKind -> FrameArray . (:| t : ts) . (,) (fst k) <$> go mempty
 
         -- failure cases
         FrameTable _ Closed _ -> invalidKey k ClosedTable
         FrameTable _ Dotted _ -> error "addSection: dotted table left unclosed"
-        FrameValue {}       -> invalidKey k AlreadyAssigned
+        FrameValue {}         -> invalidKey k AlreadyAssigned
         where
             go = assignKeyVals kvs
 
@@ -185,8 +186,8 @@ assign (key :| k1 : keys) val =
         FrameTable a Open   t -> go a t
         FrameTable a Dotted t -> go a t
         FrameTable _ Closed _ -> invalidKey key ClosedTable
-        FrameArray        _ -> invalidKey key ClosedTable
-        FrameValue        _ -> invalidKey key AlreadyAssigned
+        FrameArray          _ -> invalidKey key ClosedTable
+        FrameValue          _ -> invalidKey key AlreadyAssigned
     where
         go a t = FrameTable a Dotted <$> assign (k1 :| keys) val t
 
@@ -215,14 +216,18 @@ invalidKey (a, key) kind = Left (SemanticError a key kind)
 
 -- | Specialization of 'Map.alterF' used to adjust a location in a 'FrameTable'
 alterFrame ::
-    (a, String) -> 
-    M a (Frame a) ->
-    (Frame a -> M a (Frame a)) -> FrameTable a -> M a (FrameTable a)
+    (a, String)                {- ^ annotated key     -} -> 
+    M a (Frame a)              {- ^ new value case    -} ->
+    (Frame a -> M a (Frame a)) {- ^ update value case -} ->
+    FrameTable a -> M a (FrameTable a)
 alterFrame (a, k) create update = Map.alterF g k
     where
+        -- insert a new value
         g Nothing =
             do lf <- create
                pure (Just (a, lf))
-        g (Just (op,ov)) =
+
+        -- update an existing value and preserve its annotation
+        g (Just (op, ov)) =
             do lf <- update ov
                pure (Just (op, lf))
