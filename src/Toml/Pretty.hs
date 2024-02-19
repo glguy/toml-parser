@@ -204,7 +204,7 @@ prettyString :: String -> TomlDoc
 prettyString str = annotate StringClass (fromString (quoteString str))
 
 -- | Predicate for values that CAN rendered on the
--- righthand-side of an @=@.
+-- right-hand side of an @=@.
 isSimple :: Value' l -> Bool
 isSimple = \case
     Integer'   {} -> True
@@ -219,7 +219,7 @@ isSimple = \case
     Array' _    x -> null x || not (all isTable x)
 
 -- | Predicate for values that can be MUST rendered on the
--- righthand-side of an @=@.
+-- right-hand side of an @=@.
 isAlwaysSimple :: Value' l -> Bool
 isAlwaysSimple = \case
     Integer'   {} -> True
@@ -239,7 +239,7 @@ isTable Table'{} = True
 isTable _        = False
 
 -- | Predicate for tables that can be rendered with a single assignment.
--- These can be collapsed using dotted-key notation on the lefthand-side
+-- These can be collapsed using dotted-key notation on the left-hand side
 -- of a @=@.
 isSingularTable :: Table' l -> Bool
 isSingularTable (MkTable (Map.elems -> [(_, v)])) = isSimple v
@@ -263,7 +263,7 @@ prettyToml = prettyToml_ NoProjection TableKind []
 -- This operation allows you to render your TOML files with the
 -- most important sections first. A TOML file describing a package
 -- might desire to have the @[package]@ section first before any
--- of the ancilliary configuration sections.
+-- of the ancillary configuration sections.
 --
 -- The /table path/ is the name of the table being sorted. This allows
 -- the projection to be aware of which table is being sorted.
@@ -364,7 +364,7 @@ prettyMatchMessage (MatchMessage loc scope msg) = prefix ++ msg ++ " in " ++ pat
                 [] -> "<top-level>"
                 ScopeKey key : scope' -> shows (prettySimpleKey key) (foldr f "" scope')
                 ScopeIndex i : scope' -> foldr f "" (ScopeIndex i : scope') -- should be impossible
-        
+
         f (ScopeIndex i) = showChar '[' . shows i . showChar ']'
         f (ScopeKey key) = showChar '.' . shows (prettySimpleKey key)
 

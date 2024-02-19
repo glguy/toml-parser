@@ -56,9 +56,9 @@ newtype ProjectedKey = PK (Either Int String)
 
 -- | Generate a projection function for use with 'Toml.Pretty.prettyTomlOrdered'
 projectKey ::
-    TableOrder {- ^ table order -} ->
-    [String] {- ^ table path -} ->
-    String {- ^ key -} ->
+    TableOrder   {- ^ table order                           -} ->
+    [String]     {- ^ table path                            -} ->
+    String       {- ^ key                                   -} ->
     ProjectedKey {- ^ type suitable for ordering table keys -}
 projectKey (TO to) [] = \k ->
     case Map.lookup k to of

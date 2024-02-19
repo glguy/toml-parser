@@ -16,7 +16,7 @@ module Toml.FromValue.Generic (
     GParseTable(..),
     genericParseTable,
 
-    -- * Product type from array 
+    -- * Product type from array
     GFromArray(..),
     genericFromArray,
     ) where
@@ -51,8 +51,8 @@ genericFromArray v = failAt (valueAnn v) ("type error. wanted: array got: " ++ v
 
 {-# INLINE genericFromArray #-}
 
--- gParseTable is written in continuation passing style because
--- it allows all the GHC.Generics constructors to inline into
+-- 'gParseTable' is written in continuation passing style because
+-- it allows all the "GHC.Generics" constructors to inline into
 -- a single location which allows the optimizer to optimize them
 -- complete away.
 

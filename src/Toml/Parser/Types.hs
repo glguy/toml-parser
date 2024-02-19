@@ -50,7 +50,7 @@ data Val a
     | ValDay       a Day
     deriving (Read, Show)
 
--- | Kinds of table headers.
+-- | Kinds of table headers
 data SectionKind
     = TableKind -- ^ [table]
     | ArrayTableKind -- ^ [[array of tables]]

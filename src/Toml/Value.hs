@@ -38,7 +38,6 @@ module Toml.Value (
     ) where
 
 import Data.Map (Map)
-import Data.Map qualified as Map
 import Data.String (IsString(fromString))
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 
@@ -99,9 +98,11 @@ data Value' a
     | LocalTime' a LocalTime
     | Day'       a Day
     deriving (
-        Show {- ^ Default instance -},
-        Read {- ^ Default instance -},
-        Functor, Foldable, Traversable)
+        Show        {- ^ Default instance -},
+        Read        {- ^ Default instance -},
+        Functor     {- ^ Derived          -},
+        Foldable    {- ^ Derived          -},
+        Traversable {- ^ Derived          -})
 
 -- | Extract the top-level annotation from a value.
 --
@@ -135,13 +136,17 @@ valueType = \case
     Day'       {} -> "locate date"
     ZonedTime' {} -> "offset date-time"
 
--- | A table with anontated keys and values.
+-- | A table with annotated keys and values.
+--
+-- @since 2.0.0.0
 newtype Table' a = MkTable (Map String (a, Value' a))
-    deriving (Read, Show, Functor, Foldable, Traversable)
-
--- Annotations are ignored.
-instance Eq (Table' a) where
-    MkTable x == MkTable y = [(k,v) | (k, (_, v)) <- Map.assocs x] == [(k,v) | (k, (_, v)) <- Map.assocs y]
+    deriving (
+        Show        {- ^ Default instance -},
+        Read        {- ^ Default instance -},
+        Eq          {- ^ Default instance -},
+        Functor     {- ^ Derived          -},
+        Foldable    {- ^ Derived          -},
+        Traversable {- ^ Derived          -})
 
 -- | A 'Table'' with trivial annotations
 type Table = Table' ()
@@ -174,23 +179,21 @@ forgetValueAnns =
 
 -- | Nearly default instance except 'ZonedTime' doesn't have an
 -- 'Eq' instance. 'ZonedTime' values are equal if their times and
--- timezones are both equal.
---
--- Annotations are ignored.
-instance Eq (Value' a) where
-    Integer'   _ x == Integer'   _ y = x == y
-    Float'     _ x == Float'     _ y = x == y
-    Array'     _ x == Array'     _ y = x == y
-    Table'     _ x == Table'     _ y = x == y
-    Bool'      _ x == Bool'      _ y = x == y
-    String'    _ x == String'    _ y = x == y
-    TimeOfDay' _ x == TimeOfDay' _ y = x == y
-    LocalTime' _ x == LocalTime' _ y = x == y
-    Day'       _ x == Day'       _ y = x == y
-    ZonedTime' _ x == ZonedTime' _ y = projectZT x == projectZT y
+-- time-zones are both equal.
+instance Eq a => Eq (Value' a) where
+    Integer'   a x == Integer'   b y = a == b && x == y
+    Float'     a x == Float'     b y = a == b && x == y
+    Array'     a x == Array'     b y = a == b && x == y
+    Table'     a x == Table'     b y = a == b && x == y
+    Bool'      a x == Bool'      b y = a == b && x == y
+    String'    a x == String'    b y = a == b && x == y
+    TimeOfDay' a x == TimeOfDay' b y = a == b && x == y
+    LocalTime' a x == LocalTime' b y = a == b && x == y
+    Day'       a x == Day'       b y = a == b && x == y
+    ZonedTime' a x == ZonedTime' b y = a == b && projectZT x == projectZT y
     _              == _              = False
 
--- Extract the relevant parts to build an Eq instance
+-- Extract the relevant parts to build an 'Eq' instance
 projectZT :: ZonedTime -> (LocalTime, Int)
 projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
 
@@ -202,4 +205,4 @@ projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
 --
 -- @since 1.3.3.0
 instance () ~ a => IsString (Value' a) where
-    fromString = String' ()
+    fromString = String

@@ -90,7 +90,7 @@ data Frame a
 -- | Top-level tables can be in various states of completeness. This type
 -- keeps track of the current state of a top-level defined table.
 data FrameKind
-    = Open   -- ^ table implicitly defined as supertable of [x.y.z]
+    = Open   -- ^ table implicitly defined as super-table of [x.y.z]
     | Dotted -- ^ table implicitly defined using dotted key assignment
     | Closed -- ^ table closed to further extension
     deriving Show
@@ -121,9 +121,9 @@ addSection kind (k :| []) kvs =
         (case kind of
                 TableKind      -> FrameTable (fst k) Closed <$> go mempty
                 ArrayTableKind -> FrameArray . (:| []) . (,) (fst k) <$> go mempty)
-        
-        \case   
-        -- defining a super table of a previously defined subtable
+
+        \case
+        -- defining a super table of a previously defined sub-table
         FrameTable _ Open t ->
             case kind of
                 -- the annotation of the open table changes from the first mention closing key
@@ -176,7 +176,7 @@ assignKeyVals kvs t = closeDots <$> foldM f t kvs
 assign :: Key a -> Val a -> FrameTable a -> M a (FrameTable a)
 
 assign (key :| []) val =
-    alterFrame key 
+    alterFrame key
         (FrameValue <$> valToValue val)
         (\_ -> invalidKey key AlreadyAssigned)
 
@@ -209,14 +209,14 @@ valToValue =
 
 -- | Abort validation by reporting an error about the given key.
 invalidKey ::
-    (a, String)       {- ^ subkey     -} ->
+    (a, String)       {- ^ sub-key    -} ->
     SemanticErrorKind {- ^ error kind -} ->
     M a b
 invalidKey (a, key) kind = Left (SemanticError a key kind)
 
 -- | Specialization of 'Map.alterF' used to adjust a location in a 'FrameTable'
 alterFrame ::
-    (a, String)                {- ^ annotated key     -} -> 
+    (a, String)                {- ^ annotated key     -} ->
     M a (Frame a)              {- ^ new value case    -} ->
     (Frame a -> M a (Frame a)) {- ^ update value case -} ->
     FrameTable a -> M a (FrameTable a)

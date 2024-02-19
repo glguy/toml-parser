@@ -102,13 +102,13 @@ spec =
     it "offers helpful messages when no keys match" $
         let pt = pickKey [Key "this" \_ -> pure 'a', Key "." \_ -> pure 'b']
         in
-        humanMatcher (runParseTable pt () (MkTable mempty))
+        humanMatcher (runParseTable pt () (table []))
         `shouldBe`
         (Failure ["1:1: possible keys: this, \".\" in <top-level>"] :: Result String Char)
 
     it "generates an error message on an empty pickKey" $
         let pt = pickKey []
         in
-        humanMatcher (runParseTable pt () (MkTable mempty))
+        humanMatcher (runParseTable pt () (table []))
         `shouldBe`
         (Failure [] :: Result String Char)

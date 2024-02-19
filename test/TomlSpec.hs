@@ -596,7 +596,7 @@ spec =
             table [
               "name" .= "Hammer",
               "sku"  .= Integer 738594937],
-            MkTable Map.empty,
+            table [],
             table [
                 "color" .= "gray",
                 "name"  .= "Nail",

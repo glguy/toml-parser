@@ -104,11 +104,11 @@ inlinetable ::        { Located [(Key Position, Val Position)]      }
                       { Located $2 $3                               }
 
 array ::              { Located [Val Position]                      }
-  : rhs '[' newlines                          pop ']' 
+  : rhs '[' newlines                          pop ']'
                       { Located $2 []                               }
-  | rhs '[' newlines arrayvalues              pop ']' 
+  | rhs '[' newlines arrayvalues              pop ']'
                       { Located $2 (reverse $4)                     }
-  | rhs '[' newlines arrayvalues ',' newlines pop ']' 
+  | rhs '[' newlines arrayvalues ',' newlines pop ']'
                       { Located $2 (reverse $4)                     }
 
 arrayvalues ::        { [Val Position]                              }

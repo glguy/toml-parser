@@ -26,6 +26,7 @@ module Toml.ToValue (
     defaultTableToValue,
     table,
     (.=),
+    tableFromMap,
     ) where
 
 import Data.Foldable (toList)
@@ -58,6 +59,12 @@ table kvs = MkTable (Map.fromList [(k, ((), v)) | (k, v) <- kvs])
 -- @'table' [a '.=' b, c '.=' d]@
 (.=) :: ToValue a => String -> a -> (String, Value)
 k .= v = (k, toValue v)
+
+-- | Build a 'Table' from an unannotated 'Map'
+--
+-- @since 2.0.0.0
+tableFromMap :: Map String Value -> Table
+tableFromMap = MkTable . fmap ((,) ())
 
 -- | Class for types that can be embedded into 'Value'
 class ToValue a where

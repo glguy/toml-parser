@@ -7,7 +7,7 @@ License     : ISC
 Maintainer  : emertens@gmail.com
 
 This is the high-level interface to the toml-parser library.
-It enables parsing, printing, and coversion into and out of
+It enables parsing, printing, and conversion into and out of
 application-specific representations.
 
 This parser implements TOML 1.0.0 <https://toml.io/en/v1.0.0>
