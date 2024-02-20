@@ -86,9 +86,9 @@ spec =
     it "handles escapes at the end of input" $
         parse "x = \"\\"
         `shouldBe`
-        Left "1:7: lexical error: unexpected end-of-input"
+        Left "1:6: lexical error: incomplete escape sequence"
 
     it "handles invalid escapes" $
         parse "x = \"\\p\""
         `shouldBe`
-        Left "1:7: lexical error: unexpected 'p'"
+        Left "1:6: lexical error: unknown escape sequence"
