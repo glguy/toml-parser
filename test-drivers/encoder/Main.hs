@@ -54,8 +54,8 @@ decodeValue "datetime"       (lexValue -> Right (TokOffsetDateTime x)) = pure (T
 decodeValue "datetime-local" (lexValue -> Right (TokLocalDateTime  x)) = pure (Toml.LocalTime x)
 decodeValue "date-local"     (lexValue -> Right (TokLocalDate      x)) = pure (Toml.Day       x)
 decodeValue "float"          (lexValue -> Right (TokFloat          x)) = pure (Toml.Double    x)
--- toml-tests are inconsistent about representing floating point numbers
-decodeValue "float"          (lexValue -> Right (TokInteger        x)) = pure (Toml.Double (fromInteger x))
-decodeValue "float"          "+Inf"                                    = pure (Toml.Double (1/0))
-decodeValue "float"          "-Inf"                                    = pure (Toml.Double (-1/0))
+decodeValue "float"          (lexValue -> Right (TokInteger        x)) = pure (Toml.Double    (fromInteger x))
+-- extra infinities as toml-tests are inconsistent
+decodeValue "float"          "+Inf"                                    = pure (Toml.Double    (1/0))
+decodeValue "float"          "-Inf"                                    = pure (Toml.Double    (-1/0))
 decodeValue _                _                                         = empty

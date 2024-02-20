@@ -184,8 +184,7 @@ type AlexInput = Located Text
 alexGetByte :: AlexInput -> Maybe (Int, AlexInput)
 alexGetByte = locatedUncons
 
--- | Get the next token from a located string. This function can be total
--- because one of the possible token outputs is an error token.
+-- | Get the next token from a located string or a located error message.
 scanToken :: Context -> Located Text -> Either (Located String) (Located Token, Located Text)
 scanToken st str =
   case alexScan str (stateInt st) of
@@ -198,14 +197,17 @@ scanToken st str =
         LexerError e -> Left e
         EmitToken  t -> Right (t, str')
 
+-- Map the logical lexer state to an Alex state number
 stateInt :: Context -> Int
-stateInt TopContext      = 0
-stateInt TableContext    = tab
-stateInt ValueContext    = val
-stateInt BstrContext  {} = bstr
-stateInt MlBstrContext{} = mlbstr
-stateInt LstrContext  {} = lstr
-stateInt MlLstrContext{} = mllstr
+stateInt =
+  \case
+    TopContext      -> 0
+    TableContext    -> tab
+    ValueContext    -> val
+    BstrContext  {} -> bstr
+    MlBstrContext{} -> mlbstr
+    LstrContext  {} -> lstr
+    MlLstrContext{} -> mllstr
 
 -- | Lex a single token in a value context. This is mostly useful for testing.
 lexValue :: Text -> Either String Token

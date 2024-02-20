@@ -167,16 +167,16 @@ forgetTableAnns (MkTable t) = MkTable (fmap (\(_, v) -> ((), forgetValueAnns v))
 forgetValueAnns :: Value' a -> Value
 forgetValueAnns =
     \case
-        Integer'   _ x -> Integer'   () x
-        Double'    _ x -> Double'    () x
-        List'      _ x -> List'      () (map forgetValueAnns x)
-        Table'     _ x -> Table'     () (forgetTableAnns x)
-        Bool'      _ x -> Bool'      () x
-        Text'      _ x -> Text'      () x
-        TimeOfDay' _ x -> TimeOfDay' () x
-        ZonedTime' _ x -> ZonedTime' () x
-        LocalTime' _ x -> LocalTime' () x
-        Day'       _ x -> Day'       () x
+        Integer'   _ x -> Integer   x
+        Double'    _ x -> Double    x
+        List'      _ x -> List      (map forgetValueAnns x)
+        Table'     _ x -> Table     (forgetTableAnns x)
+        Bool'      _ x -> Bool      x
+        Text'      _ x -> Text      x
+        TimeOfDay' _ x -> TimeOfDay x
+        ZonedTime' _ x -> ZonedTime x
+        LocalTime' _ x -> LocalTime x
+        Day'       _ x -> Day       x
 
 -- | Nearly default instance except 'ZonedTime' doesn't have an
 -- 'Eq' instance. 'ZonedTime' values are equal if their times and
