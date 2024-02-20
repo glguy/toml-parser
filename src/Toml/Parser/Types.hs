@@ -22,10 +22,11 @@ module Toml.Parser.Types (
     ) where
 
 import Data.List.NonEmpty (NonEmpty)
+import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
 
 -- | Non-empty sequence of dotted simple keys
-type Key a = NonEmpty (a, String)
+type Key a = NonEmpty (a, Text)
 
 -- | Headers and assignments corresponding to lines of a TOML file
 data Expr a
@@ -43,7 +44,7 @@ data Val a
     | ValArray     a [Val a]
     | ValTable     a [(Key a, Val a)]
     | ValBool      a Bool
-    | ValString    a String
+    | ValString    a Text
     | ValTimeOfDay a TimeOfDay
     | ValZonedTime a ZonedTime
     | ValLocalTime a LocalTime

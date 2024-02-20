@@ -37,6 +37,7 @@ module Toml.Parser.Utils (
     pop,
     ) where
 
+import Data.Text (Text)
 import Data.Time
 import Toml.Lexer (scanToken, Context(..))
 import Toml.Lexer.Token (Token(..))
@@ -93,19 +94,19 @@ lexerP f = P \st str k ->
 {-# Inline lexerP #-}
 
 
-asString :: Token -> Maybe String
+asString :: Token -> Maybe Text
 asString =
     \case
         TokString i -> Just i
         _ -> Nothing
 
-asBareKey :: Token -> Maybe String
+asBareKey :: Token -> Maybe Text
 asBareKey =
     \case
         TokBareKey i -> Just i
         _ -> Nothing
 
-asMlString :: Token -> Maybe String
+asMlString :: Token -> Maybe Text
 asMlString =
     \case
         TokMlString i -> Just i

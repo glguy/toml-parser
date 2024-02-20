@@ -26,6 +26,7 @@ module Toml.Lexer.Utils (
     -- * Actions
     token,
     token_,
+    textToken,
 
     timeValue,
     eofToken,
@@ -47,6 +48,8 @@ module Toml.Lexer.Utils (
 
 import Data.Char (ord, chr, isAscii, isControl)
 import Data.Foldable (asum)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
 import Numeric (readHex)
 import Text.Printf (printf)
@@ -85,10 +88,10 @@ strFrag (Located _ s) = \case
 -- | End the current string state and emit the string literal token.
 endStr :: Action
 endStr (Located _ x) = \case
-    BstrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (x : acc)))))
-    MlBstrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (x : acc)))))
-    LstrContext   p acc -> EmitToken (Located p (TokString   (concat (reverse (x : acc)))))
-    MlLstrContext p acc -> EmitToken (Located p (TokMlString (concat (reverse (x : acc)))))
+    BstrContext   p acc -> EmitToken (Located p (TokString   (Text.pack (concat (reverse (x : acc))))))
+    MlBstrContext p acc -> EmitToken (Located p (TokMlString (Text.pack (concat (reverse (x : acc))))))
+    LstrContext   p acc -> EmitToken (Located p (TokString   (Text.pack (concat (reverse (x : acc))))))
+    MlLstrContext p acc -> EmitToken (Located p (TokMlString (Text.pack (concat (reverse (x : acc))))))
     _                  -> error "endStr: panic"
 
 -- | Start a basic string literal
@@ -127,6 +130,10 @@ token_ t x _ = EmitToken (t <$ x)
 -- | Emit a token using the current lexeme
 token :: (String -> Token) -> Action
 token f x _ = EmitToken (f <$> x)
+
+-- | Emit a token using the current lexeme
+textToken :: (Text -> Token) -> Action
+textToken f x _ = EmitToken (f . Text.pack <$> x)
 
 -- | Attempt to parse the current lexeme as a date-time token.
 timeValue ::

@@ -1,4 +1,4 @@
-{-# LANGUAGE DerivingVia, DeriveGeneric #-}
+{-# LANGUAGE DerivingVia, DeriveGeneric, OverloadedStrings #-}
 {-|
 Module      : DerivingViaSpec
 Description : Show that TOML classes can be derived with DerivingVia
@@ -37,7 +37,7 @@ data TwoThings = TwoThings Int String
 spec :: Spec
 spec =
  do let sem = Physical "red" "round"
-        tab = table ["color" .= "red", "shape" .= "round"]
+        tab = table ["color" .= Text "red", "shape" .= Text "round"]
 
     it "supports toValue" $
         toValue sem
@@ -55,11 +55,11 @@ spec =
         Success [] sem
 
     it "converts from arrays positionally" $
-        runMatcher (fromValue (Array [Integer 42, String "forty-two"]))
+        runMatcher (fromValue (List [Integer 42, Text "forty-two"]))
         `shouldBe`
         Success [] (TwoThings 42 "forty-two")
 
     it "converts to arrays positionally" $
         toValue (TwoThings 42 "forty-two")
         `shouldBe`
-        Array [Integer 42, String "forty-two"]
+        List [Integer 42, Text "forty-two"]

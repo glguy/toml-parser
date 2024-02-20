@@ -23,6 +23,7 @@ module Toml.FromValue.Generic (
 
 import Control.Monad.Trans.State (StateT(..))
 import Data.Coerce (coerce)
+import Data.Text qualified as Text
 import GHC.Generics
 import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
 import Toml.FromValue.Matcher (Matcher, failAt)
@@ -41,7 +42,7 @@ genericParseTable = to <$> gParseTable
 --
 -- @since 1.3.2.0
 genericFromArray :: (Generic a, GFromArray (Rep a)) => Value' l -> Matcher l a
-genericFromArray (Array' a xs) =
+genericFromArray (List' a xs) =
  do (gen, xs') <- runStateT gFromArray xs
     if null xs' then
         pure (to gen)
@@ -85,14 +86,14 @@ instance (GParseTable f, GParseTable g) => GParseTable (f :*: g) where
 -- | Omits the key from the table on nothing, includes it on just
 instance {-# OVERLAPS #-} (Selector s, FromValue a) => GParseTable (S1 s (K1 i (Maybe a))) where
     gParseTable =
-     do x <- optKey (selName (M1 [] :: S1 s [] ()))
+     do x <- optKey (Text.pack (selName (M1 [] :: S1 s [] ())))
         pure (M1 (K1 x))
     {-# INLINE gParseTable #-}
 
 -- | Uses record selector name as table key
 instance (Selector s, FromValue a) => GParseTable (S1 s (K1 i a)) where
     gParseTable =
-     do x <- reqKey (selName (M1 [] :: S1 s [] ()))
+     do x <- reqKey (Text.pack (selName (M1 [] :: S1 s [] ())))
         pure (M1 (K1 x))
     {-# INLINE gParseTable #-}
 

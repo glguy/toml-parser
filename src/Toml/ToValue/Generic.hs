@@ -23,6 +23,8 @@ module Toml.ToValue.Generic (
     genericToArray,
     ) where
 
+import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Generics
 import Toml.Value
 import Toml.ToValue (ToValue(..), table)
@@ -38,7 +40,7 @@ genericToTable x = table (gToTable (from x) [])
 --
 -- @since 1.3.2.0
 genericToArray :: (Generic a, GToArray (Rep a)) => a -> Value
-genericToArray a = Array (gToArray (from a) [])
+genericToArray a = List (gToArray (from a) [])
 {-# INLINE genericToArray #-}
 
 -- | Supports conversion of product types with field selector names
@@ -46,7 +48,7 @@ genericToArray a = Array (gToArray (from a) [])
 --
 -- @since 1.0.2.0
 class GToTable f where
-    gToTable :: f a -> [(String, Value)] -> [(String, Value)]
+    gToTable :: f a -> [(Text, Value)] -> [(Text, Value)]
 
 -- | Ignores type constructor names
 instance GToTable f => GToTable (D1 c f) where
@@ -65,12 +67,12 @@ instance (GToTable f, GToTable g) => GToTable (f :*: g) where
 -- | Omits the key from the table on nothing, includes it on just
 instance {-# OVERLAPS #-} (Selector s, ToValue a) => GToTable (S1 s (K1 i (Maybe a))) where
     gToTable (M1 (K1 Nothing)) = id
-    gToTable s@(M1 (K1 (Just x))) = ((selName s, toValue x):)
+    gToTable s@(M1 (K1 (Just x))) = ((Text.pack (selName s), toValue x):)
     {-# INLINE gToTable #-}
 
 -- | Uses record selector name as table key
 instance (Selector s, ToValue a) => GToTable (S1 s (K1 i a)) where
-    gToTable s@(M1 (K1 x)) = ((selName s, toValue x):)
+    gToTable s@(M1 (K1 x)) = ((Text.pack (selName s), toValue x):)
     {-# INLINE gToTable #-}
 
 -- | Emits empty table

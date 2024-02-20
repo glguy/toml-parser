@@ -1,4 +1,4 @@
-{-# Language GADTs #-}
+{-# Language GADTs, OverloadedStrings #-}
 {-|
 Module      : HieDemoSpec
 Description : Exercise various components of FromValue on a life-sized example
@@ -15,6 +15,7 @@ This approach would work just the same when parameterized in that same way.
 -}
 module HieDemoSpec where
 
+import Data.Text (Text)
 import GHC.Generics ( Generic )
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
@@ -142,11 +143,11 @@ instance FromValue MultiSubComponent where
     fromValue = parseTableFromValue genericParseTable
 
 instance FromValue CabalConfig where
-    fromValue v@Toml.Array'{} = CabalConfig Nothing . ManyComponents <$> fromValue v
+    fromValue v@Toml.List'{} = CabalConfig Nothing . ManyComponents <$> fromValue v
     fromValue (Toml.Table' l t) = getComponentTable CabalConfig "cabalProject" l t
     fromValue _               = fail "cabal configuration expects table or array"
 
-getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> String -> l -> Toml.Table' l -> Matcher l a
+getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> Text -> l -> Toml.Table' l -> Matcher l a
 getComponentTable con pathKey = runParseTable $ con
     <$> optKey pathKey
     <*> pickKey [
@@ -161,7 +162,7 @@ instance FromValue CabalComponent where
         <*> optKey "cabalProject"
 
 instance FromValue StackConfig where
-    fromValue v@Toml.Array'{} = StackConfig Nothing . ManyComponents <$> fromValue v
+    fromValue v@Toml.List'{} = StackConfig Nothing . ManyComponents <$> fromValue v
     fromValue (Toml.Table' l t) = getComponentTable StackConfig "stackYaml" l t
     fromValue _ = fail "stack configuration expects table or array"
 
@@ -190,7 +191,7 @@ instance FromValue BiosConfig where
                     KeyCase Shell   "dependency-shell"]
 
 data KeyCase a where
-    KeyCase :: FromValue b => (b -> a) -> String -> KeyCase a
+    KeyCase :: FromValue b => (b -> a) -> Text -> KeyCase a
 
 reqAlts :: [KeyCase a] -> ParseTable l a
 reqAlts xs = pickKey

@@ -1,3 +1,4 @@
+{-# Language OverloadedStrings #-}
 {-|
 Module      : FromValueSpec
 Description : Exercise various components of FromValue
@@ -28,32 +29,32 @@ humanMatcher m =
 spec :: Spec
 spec =
  do it "handles one reqKey" $
-        humanMatcher (runParseTable (reqKey "test") () (table ["test" .= "val"]))
+        humanMatcher (runParseTable (reqKey "test") () (table ["test" .= Text "val"]))
         `shouldBe`
-        Success [] "val"
+        Success [] ("val" :: String)
 
     it "handles one optKey" $
-        humanMatcher (runParseTable (optKey "test") () (table ["test" .= "val"]))
+        humanMatcher (runParseTable (optKey "test") () (table ["test" .= Text "val"]))
         `shouldBe`
-        Success [] (Just "val")
+        Success [] (Just ("val" :: String))
 
     it "handles one missing optKey" $
-        humanMatcher (runParseTable (optKey "test") () (table ["nottest" .= "val"]))
+        humanMatcher (runParseTable (optKey "test") () (table ["nottest" .= Text "val"]))
         `shouldBe`
         Success ["1:1: unexpected key: nottest in <top-level>"] (Nothing :: Maybe String)
 
     it "handles one missing reqKey" $
-        humanMatcher (runParseTable (reqKey "test") () (table ["nottest" .= "val"]))
+        humanMatcher (runParseTable (reqKey "test") () (table ["nottest" .= Text "val"]))
         `shouldBe`
         (Failure ["1:1: missing key: test in <top-level>"] :: Result String String)
 
     it "handles one mismatched reqKey" $
-        humanMatcher (runParseTable (reqKey "test") () (table ["test" .= "val"]))
+        humanMatcher (runParseTable (reqKey "test") () (table ["test" .= Text "val"]))
         `shouldBe`
         (Failure ["1:1: type error. wanted: integer got: string in test"] :: Result String Integer)
 
     it "handles one mismatched optKey" $
-        humanMatcher (runParseTable (optKey "test") () (table ["test" .= "val"]))
+        humanMatcher (runParseTable (optKey "test") () (table ["test" .= Text "val"]))
         `shouldBe`
         (Failure ["1:1: type error. wanted: integer got: string in test"] :: Result String (Maybe Integer))
 
@@ -64,7 +65,7 @@ spec =
                   "1:1: missing key: b in <top-level>"] :: Result String Integer)
 
     it "handles concurrent value mismatch" $
-        let v = String "" in
+        let v = "" in
         humanMatcher (Left <$> fromValue v <|> empty <|> Right <$> fromValue v)
         `shouldBe`
         (Failure [
@@ -78,12 +79,12 @@ spec =
         (Failure [] :: Result String Integer)
 
     it "matches single characters" $
-        runMatcher (fromValue (String "x"))
+        runMatcher (fromValue (Text "x"))
         `shouldBe`
         Success [] 'x'
 
     it "rejections non-single characters" $
-        humanMatcher (fromValue (String "xy"))
+        humanMatcher (fromValue (Text "xy"))
         `shouldBe`
         (Failure ["1:1: type error. wanted: character got: string in <top-level>"] :: Result String Char)
 

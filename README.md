@@ -41,6 +41,7 @@ This file uses [markdown-unlit](https://hackage.haskell.org/package/markdown-unl
 to ensure that its code typechecks and stays in sync with the rest of the package.
 
 ```haskell
+{-# Language OverloadedStrings #-}
 import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, hspec, it, shouldBe)
@@ -96,19 +97,19 @@ parses = it "parses" $
     parse fruitStr
     `shouldBe`
     Right (table [
-        ("fruits", Array [
+        ("fruits", List [
             Table (table [
-                ("name", String "apple"),
+                ("name", Text "apple"),
                 ("physical", Table (table [
-                    ("color", String "red"),
-                    ("shape", String "round")])),
-                ("varieties", Array [
-                    Table (table [("name", String "red delicious")]),
-                    Table (table [("name", String "granny smith")])])]),
+                    ("color", Text "red"),
+                    ("shape", Text "round")])),
+                ("varieties", List [
+                    Table (table [("name", Text "red delicious")]),
+                    Table (table [("name", Text "granny smith")])])]),
             Table (table [
-                ("name", String "banana"),
-                ("varieties", Array [
-                    Table (table [("name", String "plantain")])])])])])
+                ("name", Text "banana"),
+                ("varieties", List [
+                    Table (table [("name", Text "plantain")])])])])])
 ```
 
 ### Using decoding classes

@@ -31,6 +31,7 @@ module Toml.Lexer.Token (
 
 import Data.Char (digitToInt)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime)
+import Data.Text (Text)
 import Numeric (readInt, readHex, readOct)
 
 -- | Lexical token
@@ -47,9 +48,9 @@ data Token
     | Tok2SquareC                   -- ^ @']]'@
     | TokCurlyO                     -- ^ @'{'@
     | TokCurlyC                     -- ^ @'}'@
-    | TokBareKey String             -- ^ bare key
-    | TokString String              -- ^ string literal
-    | TokMlString String            -- ^ multiline string literal
+    | TokBareKey Text               -- ^ bare key
+    | TokString Text                -- ^ string literal
+    | TokMlString Text              -- ^ multiline string literal
     | TokInteger !Integer           -- ^ integer literal
     | TokFloat !Double              -- ^ floating-point literal
     | TokOffsetDateTime !ZonedTime  -- ^ date-time with timezone offset

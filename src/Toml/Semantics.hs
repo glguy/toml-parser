@@ -19,6 +19,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Text (Text)
 import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Value (Table'(MkTable), Value'(..))
 
@@ -28,7 +29,7 @@ import Toml.Value (Table'(MkTable), Value'(..))
 -- @since 1.3.0.0
 data SemanticError a = SemanticError {
     errorAnn :: a, -- ^ Annotation associated with offending key
-    errorKey :: String,
+    errorKey :: Text,
     errorKind :: SemanticErrorKind
     } deriving (
         Read {- ^ Default instance -},
@@ -68,7 +69,7 @@ semantics exprs =
 
 -- | A top-level table used to distinguish top-level defined arrays
 -- and tables from inline values.
-type FrameTable a = Map String (a, Frame a)
+type FrameTable a = Map Text (a, Frame a)
 
 -- | M is the error-handling monad used through this module for
 -- propagating semantic errors through the 'semantics' function.
@@ -103,7 +104,7 @@ framesToTable = fmap MkTable $ fmap $ fmap
         FrameTable a _kind t -> Table' a (framesToTable t)
         FrameArray (NonEmpty.reverse -> t :| ts) ->
             -- the array itself is attributed to the first table defined
-            Array' (fst t) [Table' a (framesToTable x) | (a, x) <- t : ts]
+            List' (fst t) [Table' a (framesToTable x) | (a, x) <- t : ts]
         FrameValue v -> v
 
 -- | Attempts to insert the key-value pairs given into a new section
@@ -197,26 +198,26 @@ valToValue :: Val a -> M a (Value' a)
 valToValue =
     \case
         ValInteger   a x    -> Right (Integer'   a x)
-        ValFloat     a x    -> Right (Float'     a x)
+        ValFloat     a x    -> Right (Double'    a x)
         ValBool      a x    -> Right (Bool'      a x)
-        ValString    a x    -> Right (String'    a x)
+        ValString    a x    -> Right (Text'      a x)
         ValTimeOfDay a x    -> Right (TimeOfDay' a x)
         ValZonedTime a x    -> Right (ZonedTime' a x)
         ValLocalTime a x    -> Right (LocalTime' a x)
         ValDay       a x    -> Right (Day'       a x)
-        ValArray     a xs   -> Array' a <$> traverse valToValue xs
+        ValArray     a xs   -> List' a <$> traverse valToValue xs
         ValTable     a kvs  -> Table' a . framesToTable <$> assignKeyVals kvs mempty
 
 -- | Abort validation by reporting an error about the given key.
 invalidKey ::
-    (a, String)       {- ^ sub-key    -} ->
+    (a, Text)         {- ^ sub-key    -} ->
     SemanticErrorKind {- ^ error kind -} ->
     M a b
 invalidKey (a, key) kind = Left (SemanticError a key kind)
 
 -- | Specialization of 'Map.alterF' used to adjust a location in a 'FrameTable'
 alterFrame ::
-    (a, String)                {- ^ annotated key     -} ->
+    (a, Text)                  {- ^ annotated key     -} ->
     M a (Frame a)              {- ^ new value case    -} ->
     (Frame a -> M a (Frame a)) {- ^ update value case -} ->
     FrameTable a -> M a (FrameTable a)

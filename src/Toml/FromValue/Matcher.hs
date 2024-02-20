@@ -46,6 +46,7 @@ module Toml.FromValue.Matcher (
 import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus, ap, liftM)
 import Data.Monoid (Endo(..))
+import Data.Text (Text)
 
 -- | Computations that result in a 'Result' and which track a list
 -- of nested contexts to assist in generating warnings and error
@@ -84,7 +85,7 @@ instance MonadPlus (Matcher a)
 -- @since 1.3.0.0
 data Scope
     = ScopeIndex Int -- ^ zero-based array index
-    | ScopeKey String -- ^ key in a table
+    | ScopeKey Text -- ^ key in a table
     deriving (
         Read {- ^ Default instance -},
         Show {- ^ Default instance -},
@@ -193,7 +194,7 @@ failAt l e =
 -- | Update the scope with the message corresponding to a table key
 --
 -- @since 1.3.0.0
-inKey :: String -> Matcher l a -> Matcher l a
+inKey :: Text -> Matcher l a -> Matcher l a
 inKey = withScope . ScopeKey
 
 -- | Update the scope with the message corresponding to an array index

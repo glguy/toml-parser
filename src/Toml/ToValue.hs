@@ -26,7 +26,6 @@ module Toml.ToValue (
     defaultTableToValue,
     table,
     (.=),
-    tableFromMap,
     ) where
 
 import Data.Foldable (toList)
@@ -37,7 +36,8 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
-import Data.Text qualified
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Lazy qualified
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
@@ -49,7 +49,7 @@ import Toml.Value
 -- Use '.=' for a convenient way to build the pairs.
 --
 -- @since 1.3.0.0
-table :: [(String, Value)] -> Table
+table :: [(Text, Value)] -> Table
 table kvs = MkTable (Map.fromList [(k, ((), v)) | (k, v) <- kvs])
 {-# INLINE table #-}
 
@@ -57,14 +57,8 @@ table kvs = MkTable (Map.fromList [(k, ((), v)) | (k, v) <- kvs])
 -- constructing a 'Table'.
 --
 -- @'table' [a '.=' b, c '.=' d]@
-(.=) :: ToValue a => String -> a -> (String, Value)
+(.=) :: ToValue a => Text -> a -> (Text, Value)
 k .= v = (k, toValue v)
-
--- | Build a 'Table' from an unannotated 'Map'
---
--- @since 2.0.0.0
-tableFromMap :: Map String Value -> Table
-tableFromMap = MkTable . fmap ((,) ())
 
 -- | Class for types that can be embedded into 'Value'
 class ToValue a where
@@ -76,7 +70,7 @@ class ToValue a where
     -- left to be defined by its default implementation and exists to help define
     -- the encoding for TOML arrays.
     toValueList :: [a] -> Value
-    toValueList = Array . map toValue
+    toValueList = List . map toValue
 
 -- | Class for things that can be embedded into a TOML table.
 --
@@ -119,25 +113,25 @@ instance ToValue (Table' a) where
 --
 -- @since 1.3.0.0
 class ToKey a where
-    toKey :: a -> String
+    toKey :: a -> Text
 
 -- | toKey = id
 --
 -- @since 1.3.0.0
 instance Char ~ a => ToKey [a] where
+    toKey = Text.pack
+
+-- | toKey = unpack
+--
+-- @since 1.3.0.0
+instance ToKey Text.Text where
     toKey = id
 
 -- | toKey = unpack
 --
 -- @since 1.3.0.0
-instance ToKey Data.Text.Text where
-    toKey = Data.Text.unpack
-
--- | toKey = unpack
---
--- @since 1.3.0.0
 instance ToKey Data.Text.Lazy.Text where
-    toKey = Data.Text.Lazy.unpack
+    toKey = Data.Text.Lazy.toStrict
 
 -- | Convenience function for building 'ToValue' instances.
 defaultTableToValue :: ToTable a => a -> Value
@@ -150,20 +144,20 @@ instance ToValue Value where
 -- | Single characters are encoded as singleton strings. Lists of characters
 -- are encoded as a single string value.
 instance ToValue Char where
-    toValue x = String [x]
-    toValueList = String
+    toValue x = Text (Text.singleton x)
+    toValueList = Text . Text.pack
 
 -- | Encodes as string literal
 --
 -- @since 1.2.1.0
-instance ToValue Data.Text.Text where
-    toValue = toValue . Data.Text.unpack
+instance ToValue Text.Text where
+    toValue = Text
 
 -- | Encodes as string literal
 --
 -- @since 1.2.1.0
 instance ToValue Data.Text.Lazy.Text where
-    toValue = toValue . Data.Text.Lazy.unpack
+    toValue = Text . Data.Text.Lazy.toStrict
 
 -- | This instance defers to the list element's 'toValueList' implementation.
 instance ToValue a => ToValue [a] where
@@ -185,10 +179,10 @@ instance ToValue a => ToValue (Seq a) where
 --
 -- @since 1.3.0.0
 instance Integral a => ToValue (Ratio a) where
-    toValue = Float . realToFrac
+    toValue = Double . realToFrac
 
-instance ToValue Double    where toValue = Float
-instance ToValue Float     where toValue = Float . realToFrac
+instance ToValue Double    where toValue = Double
+instance ToValue Float     where toValue = Double . realToFrac
 instance ToValue Bool      where toValue = Bool
 instance ToValue TimeOfDay where toValue = TimeOfDay
 instance ToValue LocalTime where toValue = LocalTime

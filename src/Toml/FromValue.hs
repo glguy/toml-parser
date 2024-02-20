@@ -60,7 +60,8 @@ import Data.Map qualified as Map
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
-import Data.Text qualified
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
@@ -76,7 +77,7 @@ class FromValue a where
 
     -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
     listFromValue :: Value' l -> Matcher l [a]
-    listFromValue (Array' _ xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
+    listFromValue (List' _ xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
     listFromValue v = typeError "array" v
 
 instance (Ord k, FromKey k, FromValue v) => FromValue (Map k v) where
@@ -93,25 +94,25 @@ instance FromValue Table where
 --
 -- @since 1.3.0.0
 class FromKey a where
-    fromKey :: String -> Matcher l a
+    fromKey :: Text -> Matcher l a
 
 -- | Matches all strings
 --
 -- @since 1.3.0.0
 instance a ~ Char => FromKey [a] where
+    fromKey = pure . Text.unpack
+
+-- | Matches all strings
+--
+-- @since 1.3.0.0
+instance FromKey Text where
     fromKey = pure
 
 -- | Matches all strings
 --
 -- @since 1.3.0.0
-instance FromKey Data.Text.Text where
-    fromKey = pure . Data.Text.pack
-
--- | Matches all strings
---
--- @since 1.3.0.0
 instance FromKey Data.Text.Lazy.Text where
-    fromKey = pure . Data.Text.Lazy.pack
+    fromKey = pure . Data.Text.Lazy.fromStrict
 
 -- | Report a type error
 typeError :: String {- ^ expected type -} -> Value' l {- ^ actual value -} -> Matcher l a
@@ -158,33 +159,34 @@ instance FromValue Word64 where fromValue = fromValueSized "Word64"
 -- | Matches single-character strings with 'fromValue' and arbitrary
 -- strings with 'listFromValue' to support 'Prelude.String'
 instance FromValue Char where
-    fromValue (String' _ [c]) = pure c
+    fromValue (Text' _ t) | Text.length t == 1 = pure (Text.head t)
     fromValue v = typeError "character" v
 
-    listFromValue (String' _ xs) = pure xs
+    listFromValue (Text' _ t) = pure (Text.unpack t)
     listFromValue v = typeError "string" v
 
 -- | Matches string literals
 --
 -- @since 1.2.1.0
-instance FromValue Data.Text.Text where
-    fromValue v = Data.Text.pack <$> fromValue v
+instance FromValue Text where
+    fromValue (Text' _ t) = pure t
+    fromValue v = typeError "string" v
 
 -- | Matches string literals
 --
 -- @since 1.2.1.0
 instance FromValue Data.Text.Lazy.Text where
-    fromValue v = Data.Text.Lazy.pack <$> fromValue v
+    fromValue v = Data.Text.Lazy.fromStrict <$> fromValue v
 
 -- | Matches floating-point and integer values
 instance FromValue Double where
-    fromValue (Float' _ x) = pure x
+    fromValue (Double' _ x) = pure x
     fromValue (Integer' _ x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
 -- | Matches floating-point and integer values
 instance FromValue Float where
-    fromValue (Float' _ x) = pure (realToFrac x)
+    fromValue (Double' _ x) = pure (realToFrac x)
     fromValue (Integer' _ x) = pure (fromInteger x)
     fromValue v = typeError "float" v
 
@@ -197,7 +199,7 @@ instance FromValue Float where
 --
 -- @since 1.3.0.0
 instance Integral a => FromValue (Ratio a) where
-    fromValue (Float' a x)
+    fromValue (Double' a x)
         | isNaN x || isInfinite x = failAt a "finite float required"
         | otherwise = pure (realToFrac x)
     fromValue (Integer' _ x) = pure (fromInteger x)
@@ -256,14 +258,14 @@ instance FromValue Value where
 -- instance.
 --
 -- @optKey key = 'optKeyOf' key 'fromValue'@
-optKey :: FromValue a => String -> ParseTable l (Maybe a)
+optKey :: FromValue a => Text -> ParseTable l (Maybe a)
 optKey key = optKeyOf key fromValue
 
 -- | Convenience function for matching a required key with a 'FromValue'
 -- instance.
 --
 -- @reqKey key = 'reqKeyOf' key 'fromValue'@
-reqKey :: FromValue a => String -> ParseTable l a
+reqKey :: FromValue a => Text -> ParseTable l a
 reqKey key = reqKeyOf key fromValue
 
 -- | Match a table entry by key if it exists or return 'Nothing' if not.
@@ -271,7 +273,7 @@ reqKey key = reqKeyOf key fromValue
 --
 -- See 'pickKey' for more complex cases.
 optKeyOf ::
-    String {- ^ key -} ->
+    Text                      {- ^ key           -} ->
     (Value' l -> Matcher l a) {- ^ value matcher -} ->
     ParseTable l (Maybe a)
 optKeyOf key k = pickKey [Key key (fmap Just . k), Else (pure Nothing)]
@@ -280,7 +282,7 @@ optKeyOf key k = pickKey [Key key (fmap Just . k), Else (pure Nothing)]
 --
 -- See 'pickKey' for more complex cases.
 reqKeyOf ::
-    String {- ^ key -} ->
+    Text                      {- ^ key           -} ->
     (Value' l -> Matcher l a) {- ^ value matcher -} ->
     ParseTable l a
 reqKeyOf key k = pickKey [Key key k]

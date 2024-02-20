@@ -41,6 +41,7 @@ import Control.Monad.Trans.State.Strict (StateT(..), get, put)
 import Data.Foldable (for_)
 import Data.List (intercalate)
 import Data.Map qualified as Map
+import Data.Text (Text)
 import Toml.FromValue.Matcher (warning, Matcher, inKey, failAt, warningAt)
 import Toml.Pretty (prettySimpleKey)
 import Toml.Value (Table'(..), Value')
@@ -97,7 +98,7 @@ failTableAt l = liftMatcher . failAt l
 --
 -- @since 1.2.0.0
 data KeyAlt l a
-    = Key String (Value' l -> Matcher l a) -- ^ pick alternative based on key match
+    = Key Text (Value' l -> Matcher l a) -- ^ pick alternative based on key match
     | Else (Matcher l a) -- ^ default case when no previous cases matched
 
 -- | Take the first option from a list of table keys and matcher functions.

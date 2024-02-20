@@ -47,6 +47,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map qualified as Map
 import Data.String (fromString)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
@@ -75,14 +77,14 @@ type TomlDoc = Doc DocClass
 
 -- | Renders a dotted-key using quotes where necessary and annotated
 -- as a 'KeyClass'.
-prettyKey :: NonEmpty String -> TomlDoc
+prettyKey :: NonEmpty Text -> TomlDoc
 prettyKey = annotate KeyClass . fold . NonEmpty.intersperse dot . fmap prettySimpleKey
 
 -- | Renders a simple-key using quotes where necessary.
-prettySimpleKey :: String -> Doc a
+prettySimpleKey :: Text -> Doc a
 prettySimpleKey str
-    | not (null str), all isBareKey str = fromString str
-    | otherwise                         = fromString (quoteString str)
+    | not (Text.null str), Text.all isBareKey str = pretty str
+    | otherwise = fromString (quoteString (Text.unpack str))
 
 -- | Predicate for the character-class that is allowed in bare keys
 isBareKey :: Char -> Bool
@@ -126,7 +128,7 @@ quoteMlString = ("\"\"\"\n"++) . go
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
 -- | Pretty-print a section heading. The result is annotated as a 'TableClass'.
-prettySectionKind :: SectionKind -> NonEmpty String -> TomlDoc
+prettySectionKind :: SectionKind -> NonEmpty Text -> TomlDoc
 prettySectionKind TableKind      key =
     annotate TableClass (unAnnotate (lbracket <> prettyKey key <> rbracket))
 prettySectionKind ArrayTableKind key =
@@ -158,7 +160,7 @@ prettyToken = \case
     TokLocalTime      _ -> "local time"
     TokEOF              -> "end-of-input"
 
-prettyAssignment :: String -> Value' l -> TomlDoc
+prettyAssignment :: Text -> Value' l -> TomlDoc
 prettyAssignment = go . pure
     where
         go ks (Table' _ (MkTable (Map.assocs -> [(k,(_, v))]))) = go (NonEmpty.cons k ks) v
@@ -170,15 +172,15 @@ prettyAssignment = go . pure
 prettyValue :: Value' l -> TomlDoc
 prettyValue = \case
     Integer' _ i           -> annotate NumberClass (pretty i)
-    Float' _   f
+    Double' _   f
         | isNaN f       -> annotate NumberClass "nan"
         | isInfinite f  -> annotate NumberClass (if f > 0 then "inf" else "-inf")
         | otherwise     -> annotate NumberClass (pretty f)
-    Array' _ a          -> align (list [prettyValue v | v <- a])
+    List' _ a           -> align (list [prettyValue v | v <- a])
     Table' _ (MkTable t) -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,(_, v)) <- Map.assocs t] <> rbrace
     Bool' _ True        -> annotate BoolClass "true"
     Bool' _ False       -> annotate BoolClass "false"
-    String' _ str       -> prettySmartString str
+    Text' _ str         -> prettySmartString str
     TimeOfDay' _ tod    -> annotate DateClass (fromString (formatTime defaultTimeLocale "%H:%M:%S%Q" tod))
     ZonedTime' _ zt
         | timeZoneMinutes (zonedTimeZone zt) == 0 ->
@@ -187,51 +189,51 @@ prettyValue = \case
     LocalTime' _ lt     -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%dT%H:%M:%S%Q" lt))
     Day' _ d            -> annotate DateClass (fromString (formatTime defaultTimeLocale "%0Y-%m-%d" d))
 
-prettySmartString :: String -> TomlDoc
+prettySmartString :: Text -> TomlDoc
 prettySmartString str
-    | '\n' `elem` str =
+    | '\n' `Text.elem` str =
         column \i ->
         pageWidth \case
-            AvailablePerLine n _ | length str > n - i ->
+            AvailablePerLine n _ | Text.length str > n - i ->
                 prettyMlString str
             _ -> prettyString str
     | otherwise = prettyString str
 
-prettyMlString :: String -> TomlDoc
-prettyMlString str = annotate StringClass (column \i -> hang (-i) (fromString (quoteMlString str)))
+prettyMlString :: Text -> TomlDoc
+prettyMlString str = annotate StringClass (column \i -> hang (-i) (fromString (quoteMlString (Text.unpack str))))
 
-prettyString :: String -> TomlDoc
-prettyString str = annotate StringClass (fromString (quoteString str))
+prettyString :: Text -> TomlDoc
+prettyString str = annotate StringClass (fromString (quoteString (Text.unpack str)))
 
 -- | Predicate for values that CAN rendered on the
 -- right-hand side of an @=@.
 isSimple :: Value' l -> Bool
 isSimple = \case
     Integer'   {} -> True
-    Float'     {} -> True
+    Double'    {} -> True
     Bool'      {} -> True
-    String'    {} -> True
+    Text'      {} -> True
     TimeOfDay' {} -> True
     ZonedTime' {} -> True
     LocalTime' {} -> True
     Day'       {} -> True
     Table' _    x -> isSingularTable x -- differs from isAlwaysSimple
-    Array' _    x -> null x || not (all isTable x)
+    List'  _    x -> null x || not (all isTable x)
 
 -- | Predicate for values that can be MUST rendered on the
 -- right-hand side of an @=@.
 isAlwaysSimple :: Value' l -> Bool
 isAlwaysSimple = \case
     Integer'   {} -> True
-    Float'     {} -> True
+    Double'    {} -> True
     Bool'      {} -> True
-    String'    {} -> True
+    Text'      {} -> True
     TimeOfDay' {} -> True
     ZonedTime' {} -> True
     LocalTime' {} -> True
     Day'       {} -> True
     Table'     {} -> False -- differs from isSimple
-    Array' _    x -> null x || not (all isTable x)
+    List' _     x -> null x || not (all isTable x)
 
 -- | Predicate for table values.
 isTable :: Value' l -> Bool
@@ -293,7 +295,7 @@ prettyToml = prettyToml_ NoProjection TableKind []
 -- @since 1.2.1.0
 prettyTomlOrdered ::
   Ord a =>
-  ([String] -> String -> a) {- ^ table path -> key -> projection -} ->
+  ([Text] -> Text -> a) {- ^ table path -> key -> projection -} ->
   Table' l {- ^ table to print -} ->
   TomlDoc {- ^ TOML syntax -}
 prettyTomlOrdered proj = prettyToml_ (KeyProjection proj) TableKind []
@@ -303,9 +305,9 @@ data KeyProjection where
     -- | No projection provided; alphabetical order used
     NoProjection :: KeyProjection
     -- | Projection provided: table name and current key are available
-    KeyProjection :: Ord a => ([String] -> String -> a) -> KeyProjection
+    KeyProjection :: Ord a => ([Text] -> Text -> a) -> KeyProjection
 
-prettyToml_ :: KeyProjection -> SectionKind -> [String] -> Table' l -> TomlDoc
+prettyToml_ :: KeyProjection -> SectionKind -> [Text] -> Table' l -> TomlDoc
 prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
     where
         order =
@@ -334,7 +336,7 @@ prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
 
         prettySection key (Table' _ tab) =
             prettyToml_ mbKeyProj TableKind key tab
-        prettySection key (Array' _ a) =
+        prettySection key (List' _ a) =
             vcat [prettyToml_ mbKeyProj ArrayTableKind key tab | Table' _ tab <- a]
         prettySection _ _ = error "prettySection applied to simple value"
 

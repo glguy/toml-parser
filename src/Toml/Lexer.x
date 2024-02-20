@@ -128,7 +128,7 @@ $wschar+;
 "{"                 { token_ TokCurlyO                  }
 "}"                 { token_ TokCurlyC                  }
 
-@barekey            { token TokBareKey                  }
+@barekey            { textToken TokBareKey              }
 
 \"{3} @newline?     { startMlBstr                       }
 \"                  { startBstr                         }

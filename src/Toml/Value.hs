@@ -25,9 +25,9 @@ module Toml.Value (
 
     -- * Annotated values
     Value'(..,
-        Integer,  Float,  String,  Bool,
-        ZonedTime,  Day,  LocalTime,  TimeOfDay,
-        Array,  Table),
+        Integer, Double, Text, Bool,
+        ZonedTime, Day, LocalTime, TimeOfDay,
+        List, Table),
     Table'(..),
 
     -- * Utilities
@@ -39,19 +39,20 @@ module Toml.Value (
 
 import Data.Map (Map)
 import Data.String (IsString(fromString))
+import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
 
 pattern Integer :: Integer -> Value
 pattern Integer x <- Integer' _ x
     where Integer x = Integer' () x
 
-pattern Float :: Double -> Value
-pattern Float x <- Float' _ x
-    where Float x = Float' () x
+pattern Double :: Double -> Value
+pattern Double x <- Double' _ x
+    where Double x = Double' () x
 
-pattern Array :: [Value] -> Value
-pattern Array x <- Array' _ x
-    where Array x = Array' () x
+pattern List :: [Value] -> Value
+pattern List x <- List' _ x
+    where List x = List' () x
 
 pattern Table :: Table -> Value
 pattern Table x <- Table' _ x
@@ -61,9 +62,9 @@ pattern Bool :: Bool -> Value
 pattern Bool x <- Bool' _ x
     where Bool x = Bool' () x
 
-pattern String :: String -> Value
-pattern String x <- String' _ x
-    where String x = String' () x
+pattern Text :: Text -> Value
+pattern Text x <- Text' _ x
+    where Text x = Text' () x
 
 pattern TimeOfDay :: TimeOfDay -> Value
 pattern TimeOfDay x <- TimeOfDay' _ x
@@ -81,18 +82,18 @@ pattern Day :: Day -> Value
 pattern Day x <- Day' _ x
     where Day x = Day' () x
 
-{-# Complete Array, Table, String, Bool, Integer, Float, Day, LocalTime, ZonedTime, TimeOfDay #-}
+{-# Complete List, Table, Text, Bool, Integer, Double, Day, LocalTime, ZonedTime, TimeOfDay #-}
 
 -- | Semantic TOML value with all table assignments resolved.
 --
 -- @since 2.0.0.0
 data Value' a
     = Integer'   a Integer
-    | Float'     a Double
-    | Array'     a [Value' a]
+    | Double'    a Double
+    | List'      a [Value' a]
     | Table'     a (Table' a)
     | Bool'      a Bool
-    | String'    a String
+    | Text'      a Text
     | TimeOfDay' a TimeOfDay
     | ZonedTime' a ZonedTime
     | LocalTime' a LocalTime
@@ -110,11 +111,11 @@ data Value' a
 valueAnn :: Value' a -> a
 valueAnn = \case
     Integer'   a _ -> a
-    Float'     a _ -> a
-    Array'     a _ -> a
+    Double'    a _ -> a
+    List'      a _ -> a
     Table'     a _ -> a
     Bool'      a _ -> a
-    String'    a _ -> a
+    Text'      a _ -> a
     TimeOfDay' a _ -> a
     ZonedTime' a _ -> a
     LocalTime' a _ -> a
@@ -126,11 +127,11 @@ valueAnn = \case
 valueType :: Value' l -> String
 valueType = \case
     Integer'   {} -> "integer"
-    Float'     {} -> "float"
-    Array'     {} -> "array"
+    Double'    {} -> "float"
+    List'      {} -> "array"
     Table'     {} -> "table"
     Bool'      {} -> "boolean"
-    String'    {} -> "string"
+    Text'      {} -> "string"
     TimeOfDay' {} -> "local time"
     LocalTime' {} -> "local date-time"
     Day'       {} -> "locate date"
@@ -139,7 +140,7 @@ valueType = \case
 -- | A table with annotated keys and values.
 --
 -- @since 2.0.0.0
-newtype Table' a = MkTable (Map String (a, Value' a))
+newtype Table' a = MkTable (Map Text (a, Value' a))
     deriving (
         Show        {- ^ Default instance -},
         Read        {- ^ Default instance -},
@@ -167,11 +168,11 @@ forgetValueAnns :: Value' a -> Value
 forgetValueAnns =
     \case
         Integer'   _ x -> Integer'   () x
-        Float'     _ x -> Float'     () x
-        Array'     _ x -> Array'     () (map forgetValueAnns x)
+        Double'    _ x -> Double'    () x
+        List'      _ x -> List'      () (map forgetValueAnns x)
         Table'     _ x -> Table'     () (forgetTableAnns x)
         Bool'      _ x -> Bool'      () x
-        String'    _ x -> String'    () x
+        Text'      _ x -> Text'      () x
         TimeOfDay' _ x -> TimeOfDay' () x
         ZonedTime' _ x -> ZonedTime' () x
         LocalTime' _ x -> LocalTime' () x
@@ -182,11 +183,11 @@ forgetValueAnns =
 -- time-zones are both equal.
 instance Eq a => Eq (Value' a) where
     Integer'   a x == Integer'   b y = a == b && x == y
-    Float'     a x == Float'     b y = a == b && x == y
-    Array'     a x == Array'     b y = a == b && x == y
+    Double'    a x == Double'    b y = a == b && x == y
+    List'      a x == List'      b y = a == b && x == y
     Table'     a x == Table'     b y = a == b && x == y
     Bool'      a x == Bool'      b y = a == b && x == y
-    String'    a x == String'    b y = a == b && x == y
+    Text'      a x == Text'      b y = a == b && x == y
     TimeOfDay' a x == TimeOfDay' b y = a == b && x == y
     LocalTime' a x == LocalTime' b y = a == b && x == y
     Day'       a x == Day'       b y = a == b && x == y
@@ -205,4 +206,4 @@ projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
 --
 -- @since 1.3.3.0
 instance () ~ a => IsString (Value' a) where
-    fromString = String
+    fromString = Text . fromString

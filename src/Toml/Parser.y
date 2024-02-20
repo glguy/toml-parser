@@ -23,7 +23,7 @@ module Toml.Parser (
 
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-
+import Data.Text (Text)
 import Toml.Lexer (Context(..), Token(..))
 import Toml.Located (Located(Located, locThing))
 import Toml.Position (Position)
@@ -82,7 +82,7 @@ key ::                { Key Position                                }
   : sepBy1(simplekey, '.')
                       { $1                                          }
 
-simplekey ::          { (Position, String)                          }
+simplekey ::          { (Position, Text)                            }
   : BAREKEY           { locVal (,) $1                               }
   | STRING            { locVal (,) $1                               }
 

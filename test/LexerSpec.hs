@@ -1,3 +1,4 @@
+{-# Language OverloadedStrings #-}
 module LexerSpec (spec) where
 
 import Test.Hspec (it, shouldBe, Spec)

@@ -1,4 +1,4 @@
-{-# Language DuplicateRecordFields #-}
+{-# Language DuplicateRecordFields, OverloadedStrings #-}
 {-|
 Module      : DecodeSpec
 Description : Show that decoding TOML works using the various provided classes

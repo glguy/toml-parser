@@ -1,4 +1,4 @@
-{-# Language QuasiQuotes #-}
+{-# Language QuasiQuotes, OverloadedStrings #-}
 {-|
 Module      : TomlSpec
 Description : Unit tests
@@ -13,6 +13,7 @@ specification document).
 module TomlSpec (spec) where
 
 import Data.Map qualified as Map
+import Data.Text (Text)
 import Data.Time (Day)
 import QuoteStr (quoteStr)
 import Test.Hspec (describe, it, shouldBe, shouldSatisfy, Spec)
@@ -28,11 +29,11 @@ spec =
             key = "value"  # This is a comment at the end of a line
             another = "# This is not a comment"|]
           `shouldBe`
-          Right (table [("another",String "# This is not a comment"),("key",String "value")])
+          Right (table [("another", Text "# This is not a comment"), ("key", Text "value")])
 
     describe "key/value pair"
      do it "supports the most basic assignments" $
-          parse "key = \"value\"" `shouldBe` Right (table ["key" .= String "value"])
+          parse "key = \"value\"" `shouldBe` Right (table ["key" .= Text "value"])
 
         it "requires a value after equals" $
           parse "key = # INVALID"
@@ -53,10 +54,10 @@ spec =
             1234 = "value"|]
           `shouldBe`
           Right (table [
-            "1234"     .= "value",
-            "bare-key" .= "value",
-            "bare_key" .= "value",
-            "key"      .= "value"])
+            "1234"     .= Text "value",
+            "bare-key" .= Text "value",
+            "bare_key" .= Text "value",
+            "key"      .= Text "value"])
 
         it "allows quoted keys" $
           parse [quoteStr|
@@ -67,11 +68,11 @@ spec =
             'quoted "value"' = "value"|]
           `shouldBe`
           Right (table [
-            "127.0.0.1"          .= "value",
-            "character encoding" .= "value",
-            "key2"               .= "value",
-            "quoted \"value\""   .= "value",
-            "ʎǝʞ"                .= "value"])
+            "127.0.0.1"          .= Text "value",
+            "character encoding" .= Text "value",
+            "key2"               .= Text "value",
+            "quoted \"value\""   .= Text "value",
+            "ʎǝʞ"                .= Text "value"])
 
         it "allows dotted keys" $
           parse [quoteStr|
@@ -81,8 +82,8 @@ spec =
             site."google.com" = true|]
           `shouldBe`
           Right (table [
-            "name"     .= "Orange",
-            "physical" .= table ["color" .= "orange", "shape" .= "round"],
+            "name"     .= Text "Orange",
+            "physical" .= table ["color" .= Text "orange", "shape" .= Text "round"],
             "site"     .= table ["google.com" .= True]])
 
         it "prevents duplicate keys" $
@@ -110,17 +111,17 @@ spec =
           `shouldBe`
           Right (table [
             "apple" .= table [
-                "color" .= "red",
-                "skin"  .= "thin",
-                "type"  .= "fruit"],
+                "color" .= Text "red",
+                "skin"  .= Text "thin",
+                "type"  .= Text "fruit"],
             "orange" .= table [
-                "color" .= "orange",
-                "skin"  .= "thick",
-                "type"  .= "fruit"]])
+                "color" .= Text "orange",
+                "skin"  .= Text "thick",
+                "type"  .= Text "fruit"]])
 
         it "allows numeric bare keys" $
           parse "3.14159 = 'pi'" `shouldBe` Right (table [
-            "3" .= table [("14159", String "pi")]])
+            "3" .= table ["14159" .= Text "pi"]])
 
         it "allows keys that look like other values" $
           parse [quoteStr|
@@ -140,14 +141,14 @@ spec =
           parse [quoteStr|
             str = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."|]
           `shouldBe`
-          Right (table ["str" .= String "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."])
+          Right (table ["str" .= Text "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."])
 
         it "strips the initial newline from multiline strings" $
           parse [quoteStr|
             str1 = """
             Roses are red
             Violets are blue"""|]
-          `shouldBe` Right (table ["str1" .= String "Roses are red\nViolets are blue"])
+          `shouldBe` Right (table ["str1" .= Text "Roses are red\nViolets are blue"])
 
         it "strips whitespace with a trailing escape" $
           parse [quoteStr|
@@ -168,9 +169,9 @@ spec =
                 """|]
           `shouldBe`
           Right (table [
-            "str1" .= "The quick brown fox jumps over the lazy dog.",
-            "str2" .= "The quick brown fox jumps over the lazy dog.",
-            "str3" .= "The quick brown fox jumps over the lazy dog."])
+            "str1" .= Text "The quick brown fox jumps over the lazy dog.",
+            "str2" .= Text "The quick brown fox jumps over the lazy dog.",
+            "str3" .= Text "The quick brown fox jumps over the lazy dog."])
 
         it "allows quotes inside multiline quoted strings" $
           parse [quoteStr|
@@ -182,10 +183,10 @@ spec =
             str7 = """"This," she said, "is just a pointless statement.""""|]
           `shouldBe`
           Right (table [
-            "str4" .= "Here are two quotation marks: \"\". Simple enough.",
-            "str5" .= "Here are three quotation marks: \"\"\".",
-            "str6" .= "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".",
-            "str7" .= "\"This,\" she said, \"is just a pointless statement.\""])
+            "str4" .= Text "Here are two quotation marks: \"\". Simple enough.",
+            "str5" .= Text "Here are three quotation marks: \"\"\".",
+            "str6" .= Text "Here are fifteen quotation marks: \"\"\"\"\"\"\"\"\"\"\"\"\"\"\".",
+            "str7" .= Text "\"This,\" she said, \"is just a pointless statement.\""])
 
         it "disallows triple quotes inside a multiline string" $
           parse [quoteStr|
@@ -201,10 +202,10 @@ spec =
             regex    = '<\i\c*\s*>'|]
           `shouldBe`
           Right (table [
-            "quoted"   .= "Tom \"Dubs\" Preston-Werner",
-            "regex"    .= "<\\i\\c*\\s*>",
-            "winpath"  .= "C:\\Users\\nodejs\\templates",
-            "winpath2" .= "\\\\ServerX\\admin$\\system32\\"])
+            "quoted"   .= Text "Tom \"Dubs\" Preston-Werner",
+            "regex"    .= Text "<\\i\\c*\\s*>",
+            "winpath"  .= Text "C:\\Users\\nodejs\\templates",
+            "winpath2" .= Text "\\\\ServerX\\admin$\\system32\\"])
 
         it "handles multiline literal strings" $
           parse [quoteStr|
@@ -217,8 +218,8 @@ spec =
             '''|]
           `shouldBe`
           Right (table [
-            "lines"  .= "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n",
-            "regex2" .= "I [dw]on't need \\d{2} apples"])
+            "lines"  .= Text "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n",
+            "regex2" .= Text "I [dw]on't need \\d{2} apples"])
 
         it "parses all the other escapes" $
           parse [quoteStr|
@@ -226,8 +227,8 @@ spec =
             y = """\\\b\f\r\u7bca\U0010abcd\n\r\t"""|]
           `shouldBe`
           Right (table [
-            "x" .= "\\\b\f\r\x0010abcd",
-            "y" .= "\\\b\f\r\x7bca\x0010abcd\n\r\t"])
+            "x" .= Text "\\\b\f\r\x0010abcd",
+            "y" .= Text "\\\b\f\r\x7bca\x0010abcd\n\r\t"])
 
         it "rejects out of range unicode escapes" $
           parse [quoteStr|
@@ -307,20 +308,20 @@ spec =
             sf3 = -inf # negative infinity|]
           `shouldBe`
           Right (table [
-            "flt1" .= Float 1.0,
-            "flt2" .= Float 3.1415,
-            "flt3" .= Float (-1.0e-2),
-            "flt4" .= Float 4.9999999999999996e22,
-            "flt5" .= Float 1000000.0,
-            "flt6" .= Float (-2.0e-2),
-            "flt7" .= Float 6.626e-34,
-            "flt8" .= Float 224617.445991228,
-            "sf1"  .= Float (1/0),
-            "sf2"  .= Float (1/0),
-            "sf3"  .= Float (-1/0)])
+            "flt1" .= Double 1.0,
+            "flt2" .= Double 3.1415,
+            "flt3" .= Double (-1.0e-2),
+            "flt4" .= Double 4.9999999999999996e22,
+            "flt5" .= Double 1000000.0,
+            "flt6" .= Double (-2.0e-2),
+            "flt7" .= Double 6.626e-34,
+            "flt8" .= Double 224617.445991228,
+            "sf1"  .= Double (1/0),
+            "sf2"  .= Double (1/0),
+            "sf3"  .= Double (-1/0)])
 
         it "parses nan correctly" $
-          let checkNaN (Float x) = isNaN x
+          let checkNaN (Double x) = isNaN x
               checkNaN _         = False
           in
           parse [quoteStr|
@@ -338,7 +339,7 @@ spec =
         it "parses huge floats without great delays" $
           parse "x = 1e1000000000000"
           `shouldBe`
-          Right (table ["x" .= Float (1/0)])
+          Right (table ["x" .= Double (1/0)])
 
     describe "boolean"
      do it "parses boolean literals" $
@@ -416,18 +417,18 @@ spec =
             ]|]
             `shouldBe`
             Right (table [
-                "colors" .= ["red", "yellow", "green"],
+                "colors" .= [Text "red", Text "yellow", Text "green"],
                 "contributors" .= [
-                    String "Foo Bar <foo@example.com>",
+                    "Foo Bar <foo@example.com>",
                     Table (table [
-                        "email" .= "bazqux@example.com",
-                        "name" .= "Baz Qux",
-                        "url" .= "https://example.com/bazqux"])],
+                        "email" .= Text "bazqux@example.com",
+                        "name" .= Text "Baz Qux",
+                        "url" .= Text "https://example.com/bazqux"])],
                 "integers" .= [1, 2, 3 :: Integer],
                 "nested_arrays_of_ints" .= [[1, 2], [3, 4, 5 :: Integer]],
-                "nested_mixed_array" .= [[Integer 1, Integer 2], [String "a", String "b", String "c"]],
-                "numbers" .= [Float 0.1, Float 0.2, Float 0.5, Integer 1, Integer 2, Integer 5],
-                "string_array" .= ["all", "strings", "are the same", "type"]])
+                "nested_mixed_array" .= [[Integer 1, Integer 2], [Text "a", Text "b", Text "c"]],
+                "numbers" .= [Double 0.1, Double 0.2, Double 0.5, Integer 1, Integer 2, Integer 5],
+                "string_array" .= [Text "all", Text "strings", Text "are the same", Text "type"]])
 
         it "handles newlines and comments" $
           parse [quoteStr|
@@ -445,7 +446,7 @@ spec =
                 "integers3" .= [1, 2 :: Int]])
 
         it "disambiguates double brackets from array tables" $
-          parse "x = [[1]]" `shouldBe` Right (table ["x" .= Array [Array [Integer 1]]])
+          parse "x = [[1]]" `shouldBe` Right (table ["x" .= List [List [Integer 1]]])
 
     describe "table"
      do it "allows empty tables" $
@@ -463,10 +464,10 @@ spec =
           `shouldBe`
           Right (table [
             "table-1" .= table [
-                "key1" .= "some string",
+                "key1" .= Text "some string",
                 "key2" .= Integer 123],
             "table-2" .= table [
-                "key1" .= "another string",
+                "key1" .= Text "another string",
                 "key2" .= Integer 456]])
 
         it "allows quoted keys" $
@@ -474,7 +475,7 @@ spec =
             [dog."tater.man"]
             type.name = "pug"|]
           `shouldBe`
-          Right (table ["dog" .= table ["tater.man" .= table ["type" .= table ["name" .= "pug"]]]])
+          Right (table ["dog" .= table ["tater.man" .= table ["type" .= table ["name" .= Text "pug"]]]])
 
         it "allows whitespace around keys" $
           parse [quoteStr|
@@ -525,7 +526,7 @@ spec =
           Right (table [
             "fruit" .= table [
                 "apple" .= table [
-                    "color" .= "red",
+                    "color" .= Text "red",
                     "taste" .= table [
                         "sweet" .= True],
                         "texture" .= table [
@@ -539,8 +540,8 @@ spec =
             animal = { type.name = "pug" }|]
           `shouldBe`
           Right (table [
-            "animal" .= table ["type" .= table ["name" .= "pug"]],
-            "name"   .= table ["first" .= "Tom", "last" .= "Preston-Werner"],
+            "animal" .= table ["type" .= table ["name" .= Text "pug"]],
+            "name"   .= table ["first" .= Text "Tom", "last" .= Text "Preston-Werner"],
             "point"  .= table ["x" .= Integer 1, "y" .= Integer 2]])
 
         it "prevents altering inline tables with dotted keys" $
@@ -592,14 +593,14 @@ spec =
 
             color = "gray"|]
           `shouldBe`
-          Success mempty (Map.singleton "products" [
+          Success mempty (Map.singleton ("products" :: Text) [
             table [
-              "name" .= "Hammer",
+              "name" .= Text "Hammer",
               "sku"  .= Integer 738594937],
             table [],
             table [
-                "color" .= "gray",
-                "name"  .= "Nail",
+                "color" .= Text "gray",
+                "name"  .= Text "Nail",
                 "sku"   .= Integer 284758393]])
 
         it "handles subtables under array of tables" $
@@ -627,17 +628,17 @@ spec =
           Right (table [
             "fruits" .= [
                 table [
-                    "name" .= "apple",
+                    "name" .= Text "apple",
                     "physical" .= table [
-                        "color" .= "red",
-                        "shape" .= "round"],
+                        "color" .= Text "red",
+                        "shape" .= Text "round"],
                     "varieties" .= [
-                        table ["name" .= "red delicious"],
-                        table ["name" .= "granny smith"]]],
+                        table ["name" .= Text "red delicious"],
+                        table ["name" .= Text "granny smith"]]],
                 table [
-                    "name" .= "banana",
+                    "name" .= Text "banana",
                     "varieties" .= [
-                        table ["name" .= "plantain"]]]]])
+                        table ["name" .= Text "plantain"]]]]])
 
         it "prevents redefining a supertable with an array of tables" $
           parse [quoteStr|
@@ -705,8 +706,8 @@ spec =
                 "a" .= table [
                     "q" .= Integer 3,
                     "x" .= table [
-                        ("y",Integer 1),
-                        ("z",Integer 2)]]]])
+                        "y" .= Integer 1,
+                        "z" .= Integer 2]]]])
 
         it "disallows overwriting assignments with tables" $
           parse [quoteStr|

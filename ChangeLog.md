@@ -4,6 +4,8 @@
 
 * Pervasive annotations on the values added to allow for detailed
   positional error reporting throughout parsing and validation.
+* Replace uses of String with Text in the Value type and throughout
+  the API
 
 ## 1.3.3.0
 
