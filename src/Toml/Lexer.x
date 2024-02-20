@@ -141,25 +141,25 @@ $wschar+;
 
 <lstr> {
   $literal_char+    { strFrag                           }
-  "'"               { endStr . fmap (Text.drop 1)            }
+  "'"               { endStr . fmap (Text.drop 1)       }
 }
 
 <bstr> {
   $unescaped+       { strFrag                           }
-  \"                { endStr . fmap (Text.drop 1)            }
+  \"                { endStr . fmap (Text.drop 1)       }
 }
 
 <mllstr> {
   @mll_content+     { strFrag                           }
   "'" {1,2}         { strFrag                           }
-  "'" {3,5}         { endStr . fmap (Text.drop 3)            }
+  "'" {3,5}         { endStr . fmap (Text.drop 3)       }
 }
 
 <mlbstr> {
   @mlb_escaped_nl;
   ($unescaped | @newline)+ { strFrag                    }
   \" {1,2}          { strFrag                           }
-  \" {3,5}          { endStr . fmap (Text.drop 3)            }
+  \" {3,5}          { endStr . fmap (Text.drop 3)       }
 }
 
 <mlbstr, bstr> {
@@ -167,13 +167,15 @@ $wschar+;
   \\ U              { failure "\\U requires exactly 8 hex digits"}
   \\ u $hexdig{4}   { unicodeEscape                     }
   \\ u              { failure "\\u requires exactly 4 hex digits"}
-  \\ n              { strFrag . (Text.singleton '\n' <$)               }
-  \\ t              { strFrag . (Text.singleton '\t' <$)               }
-  \\ r              { strFrag . (Text.singleton '\r' <$)               }
-  \\ f              { strFrag . (Text.singleton '\f' <$)               }
-  \\ b              { strFrag . (Text.singleton '\b' <$)               }
-  \\ \\             { strFrag . (Text.singleton '\\' <$)               }
-  \\ \"             { strFrag . (Text.singleton '\"' <$)               }
+  \\ n              { strFrag . (Text.singleton '\n' <$) }
+  \\ t              { strFrag . (Text.singleton '\t' <$) }
+  \\ r              { strFrag . (Text.singleton '\r' <$) }
+  \\ f              { strFrag . (Text.singleton '\f' <$) }
+  \\ b              { strFrag . (Text.singleton '\b' <$) }
+  \\ \\             { strFrag . (Text.singleton '\\' <$) }
+  \\ \"             { strFrag . (Text.singleton '\"' <$) }
+  \\ .              { failure "unknown escape sequence" }
+  \\                { failure "incomplete escape sequence" }
   $control # [\t\r\n] { recommendEscape                 }
 }
 
