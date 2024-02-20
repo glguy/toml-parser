@@ -12,7 +12,7 @@ or quotation marks.
 -}
 module QuoteStr (quoteStr) where
 
-import Language.Haskell.TH ( Exp(LitE), ExpQ, Lit(StringL) )
+import Language.Haskell.TH (Exp(LitE), ExpQ, Lit(StringL))
 import Language.Haskell.TH.Quote ( QuasiQuoter(..) )
 import Data.List ( stripPrefix )
 

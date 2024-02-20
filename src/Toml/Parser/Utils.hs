@@ -48,13 +48,13 @@ import Toml.Position (Position)
 -- continuation passing implementation of a state monad with errors
 newtype Parser r a = P {
     getP ::
-        [Context] -> Located String ->
-        ([Context] -> Located String -> a -> Either (Located String) r) ->
+        [Context] -> Located Text ->
+        ([Context] -> Located Text -> a -> Either (Located String) r) ->
         Either (Located String) r
     }
 
 -- | Run the top-level parser
-runParser :: Parser r r -> Context -> Located String -> Either (Located String) r
+runParser :: Parser r r -> Context -> Located Text -> Either (Located String) r
 runParser (P k) ctx str = k [ctx] str \_ _ r -> Right r
 
 -- | Bind implementation used in the happy-generated parser

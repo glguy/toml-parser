@@ -128,6 +128,7 @@ test-suite readme
         toml-parser,
         hspec           ^>= {2.10, 2.11},
         template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21},
+        text,
     build-tool-depends:
         markdown-unlit:markdown-unlit ^>= {0.5.1, 0.6.0},
 

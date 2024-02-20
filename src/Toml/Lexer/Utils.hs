@@ -58,7 +58,7 @@ import Toml.Located (Located(..))
 import Toml.Position (move, Position)
 
 -- | Type of actions associated with lexer patterns
-type Action = Located String -> Context -> Outcome
+type Action = Located Text -> Context -> Outcome
 
 data Outcome
   = Resume Context
@@ -70,10 +70,10 @@ data Context
   = TopContext -- ^ top-level where @[[@ and @]]@ have special meaning
   | TableContext -- ^ inline table - lex key names
   | ValueContext -- ^ value lexer - lex number literals
-  | MlBstrContext Position [String] -- ^ multiline basic string: position of opening delimiter and list of fragments
-  | BstrContext   Position [String] -- ^ basic string: position of opening delimiter and list of fragments
-  | MlLstrContext Position [String] -- ^ multiline literal string: position of opening delimiter and list of fragments
-  | LstrContext   Position [String] -- ^ literal string: position of opening delimiter and list of fragments
+  | MlBstrContext Position [Text] -- ^ multiline basic string: position of opening delimiter and list of fragments
+  | BstrContext   Position [Text] -- ^ basic string: position of opening delimiter and list of fragments
+  | MlLstrContext Position [Text] -- ^ multiline literal string: position of opening delimiter and list of fragments
+  | LstrContext   Position [Text] -- ^ literal string: position of opening delimiter and list of fragments
   deriving Show
 
 -- | Add a literal fragment of a string to the current string state.
@@ -88,10 +88,10 @@ strFrag (Located _ s) = \case
 -- | End the current string state and emit the string literal token.
 endStr :: Action
 endStr (Located _ x) = \case
-    BstrContext   p acc -> EmitToken (Located p (TokString   (Text.pack (concat (reverse (x : acc))))))
-    MlBstrContext p acc -> EmitToken (Located p (TokMlString (Text.pack (concat (reverse (x : acc))))))
-    LstrContext   p acc -> EmitToken (Located p (TokString   (Text.pack (concat (reverse (x : acc))))))
-    MlLstrContext p acc -> EmitToken (Located p (TokMlString (Text.pack (concat (reverse (x : acc))))))
+    BstrContext   p acc -> EmitToken (Located p (TokString   (Text.concat (reverse (x : acc)))))
+    MlBstrContext p acc -> EmitToken (Located p (TokMlString (Text.concat (reverse (x : acc)))))
+    LstrContext   p acc -> EmitToken (Located p (TokString   (Text.concat (reverse (x : acc)))))
+    MlLstrContext p acc -> EmitToken (Located p (TokMlString (Text.concat (reverse (x : acc)))))
     _                  -> error "endStr: panic"
 
 -- | Start a basic string literal
@@ -113,15 +113,15 @@ startMlLstr (Located p _) _ = Resume (MlLstrContext p [])
 -- | Resolve a unicode escape sequence and add it to the current string literal
 unicodeEscape :: Action
 unicodeEscape (Located p lexeme) ctx =
-  case readHex (drop 2 lexeme) of
+  case readHex (drop 2 (Text.unpack lexeme)) of
     [(n,_)] | 0xd800 <= n, n < 0xe000 -> LexerError (Located p "non-scalar unicode escape")
       | n >= 0x110000                 -> LexerError (Located p "unicode escape too large")
-      | otherwise                     -> strFrag (Located p [chr n]) ctx
+      | otherwise                     -> strFrag (Located p (Text.singleton (chr n))) ctx
     _                                 -> error "unicodeEscape: panic"
 
 recommendEscape :: Action
 recommendEscape (Located p x) _ =
-  LexerError (Located p (printf "control characters must be escaped, use: \\u%04X" (ord (head x))))
+  LexerError (Located p (printf "control characters must be escaped, use: \\u%04X" (ord (Text.head x))))
 
 -- | Emit a token ignoring the current lexeme
 token_ :: Token -> Action
@@ -129,11 +129,11 @@ token_ t x _ = EmitToken (t <$ x)
 
 -- | Emit a token using the current lexeme
 token :: (String -> Token) -> Action
-token f x _ = EmitToken (f <$> x)
+token f x _ = EmitToken (f . Text.unpack <$> x)
 
 -- | Emit a token using the current lexeme
 textToken :: (Text -> Token) -> Action
-textToken f x _ = EmitToken (f . Text.pack <$> x)
+textToken f x _ = EmitToken (f <$> x)
 
 -- | Attempt to parse the current lexeme as a date-time token.
 timeValue ::
@@ -143,7 +143,7 @@ timeValue ::
   (a -> Token) {- ^ token constructor              -} ->
   Action
 timeValue description patterns constructor (Located p str) _ =
-  case asum [parseTimeM False defaultTimeLocale pat str | pat <- patterns] of
+  case asum [parseTimeM False defaultTimeLocale pat (Text.unpack str) | pat <- patterns] of
     Nothing -> LexerError (Located p ("malformed " ++ description))
     Just t  -> EmitToken (Located p (constructor t))
 
@@ -151,11 +151,11 @@ timeValue description patterns constructor (Located p str) _ =
 -- The resulting 'Int' will either be the ASCII value of the character
 -- or @1@ for non-ASCII Unicode values. To avoid a clash, @\x1@ is
 -- remapped to @0@.
-locatedUncons :: Located String -> Maybe (Int, Located String)
+locatedUncons :: Located Text -> Maybe (Int, Located Text)
 locatedUncons Located { locPosition = p, locThing = str } =
-  case str of
-    "" -> Nothing
-    x:xs
+  case Text.uncons str of
+    Nothing -> Nothing
+    Just (x, xs)
       | rest `seq` False -> undefined
       | x == '\1' -> Just (0,     rest)
       | isAscii x -> Just (ord x, rest)
@@ -164,12 +164,12 @@ locatedUncons Located { locPosition = p, locThing = str } =
         rest = Located { locPosition = move x p, locThing = xs }
 
 -- | Generate the correct terminating token given the current lexer state.
-eofToken :: Context -> Located String -> Either (Located String) (Located Token, Located String)
+eofToken :: Context -> Located Text -> Either (Located String) (Located Token, Located Text)
 eofToken (MlBstrContext p _) _ = Left (Located p "unterminated multi-line basic string")
 eofToken (BstrContext   p _) _ = Left (Located p "unterminated basic string")
 eofToken (MlLstrContext p _) _ = Left (Located p "unterminated multi-line literal string")
 eofToken (LstrContext   p _) _ = Left (Located p "unterminated literal string")
-eofToken _                  t = Right (TokEOF <$ t, t)
+eofToken _                   t = Right (TokEOF <$ t, t)
 
 failure :: String -> Action
 failure err t _ = LexerError (err <$ t)

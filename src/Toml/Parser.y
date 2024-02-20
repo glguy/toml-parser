@@ -146,7 +146,7 @@ pop ::                { ()                                          }
 -- | Parse a list of tokens either returning the first unexpected
 -- token or a list of the TOML statements in the file to be
 -- processed by "Toml.Semantics".
-parseRawToml :: String -> Either (Located String) [Expr Position]
+parseRawToml :: Text -> Either (Located String) [Expr Position]
 parseRawToml = runParser parseRawToml_ TopContext . Located startPos
 
 }

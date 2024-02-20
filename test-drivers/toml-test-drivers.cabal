@@ -39,6 +39,7 @@ executable TomlDecoder
     build-depends:
         aeson           ^>= {2.1, 2.2},
         bytestring      ^>= {0.10, 0.11, 0.12},
+        text,
 
 executable TomlEncoder
     import:             shared
@@ -48,6 +49,7 @@ executable TomlEncoder
         aeson           ^>= {2.1, 2.2},
         bytestring      ^>= {0.10, 0.11, 0.12},
         containers      ^>= {0.5, 0.6},
+        text,
 
 executable TomlHighlighter
     import:             shared
@@ -56,3 +58,4 @@ executable TomlHighlighter
     build-depends:
         prettyprinter   ^>= 1.7.1,
         prettyprinter-ansi-terminal ^>= 1.1.3,
+        text,

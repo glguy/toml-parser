@@ -10,6 +10,7 @@ Decode TOML into JSON for use with <https://github.com/BurntSushi/toml-test>
 -}
 module Main (main) where
 
+import Data.Text.IO qualified as Text
 import Prettyprinter.Render.Terminal
 import Toml.Parser (parseRawToml)
 import Toml.Pretty (prettyTomlOrdered, DocClass(..), prettyLocated, prettySemanticError)
@@ -18,7 +19,7 @@ import Toml.Semantics.Ordered (extractTableOrder, projectKey)
 
 main :: IO ()
 main =
- do txt <- getContents
+ do txt <- Text.getContents
     case parseRawToml txt of
         Left e -> fail (prettyLocated e)
         Right exprs ->

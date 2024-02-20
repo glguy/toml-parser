@@ -19,6 +19,8 @@ This module uses actions and lexical hooks defined in
 -}
 module Toml.Lexer (Context(..), scanToken, lexValue, Token(..)) where
 
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Toml.Lexer.Token
 import Toml.Lexer.Utils
 import Toml.Located
@@ -139,25 +141,25 @@ $wschar+;
 
 <lstr> {
   $literal_char+    { strFrag                           }
-  "'"               { endStr . fmap (drop 1)            }
+  "'"               { endStr . fmap (Text.drop 1)            }
 }
 
 <bstr> {
   $unescaped+       { strFrag                           }
-  \"                { endStr . fmap (drop 1)            }
+  \"                { endStr . fmap (Text.drop 1)            }
 }
 
 <mllstr> {
   @mll_content+     { strFrag                           }
   "'" {1,2}         { strFrag                           }
-  "'" {3,5}         { endStr . fmap (drop 3)            }
+  "'" {3,5}         { endStr . fmap (Text.drop 3)            }
 }
 
 <mlbstr> {
   @mlb_escaped_nl;
   ($unescaped | @newline)+ { strFrag                    }
   \" {1,2}          { strFrag                           }
-  \" {3,5}          { endStr . fmap (drop 3)            }
+  \" {3,5}          { endStr . fmap (Text.drop 3)            }
 }
 
 <mlbstr, bstr> {
@@ -165,33 +167,33 @@ $wschar+;
   \\ U              { failure "\\U requires exactly 8 hex digits"}
   \\ u $hexdig{4}   { unicodeEscape                     }
   \\ u              { failure "\\u requires exactly 4 hex digits"}
-  \\ n              { strFrag . ("\n" <$)               }
-  \\ t              { strFrag . ("\t" <$)               }
-  \\ r              { strFrag . ("\r" <$)               }
-  \\ f              { strFrag . ("\f" <$)               }
-  \\ b              { strFrag . ("\b" <$)               }
-  \\ \\             { strFrag . ("\\" <$)               }
-  \\ \"             { strFrag . ("\"" <$)               }
+  \\ n              { strFrag . (Text.singleton '\n' <$)               }
+  \\ t              { strFrag . (Text.singleton '\t' <$)               }
+  \\ r              { strFrag . (Text.singleton '\r' <$)               }
+  \\ f              { strFrag . (Text.singleton '\f' <$)               }
+  \\ b              { strFrag . (Text.singleton '\b' <$)               }
+  \\ \\             { strFrag . (Text.singleton '\\' <$)               }
+  \\ \"             { strFrag . (Text.singleton '\"' <$)               }
   $control # [\t\r\n] { recommendEscape                 }
 }
 
 {
 
-type AlexInput = Located String
+type AlexInput = Located Text
 
 alexGetByte :: AlexInput -> Maybe (Int, AlexInput)
 alexGetByte = locatedUncons
 
 -- | Get the next token from a located string. This function can be total
 -- because one of the possible token outputs is an error token.
-scanToken :: Context -> Located String -> Either (Located String) (Located Token, Located String)
+scanToken :: Context -> Located Text -> Either (Located String) (Located Token, Located Text)
 scanToken st str =
   case alexScan str (stateInt st) of
     AlexEOF          -> eofToken st str
-    AlexError str'   -> Left (mkError <$> str')
+    AlexError str'   -> Left (mkError . Text.unpack <$> str')
     AlexSkip  str' _ -> scanToken st str'
     AlexToken str' n action ->
-      case action (take n <$> str) st of
+      case action (Text.take n <$> str) st of
         Resume st'   -> scanToken st' str'
         LexerError e -> Left e
         EmitToken  t -> Right (t, str')
@@ -206,7 +208,7 @@ stateInt LstrContext  {} = lstr
 stateInt MlLstrContext{} = mllstr
 
 -- | Lex a single token in a value context. This is mostly useful for testing.
-lexValue :: String -> Either String Token
+lexValue :: Text -> Either String Token
 lexValue str =
     case scanToken ValueContext Located{ locPosition = startPos, locThing = str } of
       Left e -> Left (locThing e)

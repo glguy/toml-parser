@@ -38,6 +38,7 @@ module Toml (
     DocClass(..),
     ) where
 
+import Data.Text (Text)
 import Toml.FromValue (FromValue (fromValue), Result(..))
 import Toml.FromValue.Matcher (runMatcher)
 import Toml.Located (Located(..))
@@ -49,7 +50,7 @@ import Toml.ToValue (ToTable (toTable))
 import Toml.Value
 
 -- | Parse a TOML formatted 'String' or report an error message.
-parse' :: String -> Either String (Table' Position)
+parse' :: Text -> Either String (Table' Position)
 parse' str =
     case parseRawToml str of
         Left e -> Left (prettyLocated e)
@@ -59,11 +60,11 @@ parse' str =
                 Right tab -> Right tab
 
 -- | Parse a TOML formatted 'String' or report an error message.
-parse :: String -> Either String Table
+parse :: Text -> Either String Table
 parse = fmap forgetTableAnns . parse'
 
 -- | Use the 'FromValue' instance to decode a value from a TOML string.
-decode :: FromValue a => String -> Result String a
+decode :: FromValue a => Text -> Result String a
 decode str =
     case parse' str of
         Left e -> Failure [e]

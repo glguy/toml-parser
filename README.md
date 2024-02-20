@@ -42,6 +42,7 @@ to ensure that its code typechecks and stays in sync with the rest of the packag
 
 ```haskell
 {-# Language OverloadedStrings #-}
+import Data.Text (Text)
 import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, hspec, it, shouldBe)
@@ -59,7 +60,7 @@ main = hspec (parses >> decodes >> encodes)
 Consider this sample TOML text from the TOML specification.
 
 ```haskell
-fruitStr :: String
+fruitStr :: Text
 fruitStr = [quoteStr|
 ```
 

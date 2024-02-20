@@ -14,12 +14,14 @@ module Main (main) where
 
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BS
+import Data.Text qualified as Text
+import Data.Text.IO qualified as Text
 import Toml (Value(..), Value'(..), parse, Table'(..))
 import Toml.Pretty (prettyValue)
 
 main :: IO ()
 main =
- do txt <- getContents
+ do txt <- Text.getContents
     case parse txt of
         Left e  -> fail e
         Right t -> BS.putStr (Aeson.encode t)
@@ -31,10 +33,10 @@ instance Aeson.ToJSON (Toml.Value' a) where
     toJSON v =
         case v of
             Table'     _ t -> Aeson.toJSON t
-            Array'     _ a -> Aeson.toJSON a
-            String'    _ s -> simple "string"         s
+            List'      _ a -> Aeson.toJSON a
+            Text'      _ s -> simple "string"         (Text.unpack s)
             Integer'   _ _ -> simple "integer"        (show (prettyValue v))
-            Float'     _ _ -> simple "float"          (show (prettyValue v))
+            Double'    _ _ -> simple "float"          (show (prettyValue v))
             Bool'      _ _ -> simple "bool"           (show (prettyValue v))
             TimeOfDay' _ _ -> simple "time-local"     (show (prettyValue v))
             ZonedTime' _ _ -> simple "datetime"       (show (prettyValue v))

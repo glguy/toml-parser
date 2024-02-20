@@ -1,9 +1,11 @@
+{-# Language OverloadedStrings #-}
 module PrettySpec (spec) where
 
 import Test.Hspec (it, shouldBe, Spec)
 import QuoteStr (quoteStr)
 import Toml (encode, parse, prettyToml, Table)
 import Data.Map qualified as Map
+import Data.Text (Text)
 
 tomlString :: Table -> String
 tomlString = show . prettyToml
@@ -11,7 +13,7 @@ tomlString = show . prettyToml
 spec :: Spec
 spec =
  do it "renders example 1" $
-        show (encode (Map.singleton "x" (1 :: Integer)))
+        show (encode (Map.singleton ("x" :: Text) (1 :: Integer)))
         `shouldBe` [quoteStr|
             x = 1|]
 
