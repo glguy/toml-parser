@@ -191,7 +191,7 @@ prettyValue = \case
 
 prettySmartString :: Text -> TomlDoc
 prettySmartString str
-    | '\n' `Text.elem` str =
+    | '\n' `elem` Text.unpack str = -- Text.elem isn't in text-1.2
         column \i ->
         pageWidth \case
             AvailablePerLine n _ | Text.length str > n - i ->
