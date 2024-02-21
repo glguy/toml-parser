@@ -40,7 +40,7 @@ module Toml.Schema.FromValue (
 
     ) where
 
-import Control.Monad (zipWithM)
+import Control.Monad (zipWithM, liftM2)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
@@ -71,7 +71,7 @@ mapOf matchKey matchVal =
     \case
         Table' _ (MkTable t) -> Map.fromList <$> sequence kvs
             where
-                kvs = [liftA2 (,) (matchKey l k) (inKey k (matchVal k v)) | (k, (l, v)) <- Map.assocs t]
+                kvs = [liftM2 (,) (matchKey l k) (inKey k (matchVal k v)) | (k, (l, v)) <- Map.assocs t]
         v -> typeError "table" v
 
 -- | List matching function used to help implemented 'fromValue' for arrays.

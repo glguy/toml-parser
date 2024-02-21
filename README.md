@@ -18,22 +18,23 @@ stateDiagram-v2
 
     TOML:::important --> ApplicationTypes:::important : decode
     ApplicationTypes --> TOML : encode
-    TOML --> [Token]: Toml.Syntax.Lexer
-    [Token] --> [Expr]: Toml.Syntax.Parser
-    [Expr] --> Table : Toml.Semantics
-    Table --> ApplicationTypes : Toml.FromValue
-    ApplicationTypes --> Table : Toml.ToValue
-    Table --> TOML : Toml.Pretty
-
+    TOML --> [Token]: Lexer
+    [Token] --> [Expr]: Parser
+    [Expr] --> Table : Semantics
+    Table --> ApplicationTypes : FromValue
+    ApplicationTypes --> Table : ToValue
+    Table --> TOML : Pretty
 ```
 
-The highest-level interface to this package is to define `FromValue` and `ToTable`
-instances for your application-specific datatypes. These can be used with `encode`
-and `decode` to convert to and from TOML.
+Most users will only need to import **Toml** or **Toml.Schema**. Other top-level
+modules are for low-level hacking on the TOML format itself. All modules below
+these top-level modules are exposed to provide direct access to library implementation
+details.
 
-For low-level access to the TOML format, the lexer, parser, and validator are available
-for direct use. The diagram above shows how the different modules enable you to
-advance through the increasingly high-level TOML representations.
+- **Toml** - Basic encoding and decoding TOML
+- **Toml.Schema** - TOML schemas for application types
+- **Toml.Semantics** - Low-level semantic operations on TOML syntax
+- **Toml.Syntax** - Low-level parsing of text into TOML raw syntax
 
 ## Examples
 
