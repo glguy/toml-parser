@@ -23,7 +23,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Toml.Syntax.Token
 import Toml.Syntax.LexerUtils
-import Toml.Syntax.Located
 import Toml.Syntax.Position
 
 }

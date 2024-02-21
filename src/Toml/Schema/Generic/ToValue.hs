@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Schema.ToValue.Generic
+Module      : Toml.Schema.Generic.ToValue
 Description : GHC.Generics derived table generation
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -12,7 +12,7 @@ Use 'genericToArray' to derive an instance of 'Toml.ToValue.ToValue'
 using the positions of data in a constructor.
 
 -}
-module Toml.Schema.ToValue.Generic (
+module Toml.Schema.Generic.ToValue (
 
     -- * Records to Tables
     GToTable(..),

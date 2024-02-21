@@ -33,9 +33,7 @@ module Toml.Pretty (
     prettySimpleKey,
     prettyKey,
 
-    -- * Pretty errors
-    prettySemanticError,
-    prettyMatchMessage,
+    -- * Locations
     prettyLocated,
     prettyPosition,
     ) where
@@ -53,11 +51,9 @@ import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
 import Text.Printf (printf)
-import Toml.Schema.FromValue.Matcher (MatchMessage(..), Scope (..))
 import Toml.Semantics
 import Toml.Syntax.Lexer (Token(..))
-import Toml.Syntax.Located (Located(..))
-import Toml.Syntax.Position (Position(..))
+import Toml.Syntax.Position (Located(..), Position(..))
 import Toml.Syntax.Types (SectionKind(..))
 
 -- | Annotation used to enable styling pretty-printed TOML
@@ -338,36 +334,6 @@ prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
         prettySection key (List' _ a) =
             vcat [prettyToml_ mbKeyProj ArrayTableKind key tab | Table' _ tab <- a]
         prettySection _ _ = error "prettySection applied to simple value"
-
--- | Render a semantic TOML error in a human-readable string.
---
--- @since 1.3.0.0
-prettySemanticError :: SemanticError Position -> String
-prettySemanticError (SemanticError a key kind) =
-    printf "%s: key error: %s %s" (prettyPosition a) (show (prettySimpleKey key))
-    case kind of
-        AlreadyAssigned -> "is already assigned" :: String
-        ClosedTable     -> "is a closed table"
-        ImplicitlyTable -> "is already implicitly defined to be a table"
-
--- | Render a TOML decoding error as a human-readable string.
---
--- @since 1.3.0.0
-prettyMatchMessage :: MatchMessage Position -> String
-prettyMatchMessage (MatchMessage loc scope msg) = prefix ++ msg ++ " in " ++ path
-    where
-        prefix =
-            case loc of
-                Nothing -> ""
-                Just l -> prettyPosition l ++ ": "
-        path =
-            case scope of
-                [] -> "<top-level>"
-                ScopeKey key : scope' -> shows (prettySimpleKey key) (foldr f "" scope')
-                ScopeIndex i : scope' -> foldr f "" (ScopeIndex i : scope') -- should be impossible
-
-        f (ScopeIndex i) = showChar '[' . shows i . showChar ']'
-        f (ScopeKey key) = showChar '.' . shows (prettySimpleKey key)
 
 -- |
 -- @since 2.0.0.0

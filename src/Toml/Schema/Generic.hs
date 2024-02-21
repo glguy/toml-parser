@@ -33,20 +33,29 @@ These derived instances would allow you to match TOML @[1,2]@ to value @Coord 1 
 
 -}
 module Toml.Schema.Generic (
+    -- * DerivingVia
     GenericTomlTable(GenericTomlTable),
     GenericTomlArray(GenericTomlArray),
+
+    -- * FromValue
     genericFromArray,
     genericFromTable,
+    GFromArray,
+    GToArray,
+
+    -- * ToValue
     genericToArray,
     genericToTable,
+    GToArray,
+    GToTable,
     ) where
 
 import Data.Coerce (coerce)
 import GHC.Generics (Generic(Rep))
 import Toml.Schema.FromValue
-import Toml.Schema.FromValue.Generic
+import Toml.Schema.Generic.FromValue
+import Toml.Schema.Generic.ToValue (GToTable, GToArray, genericToTable, genericToArray)
 import Toml.Schema.ToValue (ToTable(toTable), ToValue(toValue), defaultTableToValue)
-import Toml.Schema.ToValue.Generic (GToTable, GToArray, genericToTable, genericToArray)
 import Toml.Semantics (Value, Value', Table)
 
 -- | Helper type to use GHC's DerivingVia extension to derive

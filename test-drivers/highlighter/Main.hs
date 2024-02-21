@@ -12,8 +12,9 @@ module Main (main) where
 
 import Data.Text.IO qualified as Text
 import Prettyprinter.Render.Terminal
-import Toml.Parser (parseRawToml)
-import Toml.Pretty (prettyTomlOrdered, DocClass(..), prettyLocated, prettySemanticError)
+import Toml
+import Toml.Pretty (prettyLocated, prettyTomlOrdered)
+import Toml.Syntax (parseRawToml)
 import Toml.Semantics (semantics)
 import Toml.Semantics.Ordered (extractTableOrder, projectKey)
 

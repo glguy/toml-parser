@@ -51,18 +51,17 @@ library
         Toml.Pretty
         Toml.Schema
         Toml.Schema.FromValue
-        Toml.Schema.FromValue.Generic
-        Toml.Schema.FromValue.Matcher
-        Toml.Schema.FromValue.ParseTable
         Toml.Schema.Generic
+        Toml.Schema.Generic.FromValue
+        Toml.Schema.Generic.ToValue
+        Toml.Schema.Matcher
+        Toml.Schema.ParseTable
         Toml.Schema.ToValue
-        Toml.Schema.ToValue.Generic
         Toml.Semantics
         Toml.Semantics.Ordered
         Toml.Semantics.Types
         Toml.Syntax
         Toml.Syntax.Lexer
-        Toml.Syntax.Located
         Toml.Syntax.Parser
         Toml.Syntax.Position
         Toml.Syntax.Token

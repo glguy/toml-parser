@@ -25,9 +25,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Toml.Syntax.Lexer (Context(..), Token(..))
-import Toml.Syntax.Located (Located(Located, locThing))
 import Toml.Syntax.ParserUtils
-import Toml.Syntax.Position (Position)
+import Toml.Syntax.Position (Located(Located, locThing), Position)
 import Toml.Syntax.Position (startPos)
 import Toml.Syntax.Types (Expr(..), Key, Val(..), SectionKind(..))
 

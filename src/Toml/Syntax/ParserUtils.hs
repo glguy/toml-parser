@@ -41,8 +41,7 @@ import Data.Text (Text)
 import Data.Time
 import Toml.Pretty (prettyToken)
 import Toml.Syntax.Lexer (scanToken, Context(..))
-import Toml.Syntax.Located (Located(..))
-import Toml.Syntax.Position (Position)
+import Toml.Syntax.Position (Located(..), Position)
 import Toml.Syntax.Token (Token(..))
 
 -- continuation passing implementation of a state monad with errors

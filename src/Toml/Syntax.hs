@@ -31,6 +31,5 @@ module Toml.Syntax (
 ) where
 
 import Toml.Syntax.Lexer
-import Toml.Syntax.Located
 import Toml.Syntax.Parser
 import Toml.Syntax.Position

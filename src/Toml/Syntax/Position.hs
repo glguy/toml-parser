@@ -13,12 +13,23 @@ This module assumes 8 column wide tab stops.
 
 -}
 module Toml.Syntax.Position (
+    Located(..),
     Position(..),
     startPos,
     move,
     ) where
 
-import Data.Data ( Data )
+-- | A value annotated with its text file position
+data Located a = Located
+    { locPosition :: {-# UNPACK #-} !Position -- ^ position
+    , locThing    :: !a -- ^ thing at position
+    }
+    deriving (
+        Read        {- ^ Default instance -},
+        Show        {- ^ Default instance -},
+        Functor     {- ^ Default instance -},
+        Foldable    {- ^ Default instance -},
+        Traversable {- ^ Default instance -})
 
 -- | A position in a text file
 data Position = Position {
@@ -29,8 +40,7 @@ data Position = Position {
         Read    {- ^ Default instance -},
         Show    {- ^ Default instance -},
         Ord     {- ^ Default instance -},
-        Eq      {- ^ Default instance -},
-        Data    {- ^ Default instance -})
+        Eq      {- ^ Default instance -})
 
 -- | The initial 'Position' for the start of a file
 startPos :: Position

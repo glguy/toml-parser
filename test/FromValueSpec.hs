@@ -14,7 +14,6 @@ import Control.Monad (when)
 import Test.Hspec (it, shouldBe, Spec)
 import Toml
 import Toml.Schema
-import Toml.Pretty (prettyMatchMessage)
 import Toml.Syntax (startPos)
 
 humanMatcher :: Matcher l a -> Result String a

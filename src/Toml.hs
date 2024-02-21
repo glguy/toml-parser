@@ -36,12 +36,17 @@ module Toml (
     encode,
     prettyToml,
     DocClass(..),
+
+    -- * Errors
+    prettyMatchMessage,
+    prettySemanticError
     ) where
 
 import Data.Text (Text)
-import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage, prettyLocated)
+import Text.Printf (printf)
+import Toml.Pretty
 import Toml.Schema
-import Toml.Semantics (Value, Value'(..), Table, Table'(..), semantics, forgetTableAnns)
+import Toml.Semantics
 import Toml.Syntax
 
 -- | Parse a TOML formatted 'String' or report an error message.
@@ -71,3 +76,33 @@ decode str =
 -- | Use the 'ToTable' instance to encode a value to a TOML string.
 encode :: ToTable a => a -> TomlDoc
 encode = prettyToml . toTable
+
+-- | Render a TOML decoding error as a human-readable string.
+--
+-- @since 1.3.0.0
+prettyMatchMessage :: MatchMessage Position -> String
+prettyMatchMessage (MatchMessage loc scope msg) = prefix ++ msg ++ " in " ++ path
+    where
+        prefix =
+            case loc of
+                Nothing -> ""
+                Just l -> prettyPosition l ++ ": "
+        path =
+            case scope of
+                [] -> "<top-level>"
+                ScopeKey key : scope' -> shows (prettySimpleKey key) (foldr f "" scope')
+                ScopeIndex i : scope' -> foldr f "" (ScopeIndex i : scope') -- should be impossible
+
+        f (ScopeIndex i) = showChar '[' . shows i . showChar ']'
+        f (ScopeKey key) = showChar '.' . shows (prettySimpleKey key)
+
+-- | Render a semantic TOML error in a human-readable string.
+--
+-- @since 1.3.0.0
+prettySemanticError :: SemanticError Position -> String
+prettySemanticError (SemanticError a key kind) =
+    printf "%s: key error: %s %s" (prettyPosition a) (show (prettySimpleKey key))
+    case kind of
+        AlreadyAssigned -> "is already assigned" :: String
+        ClosedTable     -> "is a closed table"
+        ImplicitlyTable -> "is already implicitly defined to be a table"

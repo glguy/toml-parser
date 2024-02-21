@@ -75,8 +75,8 @@ import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.Schema.FromValue.Matcher
-import Toml.Schema.FromValue.ParseTable
+import Toml.Schema.Matcher
+import Toml.Schema.ParseTable
 import Toml.Semantics
 
 -- | Class for types that can be decoded from a TOML value.

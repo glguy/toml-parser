@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.FromValue.ParseTable
+Module      : Toml.Schema.ParseTable
 Description : A type for matching keys out of a table
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -17,7 +17,7 @@ most of the basic functionality is exported directly from
 "Toml.FromValue".
 
 -}
-module Toml.Schema.FromValue.ParseTable (
+module Toml.Schema.ParseTable (
     -- * Base interface
     ParseTable,
     KeyAlt(..),
@@ -42,9 +42,9 @@ import Data.Foldable (for_)
 import Data.List (intercalate)
 import Data.Map qualified as Map
 import Data.Text (Text)
-import Toml.Pretty (prettySimpleKey)
-import Toml.Schema.FromValue.Matcher (Matcher, inKey, failAt, warn, warnAt)
+import Toml.Schema.Matcher (Matcher, inKey, failAt, warn, warnAt)
 import Toml.Semantics (Table'(..), Value')
+import Toml.Pretty
 
 -- | Parser that tracks a current set of unmatched key-value
 -- pairs from a table.
@@ -74,7 +74,6 @@ parseTable (ParseTable p) l t =
     for_ (Map.assocs t') \(k, (a, _)) ->
         warnAt a ("unexpected key: " ++ show (prettySimpleKey k))
     pure x
-
 
 -- | Return the remaining portion of the table being matched.
 getTable :: ParseTable l (Table' l)

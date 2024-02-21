@@ -21,7 +21,6 @@ import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
 import Toml (decode, Value'(..), Table')
 import Toml.Schema
-import Toml.Schema.FromValue.Generic (genericParseTable)
 
 -----------------------------------------------------------------------
 -- THIS CODE DERIVED FROM CODE UNDER THE FOLLOWING LICENSE
@@ -127,7 +126,7 @@ data Callable
 -----------------------------------------------------------------------
 
 instance FromValue CradleConfig where
-    fromValue = parseTableFromValue genericParseTable
+    fromValue = genericFromTable
 
 instance FromValue CradleComponent where
     fromValue = parseTableFromValue $
@@ -140,7 +139,7 @@ instance FromValue CradleComponent where
             KeyCase None   "none"]
 
 instance FromValue MultiSubComponent where
-    fromValue = parseTableFromValue genericParseTable
+    fromValue = genericFromTable
 
 instance FromValue CabalConfig where
     fromValue v@Toml.List'{} = CabalConfig Nothing . ManyComponents <$> fromValue v
@@ -173,7 +172,7 @@ instance FromValue StackComponent where
         <*> optKey "stackYaml"
 
 instance FromValue DirectConfig where
-    fromValue = parseTableFromValue genericParseTable
+    fromValue = genericFromTable
 
 instance FromValue BiosConfig where
     fromValue = parseTableFromValue $ BiosConfig

@@ -54,8 +54,7 @@ import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
 import Numeric (readHex)
 import Text.Printf (printf)
 import Toml.Syntax.Token (Token(..))
-import Toml.Syntax.Located (Located(..))
-import Toml.Syntax.Position (move, Position)
+import Toml.Syntax.Position (move, Located(..), Position)
 
 -- | Type of actions associated with lexer patterns
 type Action = Located Text -> Context -> Outcome

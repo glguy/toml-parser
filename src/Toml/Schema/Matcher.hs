@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-|
-Module      : Toml.Schema.FromValue.Matcher
+Module      : Toml.Schema.Matcher
 Description : A type for building results while tracking scopes
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -19,7 +19,7 @@ Use 'Toml.Pretty.prettyMatchMessage' for an easy way to make human
 readable strings from matcher outputs.
 
 -}
-module Toml.Schema.FromValue.Matcher (
+module Toml.Schema.Matcher (
     -- * Types
     Matcher,
     Result(..),

@@ -1,6 +1,6 @@
 {-# Language DataKinds, InstanceSigs, ScopedTypeVariables, TypeOperators #-}
 {-|
-Module      : Toml.Schema.FromValue.Generic
+Module      : Toml.Schema.Generic.FromValue
 Description : GHC.Generics derived table parsing
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -11,7 +11,7 @@ of a record. This can be combined with 'Toml.FromValue.parseTableFromValue'
 to derive a 'Toml.FromValue.FromValue' instance.
 
 -}
-module Toml.Schema.FromValue.Generic (
+module Toml.Schema.Generic.FromValue (
     -- * Record from table
     GParseTable(..),
     genericParseTable,
@@ -27,9 +27,9 @@ import Data.Coerce (coerce)
 import Data.Text qualified as Text
 import GHC.Generics
 import Toml.Schema.FromValue (FromValue, fromValue, optKey, reqKey, parseTableFromValue)
-import Toml.Schema.FromValue.Matcher (Matcher, failAt)
-import Toml.Schema.FromValue.ParseTable (ParseTable)
-import Toml.Semantics
+import Toml.Schema.Matcher (Matcher, failAt)
+import Toml.Schema.ParseTable (ParseTable)
+import Toml.Semantics (valueAnn, valueType, Value'(List'))
 
 -- | Match a 'Table' using the field names in a record.
 --
