@@ -17,7 +17,6 @@ module DerivingViaSpec (spec) where
 
 import GHC.Generics (Generic)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml
 import Toml.Schema
 
 data Physical = Physical {

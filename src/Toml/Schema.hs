@@ -9,6 +9,8 @@ Maintainer  : emertens@gmail.com
 module Toml.Schema (
     -- * FromValue
     FromValue(..),
+    mapOf,
+    listOf,
 
     -- ** Matcher
     Matcher,
@@ -64,5 +66,7 @@ module Toml.Schema (
 
 import Toml.Schema.FromValue
 import Toml.Schema.Generic
+import Toml.Schema.ParseTable
+import Toml.Schema.Matcher
 import Toml.Schema.ToValue
 import Toml.Semantics

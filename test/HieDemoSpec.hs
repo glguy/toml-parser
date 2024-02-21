@@ -19,8 +19,8 @@ import Data.Text (Text)
 import GHC.Generics ( Generic )
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
-import Toml (decode, Value'(..), Table')
-import Toml.Schema
+import Toml (decode)
+import Toml.Schema as Toml
 
 -----------------------------------------------------------------------
 -- THIS CODE DERIVED FROM CODE UNDER THE FOLLOWING LICENSE

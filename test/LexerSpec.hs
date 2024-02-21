@@ -2,8 +2,8 @@
 module LexerSpec (spec) where
 
 import Test.Hspec (it, shouldBe, Spec)
-import Toml
-import Toml.Schema
+import Toml (Value'(Integer), parse)
+import Toml.Schema (table, (.=))
 
 spec :: Spec
 spec =

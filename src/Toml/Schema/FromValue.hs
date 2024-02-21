@@ -27,37 +27,17 @@ module Toml.Schema.FromValue (
     FromValue(..),
     FromKey(..),
 
-    -- * Matcher
-    runMatcher,
-    runMatcherFatalWarn,
-    runMatcherIgnoreWarn,
-    Matcher,
-    MatchMessage(..),
-    Result(..),
-    warn,
-    warnAt,
-    failAt,
-
-    -- * Table matching
-    ParseTable,
-    parseTable,
+    -- * Containers
+    mapOf,
+    listOf,
+    
+    -- * Tables
     parseTableFromValue,
     reqKey,
-    optKey,
     reqKeyOf,
+    optKey,
     optKeyOf,
-    warnTable,
-    warnTableAt,
-    failTableAt,
-    KeyAlt(..),
-    pickKey,
-    getScope,
-    Scope(..),
 
-    -- * Table matching primitives
-    getTable,
-    setTable,
-    liftMatcher,
     ) where
 
 import Control.Monad (zipWithM)
@@ -79,6 +59,32 @@ import Toml.Schema.Matcher
 import Toml.Schema.ParseTable
 import Toml.Semantics
 
+-- | Table matching function used to help implement 'fromValue' for tables.
+-- Key matching function is given the annotation of the key for error reporting.
+-- Value matching function is given the key in case values can depend on their keys.
+mapOf ::
+    Ord k =>
+    (l -> Text -> Matcher l k)         {- ^ key matcher   -} ->
+    (Text -> Value' l -> Matcher l v)  {- ^ value matcher -} ->
+    Value' l -> Matcher l (Map k v)
+mapOf matchKey matchVal =
+    \case
+        Table' _ (MkTable t) -> Map.fromList <$> sequence kvs
+            where
+                kvs = [liftA2 (,) (matchKey l k) (inKey k (matchVal k v)) | (k, (l, v)) <- Map.assocs t]
+        v -> typeError "table" v
+
+-- | List matching function used to help implemented 'fromValue' for arrays.
+-- The element matching function is given the list index in case values can
+-- depend on their index.
+listOf ::
+    (Int -> Value' l -> Matcher l a) ->
+    Value' l -> Matcher l [a]
+listOf matchElt =
+    \case
+        List' _ xs -> zipWithM (\i -> inIndex i . matchElt i) [0..] xs
+        v -> typeError "array" v 
+
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
     -- | Convert a 'Value' or report an error message
@@ -86,14 +92,10 @@ class FromValue a where
 
     -- | Used to implement instance for @[]@. Most implementations rely on the default implementation.
     listFromValue :: Value' l -> Matcher l [a]
-    listFromValue (List' _ xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
-    listFromValue v = typeError "array" v
+    listFromValue = listOf (const fromValue)
 
 instance (Ord k, FromKey k, FromValue v) => FromValue (Map k v) where
-    fromValue (Table' _ (MkTable t)) = Map.fromList <$> traverse f (Map.assocs t)
-        where
-            f (k,(_, v)) = (,) <$> fromKey k <*> inKey k (fromValue v)
-    fromValue v = typeError "table" v
+    fromValue = mapOf fromKey (const fromValue)
 
 instance FromValue Table where
     fromValue (Table' _ t) = pure (forgetTableAnns t)
@@ -103,25 +105,25 @@ instance FromValue Table where
 --
 -- @since 1.3.0.0
 class FromKey a where
-    fromKey :: Text -> Matcher l a
+    fromKey :: l -> Text -> Matcher l a
 
 -- | Matches all strings
 --
 -- @since 1.3.0.0
 instance a ~ Char => FromKey [a] where
-    fromKey = pure . Text.unpack
+    fromKey _ = pure . Text.unpack
 
 -- | Matches all strings
 --
 -- @since 1.3.0.0
 instance FromKey Text where
-    fromKey = pure
+    fromKey _ = pure
 
 -- | Matches all strings
 --
 -- @since 1.3.0.0
 instance FromKey Data.Text.Lazy.Text where
-    fromKey = pure . Data.Text.Lazy.fromStrict
+    fromKey _ = pure . Data.Text.Lazy.fromStrict
 
 -- | Report a type error
 typeError :: String {- ^ expected type -} -> Value' l {- ^ actual value -} -> Matcher l a

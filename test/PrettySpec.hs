@@ -1,11 +1,11 @@
 {-# Language OverloadedStrings #-}
 module PrettySpec (spec) where
 
-import Test.Hspec (it, shouldBe, Spec)
-import QuoteStr (quoteStr)
-import Toml (encode, parse, prettyToml, Table)
 import Data.Map qualified as Map
 import Data.Text (Text)
+import QuoteStr (quoteStr)
+import Test.Hspec (it, shouldBe, Spec)
+import Toml (encode, parse, prettyToml, Table)
 
 tomlString :: Table -> String
 tomlString = show . prettyToml

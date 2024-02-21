@@ -17,8 +17,8 @@ import Data.Text (Text)
 import Data.Time (Day)
 import QuoteStr (quoteStr)
 import Test.Hspec (describe, it, shouldBe, shouldSatisfy, Spec)
-import Toml
-import Toml.Schema
+import Toml (Result(..), Table'(..), Value'(..), parse, decode)
+import Toml.Schema (table, (.=))
 
 spec :: Spec
 spec =

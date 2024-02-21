@@ -41,7 +41,7 @@ module Toml.Schema.Generic (
     genericFromArray,
     genericFromTable,
     GFromArray,
-    GToArray,
+    GParseTable,
 
     -- * ToValue
     genericToArray,
@@ -53,6 +53,7 @@ module Toml.Schema.Generic (
 import Data.Coerce (coerce)
 import GHC.Generics (Generic(Rep))
 import Toml.Schema.FromValue
+import Toml.Schema.Matcher
 import Toml.Schema.Generic.FromValue
 import Toml.Schema.Generic.ToValue (GToTable, GToArray, genericToTable, genericToArray)
 import Toml.Schema.ToValue (ToTable(toTable), ToValue(toValue), defaultTableToValue)

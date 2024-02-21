@@ -2,8 +2,8 @@
 module ToValueSpec where
 
 import Test.Hspec (it, shouldBe, Spec)
-import Toml
-import Toml.Schema
+import Toml (Value'(Integer, Text, List))
+import Toml.Schema (ToValue(toValue))
 
 spec :: Spec
 spec =

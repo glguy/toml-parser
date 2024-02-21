@@ -13,7 +13,7 @@ import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml
+import Toml (decode, encode)
 import Toml.Schema
 
 newtype Fruits = Fruits { fruits :: [Fruit] }
