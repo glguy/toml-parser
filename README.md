@@ -18,8 +18,8 @@ stateDiagram-v2
 
     TOML:::important --> ApplicationTypes:::important : decode
     ApplicationTypes --> TOML : encode
-    TOML --> [Token]: Toml.Lexer
-    [Token] --> [Expr]: Toml.Parser
+    TOML --> [Token]: Toml.Syntax.Lexer
+    [Token] --> [Expr]: Toml.Syntax.Parser
     [Expr] --> Table : Toml.Semantics
     Table --> ApplicationTypes : Toml.FromValue
     ApplicationTypes --> Table : Toml.ToValue
@@ -47,9 +47,7 @@ import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, hspec, it, shouldBe)
 import Toml
-import Toml.FromValue (FromValue(fromValue), parseTableFromValue, reqKey)
-import Toml.Generic (GenericTomlTable(..))
-import Toml.ToValue (ToValue(toValue), ToTable(toTable), defaultTableToValue, table, (.=))
+import Toml.Schema
 
 main :: IO ()
 main = hspec (parses >> decodes >> encodes)

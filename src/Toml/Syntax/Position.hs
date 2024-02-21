@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Position
+Module      : Toml.Syntax.Position
 Description : File position representation
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -12,7 +12,7 @@ error messages.
 This module assumes 8 column wide tab stops.
 
 -}
-module Toml.Position (
+module Toml.Syntax.Position (
     Position(..),
     startPos,
     move,

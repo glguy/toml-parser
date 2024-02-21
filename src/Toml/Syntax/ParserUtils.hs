@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Parser.Utils
+Module      : Toml.Syntax.ParserUtils
 Description : Primitive operations used by the happy-generated parser
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -12,7 +12,7 @@ that has warnings disabled and get better editor support.
 @since 1.3.0.0
 
 -}
-module Toml.Parser.Utils (
+module Toml.Syntax.ParserUtils (
     Parser,
     runParser,
     pureP,
@@ -39,11 +39,11 @@ module Toml.Parser.Utils (
 
 import Data.Text (Text)
 import Data.Time
-import Toml.Lexer (scanToken, Context(..))
-import Toml.Lexer.Token (Token(..))
-import Toml.Located (Located(..))
 import Toml.Pretty (prettyToken)
-import Toml.Position (Position)
+import Toml.Syntax.Lexer (scanToken, Context(..))
+import Toml.Syntax.Located (Located(..))
+import Toml.Syntax.Position (Position)
+import Toml.Syntax.Token (Token(..))
 
 -- continuation passing implementation of a state monad with errors
 newtype Parser r a = P {

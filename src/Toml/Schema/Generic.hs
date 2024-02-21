@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, ScopedTypeVariables, InstanceSigs #-}
 {-|
-Module      : Toml.Generic
+Module      : Toml.Schema.Generic
 Description : Integration with DerivingVia extension
 Copyright   : (c) Eric Mertens, 2024
 License     : ISC
@@ -32,19 +32,22 @@ data Coord = Coord Int Int
 These derived instances would allow you to match TOML @[1,2]@ to value @Coord 1 2@.
 
 -}
-module Toml.Generic (
+module Toml.Schema.Generic (
     GenericTomlTable(GenericTomlTable),
     GenericTomlArray(GenericTomlArray),
+    genericFromArray,
+    genericFromTable,
+    genericToArray,
+    genericToTable,
     ) where
 
 import Data.Coerce (coerce)
 import GHC.Generics (Generic(Rep))
-import Toml.FromValue (FromValue(fromValue), parseTableFromValue)
-import Toml.FromValue.Generic (GParseTable, GFromArray, genericParseTable, genericFromArray)
-import Toml.FromValue.Matcher (Matcher)
-import Toml.ToValue (ToTable(toTable), ToValue(toValue), defaultTableToValue)
-import Toml.ToValue.Generic (GToTable, GToArray, genericToTable, genericToArray)
-import Toml.Value (Value, Value', Table)
+import Toml.Schema.FromValue
+import Toml.Schema.FromValue.Generic
+import Toml.Schema.ToValue (ToTable(toTable), ToValue(toValue), defaultTableToValue)
+import Toml.Schema.ToValue.Generic (GToTable, GToArray, genericToTable, genericToArray)
+import Toml.Semantics (Value, Value', Table)
 
 -- | Helper type to use GHC's DerivingVia extension to derive
 -- 'ToValue', 'ToTable', 'FromValue' for records.

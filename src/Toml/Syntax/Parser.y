@@ -1,6 +1,6 @@
 {
 {-|
-Module      : Toml.Parser
+Module      : Toml.Syntax.Parser
 Description : Raw TOML expression parser
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -10,7 +10,7 @@ This module parses TOML tokens into a list of raw,
 uninterpreted sections and assignments.
 
 -}
-module Toml.Parser (
+module Toml.Syntax.Parser (
   -- * Types
   Expr(..),
   SectionKind(..),
@@ -24,12 +24,12 @@ module Toml.Parser (
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
-import Toml.Lexer (Context(..), Token(..))
-import Toml.Located (Located(Located, locThing))
-import Toml.Position (Position)
-import Toml.Parser.Types (Expr(..), Key, Val(..), SectionKind(..))
-import Toml.Parser.Utils
-import Toml.Position (startPos)
+import Toml.Syntax.Lexer (Context(..), Token(..))
+import Toml.Syntax.Located (Located(Located, locThing))
+import Toml.Syntax.ParserUtils
+import Toml.Syntax.Position (Position)
+import Toml.Syntax.Position (startPos)
+import Toml.Syntax.Types (Expr(..), Key, Val(..), SectionKind(..))
 
 }
 

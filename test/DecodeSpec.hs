@@ -13,13 +13,8 @@ import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import QuoteStr (quoteStr)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (decode, Result, encode)
-import Toml.FromValue (FromValue(..), reqKey, optKey)
-import Toml.FromValue.Generic (genericParseTable)
-import Toml.ToValue (ToTable(..), ToValue(toValue), table, (.=), defaultTableToValue)
-import Toml.ToValue.Generic (genericToTable)
-import Toml (Result(..))
-import Toml.FromValue (parseTableFromValue)
+import Toml
+import Toml.Schema
 
 newtype Fruits = Fruits { fruits :: [Fruit] }
     deriving (Eq, Show, Generic)
@@ -39,9 +34,9 @@ newtype Variety = Variety {
     name :: String
     } deriving (Eq, Show, Generic)
 
-instance FromValue Fruits   where fromValue = parseTableFromValue genericParseTable
-instance FromValue Physical where fromValue = parseTableFromValue genericParseTable
-instance FromValue Variety  where fromValue = parseTableFromValue genericParseTable
+instance FromValue Fruits   where fromValue = genericFromTable
+instance FromValue Physical where fromValue = genericFromTable
+instance FromValue Variety  where fromValue = genericFromTable
 
 instance ToTable Fruits   where toTable = genericToTable
 instance ToTable Physical where toTable = genericToTable

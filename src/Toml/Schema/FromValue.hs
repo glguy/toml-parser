@@ -1,6 +1,6 @@
 {-# Language TypeFamilies #-}
 {-|
-Module      : Toml.FromValue
+Module      : Toml.Schema.FromValue
 Description : Automation for converting TOML values to application values.
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -13,37 +13,46 @@ Use 'ParseTable' to help build 'FromValue' instances that match tables. It
 will make it easy to track which table keys have been used and which are left
 over.
 
-Warnings can be emitted using 'warning' and 'warnTable' (depending on what)
+Warnings can be emitted using 'warn' and 'warnTable' (depending on what)
 context you're in. These warnings can provide useful feedback about
 problematic values or keys that might be unused now but were perhaps
 meaningful in an old version of a configuration file.
 
-"Toml.FromValue.Generic" can be used to derive instances of 'FromValue'
+"Toml.Schema.FromValue.Generic" can be used to derive instances of 'FromValue'
 automatically for record types.
 
 -}
-module Toml.FromValue (
+module Toml.Schema.FromValue (
     -- * Deserialization classes
     FromValue(..),
     FromKey(..),
 
     -- * Matcher
+    runMatcher,
+    runMatcherFatalWarn,
+    runMatcherIgnoreWarn,
     Matcher,
     MatchMessage(..),
     Result(..),
-    warning,
+    warn,
+    warnAt,
+    failAt,
 
     -- * Table matching
     ParseTable,
-    runParseTable,
+    parseTable,
     parseTableFromValue,
     reqKey,
     optKey,
     reqKeyOf,
     optKeyOf,
     warnTable,
+    warnTableAt,
+    failTableAt,
     KeyAlt(..),
     pickKey,
+    getScope,
+    Scope(..),
 
     -- * Table matching primitives
     getTable,
@@ -66,16 +75,16 @@ import Data.Text.Lazy qualified
 import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.FromValue.Matcher (Matcher, Result(..), MatchMessage(..), warning, inIndex, inKey, failAt)
-import Toml.FromValue.ParseTable
-import Toml.Value
+import Toml.Schema.FromValue.Matcher
+import Toml.Schema.FromValue.ParseTable
+import Toml.Semantics
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
     -- | Convert a 'Value' or report an error message
     fromValue :: Value' l -> Matcher l a
 
-    -- | Used to implement instance for '[]'. Most implementations rely on the default implementation.
+    -- | Used to implement instance for @[]@. Most implementations rely on the default implementation.
     listFromValue :: Value' l -> Matcher l [a]
     listFromValue (List' _ xs) = zipWithM (\i v -> inIndex i (fromValue v)) [0..] xs
     listFromValue v = typeError "array" v
@@ -120,7 +129,7 @@ typeError wanted got = failAt (valueAnn got) ("type error. wanted: " ++ wanted +
 
 -- | Used to derive a 'fromValue' implementation from a 'ParseTable' matcher.
 parseTableFromValue :: ParseTable l a -> Value' l -> Matcher l a
-parseTableFromValue p (Table' l t) = runParseTable p l t
+parseTableFromValue p (Table' l t) = parseTable p l t
 parseTableFromValue _ v = typeError "table" v
 
 -- | Matches integer values

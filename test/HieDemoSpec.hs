@@ -20,8 +20,8 @@ import GHC.Generics ( Generic )
 import QuoteStr (quoteStr)
 import Test.Hspec (Spec, it, shouldBe)
 import Toml (decode, Value'(..), Table')
-import Toml.FromValue
-import Toml.FromValue.Generic (genericParseTable)
+import Toml.Schema
+import Toml.Schema.FromValue.Generic (genericParseTable)
 
 -----------------------------------------------------------------------
 -- THIS CODE DERIVED FROM CODE UNDER THE FOLLOWING LICENSE
@@ -148,7 +148,7 @@ instance FromValue CabalConfig where
     fromValue _               = fail "cabal configuration expects table or array"
 
 getComponentTable :: FromValue b => (Maybe FilePath -> OneOrManyComponents b -> a) -> Text -> l -> Toml.Table' l -> Matcher l a
-getComponentTable con pathKey = runParseTable $ con
+getComponentTable con pathKey = parseTable $ con
     <$> optKey pathKey
     <*> pickKey [
         Key "component"  (fmap  SingleComponent . fromValue),

@@ -1,6 +1,6 @@
 {-# Language DataKinds, InstanceSigs, ScopedTypeVariables, TypeOperators #-}
 {-|
-Module      : Toml.FromValue.Generic
+Module      : Toml.Schema.FromValue.Generic
 Description : GHC.Generics derived table parsing
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -11,10 +11,11 @@ of a record. This can be combined with 'Toml.FromValue.parseTableFromValue'
 to derive a 'Toml.FromValue.FromValue' instance.
 
 -}
-module Toml.FromValue.Generic (
+module Toml.Schema.FromValue.Generic (
     -- * Record from table
     GParseTable(..),
     genericParseTable,
+    genericFromTable,
 
     -- * Product type from array
     GFromArray(..),
@@ -25,10 +26,10 @@ import Control.Monad.Trans.State (StateT(..))
 import Data.Coerce (coerce)
 import Data.Text qualified as Text
 import GHC.Generics
-import Toml.FromValue (FromValue, fromValue, optKey, reqKey)
-import Toml.FromValue.Matcher (Matcher, failAt)
-import Toml.FromValue.ParseTable (ParseTable)
-import Toml.Value
+import Toml.Schema.FromValue (FromValue, fromValue, optKey, reqKey, parseTableFromValue)
+import Toml.Schema.FromValue.Matcher (Matcher, failAt)
+import Toml.Schema.FromValue.ParseTable (ParseTable)
+import Toml.Semantics
 
 -- | Match a 'Table' using the field names in a record.
 --
@@ -36,6 +37,10 @@ import Toml.Value
 genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable l a
 genericParseTable = to <$> gParseTable
 {-# INLINE genericParseTable #-}
+
+genericFromTable :: (Generic a, GParseTable (Rep a)) => Value' l -> Matcher l a
+genericFromTable = parseTableFromValue genericParseTable
+{-# INLINE genericFromTable #-}
 
 -- | Match a 'Value' as an array positionally matching field fields
 -- of a constructor to the elements of the array.

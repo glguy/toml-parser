@@ -3,7 +3,7 @@ module ToValueSpec where
 
 import Test.Hspec (it, shouldBe, Spec)
 import Toml
-import Toml.ToValue (ToValue(toValue))
+import Toml.Schema
 
 spec :: Spec
 spec =

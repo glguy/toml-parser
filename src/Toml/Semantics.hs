@@ -12,7 +12,23 @@ file. It detects invalid key assignments and resolves dotted
 key assignments.
 
 -}
-module Toml.Semantics (SemanticError(..), SemanticErrorKind(..), semantics) where
+module Toml.Semantics (
+
+    -- * Types
+    Value, Value'(..),
+    Table, Table'(..),
+
+    -- * Validation
+    semantics,
+    SemanticError(..), SemanticErrorKind(..),
+
+    -- * Annotations
+    forgetTableAnns,
+    forgetValueAnns,
+    valueAnn,
+    valueType,
+
+    ) where
 
 import Control.Monad (foldM)
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -20,8 +36,8 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
-import Toml.Parser.Types (SectionKind(..), Key, Val(..), Expr(..))
-import Toml.Value (Table'(MkTable), Value'(..))
+import Toml.Syntax.Types (SectionKind(..), Key, Val(..), Expr(..))
+import Toml.Semantics.Types
 
 -- | This type represents errors generated when resolving keys in a TOML
 -- document.

@@ -41,7 +41,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Toml.Parser.Types (Expr(..), Key, Val(ValTable, ValArray))
+import Toml.Syntax.Types (Expr(..), Key, Val(ValTable, ValArray))
 
 -- | Summary of the order of the keys in a TOML document.
 newtype TableOrder = TO (Map Text KeyOrder)

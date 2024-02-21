@@ -18,10 +18,7 @@ module DerivingViaSpec (spec) where
 import GHC.Generics (Generic)
 import Test.Hspec (it, shouldBe, Spec)
 import Toml
-import Toml.FromValue.Matcher
-import Toml.FromValue ( FromValue(fromValue) )
-import Toml.Generic (GenericTomlTable(..), GenericTomlArray(..))
-import Toml.ToValue (ToTable(toTable), (.=), table, ToValue(toValue))
+import Toml.Schema
 
 data Physical = Physical {
     color :: String,

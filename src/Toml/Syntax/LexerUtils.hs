@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Lexer.Utils
+Module      : Toml.Syntax.LexerUtils
 Description : Wrapper and actions for generated lexer
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -13,7 +13,7 @@ The various states of this module are needed to deal with the varying
 lexing rules while lexing values, keys, and string-literals.
 
 -}
-module Toml.Lexer.Utils (
+module Toml.Syntax.LexerUtils (
 
     -- * Types
     Action,
@@ -53,9 +53,9 @@ import Data.Text qualified as Text
 import Data.Time.Format (parseTimeM, defaultTimeLocale, ParseTime)
 import Numeric (readHex)
 import Text.Printf (printf)
-import Toml.Lexer.Token (Token(..))
-import Toml.Located (Located(..))
-import Toml.Position (move, Position)
+import Toml.Syntax.Token (Token(..))
+import Toml.Syntax.Located (Located(..))
+import Toml.Syntax.Position (move, Position)
 
 -- | Type of actions associated with lexer patterns
 type Action = Located Text -> Context -> Outcome

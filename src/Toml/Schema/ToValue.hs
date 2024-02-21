@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-} -- needed for type equality on old GHC
 {-|
-Module      : Toml.ToValue
+Module      : Toml.Schema.ToValue
 Description : Automation for converting application values to TOML.
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -17,7 +17,7 @@ conversion to a 'Table'.
 automatically for record types.
 
 -}
-module Toml.ToValue (
+module Toml.Schema.ToValue (
     ToValue(..),
 
     -- * Table construction
@@ -42,7 +42,7 @@ import Data.Text.Lazy qualified
 import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
-import Toml.Value
+import Toml.Semantics
 
 -- | Build a 'Table' from a list of key-value pairs.
 --

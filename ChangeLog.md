@@ -6,6 +6,8 @@
   positional error reporting throughout parsing and validation.
 * Replace uses of String with Text in the Value type and throughout
   the API
+* Reorganized almost all of the modules to minimize imports that upstream
+  packages will actually need.
 
 ## 1.3.3.0
 

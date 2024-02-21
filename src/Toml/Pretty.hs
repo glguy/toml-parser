@@ -53,13 +53,12 @@ import Data.Time (ZonedTime(zonedTimeZone), TimeZone (timeZoneMinutes))
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Prettyprinter
 import Text.Printf (printf)
-import Toml.FromValue.Matcher (MatchMessage(..), Scope (..))
-import Toml.Lexer (Token(..))
-import Toml.Located (Located(..))
-import Toml.Parser.Types (SectionKind(..))
-import Toml.Position (Position(..))
-import Toml.Semantics (SemanticError (..), SemanticErrorKind (..))
-import Toml.Value
+import Toml.Schema.FromValue.Matcher (MatchMessage(..), Scope (..))
+import Toml.Semantics
+import Toml.Syntax.Lexer (Token(..))
+import Toml.Syntax.Located (Located(..))
+import Toml.Syntax.Position (Position(..))
+import Toml.Syntax.Types (SectionKind(..))
 
 -- | Annotation used to enable styling pretty-printed TOML
 data DocClass

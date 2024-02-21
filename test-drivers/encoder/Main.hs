@@ -22,7 +22,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import System.Exit (exitFailure)
 import Toml (prettyToml, Value(..), Value'(..), Table)
-import Toml.Lexer (lexValue, Token(..))
+import Toml.Syntax.Lexer (lexValue, Token(..))
 import Toml.ToValue (toValue)
 
 main :: IO ()

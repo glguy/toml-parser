@@ -17,12 +17,12 @@ most of the basic functionality is exported directly from
 "Toml.FromValue".
 
 -}
-module Toml.FromValue.ParseTable (
+module Toml.Schema.FromValue.ParseTable (
     -- * Base interface
     ParseTable,
     KeyAlt(..),
     pickKey,
-    runParseTable,
+    parseTable,
 
     -- * Primitives
     liftMatcher,
@@ -42,14 +42,14 @@ import Data.Foldable (for_)
 import Data.List (intercalate)
 import Data.Map qualified as Map
 import Data.Text (Text)
-import Toml.FromValue.Matcher (warning, Matcher, inKey, failAt, warningAt)
 import Toml.Pretty (prettySimpleKey)
-import Toml.Value (Table'(..), Value')
+import Toml.Schema.FromValue.Matcher (Matcher, inKey, failAt, warn, warnAt)
+import Toml.Semantics (Table'(..), Value')
 
--- | A 'Matcher' that tracks a current set of unmatched key-value
+-- | Parser that tracks a current set of unmatched key-value
 -- pairs from a table.
 --
--- Use 'Toml.FromValue.optKey' and 'Toml.FromValue.reqKey' to extract keys.
+-- Use 'Toml.Schema.FromValue.optKey' and 'Toml.Schema.FromValue.reqKey' to extract keys.
 --
 -- Use 'getTable' and 'setTable' to override the table and implement
 -- other primitives.
@@ -68,11 +68,11 @@ liftMatcher = ParseTable . lift . lift
 -- Unused tables will generate a warning. To change this behavior
 -- 'getTable' and 'setTable' can be used to discard or generate
 -- error messages.
-runParseTable :: ParseTable l a -> l -> Table' l -> Matcher l a
-runParseTable (ParseTable p) l t =
+parseTable :: ParseTable l a -> l -> Table' l -> Matcher l a
+parseTable (ParseTable p) l t =
  do (x, MkTable t') <- runStateT (runReaderT p l) t
     for_ (Map.assocs t') \(k, (a, _)) ->
-        warningAt a ("unexpected key: " ++ show (prettySimpleKey k))
+        warnAt a ("unexpected key: " ++ show (prettySimpleKey k))
     pure x
 
 
@@ -86,10 +86,10 @@ setTable = ParseTable . lift . put
 
 -- | Emit a warning at the current location.
 warnTable :: String -> ParseTable l ()
-warnTable = liftMatcher . warning
+warnTable = liftMatcher . warn
 
 warnTableAt :: l -> String -> ParseTable l ()
-warnTableAt l = liftMatcher . warningAt l
+warnTableAt l = liftMatcher . warnAt l
 
 failTableAt :: l -> String -> ParseTable l a
 failTableAt l = liftMatcher . failAt l

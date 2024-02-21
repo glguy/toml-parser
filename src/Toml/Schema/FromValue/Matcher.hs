@@ -1,6 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-|
-Module      : Toml.FromValue.Matcher
+Module      : Toml.Schema.FromValue.Matcher
 Description : A type for building results while tracking scopes
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -19,7 +19,7 @@ Use 'Toml.Pretty.prettyMatchMessage' for an easy way to make human
 readable strings from matcher outputs.
 
 -}
-module Toml.FromValue.Matcher (
+module Toml.Schema.FromValue.Matcher (
     -- * Types
     Matcher,
     Result(..),
@@ -29,8 +29,8 @@ module Toml.FromValue.Matcher (
     runMatcher,
     withScope,
     getScope,
-    warning,
-    warningAt,
+    warn,
+    warnAt,
     failAt,
 
     -- * Run helpers
@@ -67,16 +67,16 @@ instance Functor (Matcher a) where
     fmap = liftM
 
 instance Applicative (Matcher a) where
-    pure x = Matcher (\_env warn _err ok -> ok warn x)
+    pure x = Matcher (\_env ws _err ok -> ok ws x)
     (<*>) = ap
 
 instance Monad (Matcher a) where
-    m >>= f = Matcher (\env warn err ok -> unMatcher m env warn err (\warn' x -> unMatcher (f x) env warn' err ok))
+    m >>= f = Matcher (\env ws err ok -> unMatcher m env ws err (\warn' x -> unMatcher (f x) env warn' err ok))
     {-# INLINE (>>=) #-}
 
 instance Alternative (Matcher a) where
     empty = Matcher (\_env _warn err _ok -> err mempty)
-    Matcher x <|> Matcher y = Matcher (\env warn err ok -> x env warn (\errs1 -> y env warn (\errs2 -> err (errs1 <> errs2)) ok) ok)
+    Matcher x <|> Matcher y = Matcher (\env ws err ok -> x env ws (\errs1 -> y env ws (\errs2 -> err (errs1 <> errs2)) ok) ok)
 
 instance MonadPlus (Matcher a)
 
@@ -158,7 +158,7 @@ runMatcherFatalWarn :: Matcher l a -> Either [MatchMessage l] a
 runMatcherFatalWarn m =
     case runMatcher m of
         Success [] x   -> Right x
-        Success warn _ -> Left warn
+        Success ws _   -> Left ws
         Failure err    -> Left err
 
 -- | Run a 'Matcher' with a locally extended scope.
@@ -171,16 +171,16 @@ withScope scope (Matcher m) = Matcher (\scopes -> m (scope : scopes))
 --
 -- @since 1.3.0.0
 getScope :: Matcher a [Scope]
-getScope = Matcher (\env warn _err ok -> ok warn (reverse env))
+getScope = Matcher (\env ws _err ok -> ok ws (reverse env))
 
 -- | Emit a warning mentioning the current scope.
-warning :: String -> Matcher a ()
-warning w =
-    Matcher (\scopes warn _err ok -> ok (warn <> one (MatchMessage Nothing (reverse scopes) w)) ())
+warn :: String -> Matcher a ()
+warn w =
+    Matcher (\scopes ws _err ok -> ok (ws <> one (MatchMessage Nothing (reverse scopes) w)) ())
 
-warningAt :: l -> String -> Matcher l ()
-warningAt loc w =
-    Matcher (\scopes warn _err ok -> ok (warn <> one (MatchMessage (Just loc) (reverse scopes) w)) ())
+warnAt :: l -> String -> Matcher l ()
+warnAt loc w =
+    Matcher (\scopes ws _err ok -> ok (ws <> one (MatchMessage (Just loc) (reverse scopes) w)) ())
 
 -- | Fail with an error message annotated to the current location.
 instance MonadFail (Matcher a) where

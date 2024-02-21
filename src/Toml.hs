@@ -39,15 +39,10 @@ module Toml (
     ) where
 
 import Data.Text (Text)
-import Toml.FromValue (FromValue (fromValue), Result(..))
-import Toml.FromValue.Matcher (runMatcher)
-import Toml.Located (Located(..))
-import Toml.Parser (parseRawToml)
-import Toml.Position (Position(..), startPos)
 import Toml.Pretty (TomlDoc, DocClass(..), prettyToml, prettySemanticError, prettyMatchMessage, prettyLocated)
-import Toml.Semantics (semantics)
-import Toml.ToValue (ToTable (toTable))
-import Toml.Value
+import Toml.Schema
+import Toml.Semantics (Value, Value'(..), Table, Table'(..), semantics, forgetTableAnns)
+import Toml.Syntax
 
 -- | Parse a TOML formatted 'String' or report an error message.
 parse' :: Text -> Either String (Table' Position)

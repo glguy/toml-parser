@@ -1,6 +1,6 @@
 {-# Language PatternSynonyms, DeriveTraversable, TypeFamilies #-}
 {-|
-Module      : Toml.Value
+Module      : Toml.Semantics.Types
 Description : Semantic TOML values
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -18,7 +18,7 @@ In this case a trivial @()@ unit annotation can be used. The
 this case more convenient.
 
 -}
-module Toml.Value (
+module Toml.Semantics.Types (
     -- * Unlocated value synonyms
     Value,
     Table,

@@ -1,6 +1,6 @@
 {
 {-|
-Module      : Toml.Lexer
+Module      : Toml.Syntax.Lexer
 Description : TOML lexical analyzer
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -17,14 +17,14 @@ This module uses actions and lexical hooks defined in
 "LexerUtils".
 
 -}
-module Toml.Lexer (Context(..), scanToken, lexValue, Token(..)) where
+module Toml.Syntax.Lexer (Context(..), scanToken, lexValue, Token(..)) where
 
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Toml.Lexer.Token
-import Toml.Lexer.Utils
-import Toml.Located
-import Toml.Position
+import Toml.Syntax.Token
+import Toml.Syntax.LexerUtils
+import Toml.Syntax.Located
+import Toml.Syntax.Position
 
 }
 $non_ascii        = \x1

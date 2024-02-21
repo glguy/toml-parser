@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Raw
+Module      : Toml.Syntax.Types
 Description : Raw expressions from a parsed TOML file
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -14,7 +14,7 @@ for overlapping assignments.
 Further processing will happen in the "Semantics" module.
 
 -}
-module Toml.Parser.Types (
+module Toml.Syntax.Types (
     Key,
     Expr(..),
     Val(..),

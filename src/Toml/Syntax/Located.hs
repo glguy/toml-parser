@@ -1,5 +1,5 @@
 {-|
-Module      : Toml.Located
+Module      : Toml.Syntax.Located
 Description : Values annotated with positions
 Copyright   : (c) Eric Mertens, 2023
 License     : ISC
@@ -9,12 +9,12 @@ This module provides a simple tuple for tracking pairs of
 values and their file locations.
 
 -}
-module Toml.Located (
+module Toml.Syntax.Located (
     Located(..)
     ) where
 
 import Data.Data (Data)
-import Toml.Position (Position)
+import Toml.Syntax.Position (Position)
 
 -- | A value annotated with its text file position
 data Located a = Located
