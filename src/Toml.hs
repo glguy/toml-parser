@@ -27,17 +27,20 @@ module Toml (
     Value'(..),
 
     -- * Parsing
+    decode',
     decode,
-    Result(..),
     parse,
-    parse',
+    DecodeError,
+    Result(..),
 
     -- * Printing
     encode,
     prettyToml,
     DocClass(..),
 
-    -- * Errors
+    -- * Error rendering
+    prettyDecodeError,
+    prettyLocated,
     prettyMatchMessage,
     prettySemanticError
     ) where
@@ -49,29 +52,52 @@ import Toml.Schema
 import Toml.Semantics
 import Toml.Syntax
 
--- | Parse a TOML formatted 'String' or report an error message.
-parse' :: Text -> Either String (Table' Position)
+-- | Parse a TOML formatted 'String' or report a structured error message.
+parse' :: Text -> Either DecodeError (Table' Position)
 parse' str =
     case parseRawToml str of
-        Left e -> Left (prettyLocated e)
+        Left e -> Left (ErrSyntax e)
         Right exprs ->
             case semantics exprs of
-                Left e -> Left (prettySemanticError e)
+                Left e -> Left (ErrSemantics e)
                 Right tab -> Right tab
 
--- | Parse a TOML formatted 'String' or report an error message.
-parse :: Text -> Either String Table
-parse = fmap forgetTableAnns . parse'
+-- | Parse a TOML formatted 'String' or report a human-readable error message.
+parse :: Text -> Either String (Table' Position)
+parse str =
+    case parse' str of
+        Left e -> Left (prettyDecodeError e)
+        Right x -> Right x
 
--- | Use the 'FromValue' instance to decode a value from a TOML string.
-decode :: FromValue a => Text -> Result String a
-decode str =
+-- | Sum of errors that can occur during TOML decoding
+data DecodeError
+    = ErrSyntax    (Located String)         -- ^ Error during the lexer/parser phase
+    | ErrSemantics (SemanticError Position) -- ^ Error during TOML validation
+    | ErrSchema    (MatchMessage Position)  -- ^ Error during schema matching
+
+-- | Decode TOML syntax into an application value.
+decode' :: FromValue a => Text -> Result DecodeError a
+decode' str =
     case parse' str of
         Left e -> Failure [e]
         Right tab ->
             case runMatcher (fromValue (Table' startPos tab)) of
-                Failure es -> Failure (prettyMatchMessage <$> es)
-                Success ws x -> Success (prettyMatchMessage <$> ws) x
+                Failure es -> Failure (ErrSchema <$> es)
+                Success ws x -> Success (ErrSchema <$> ws) x
+
+-- | Wrapper rending error and warning messages into human-readable strings.
+decode :: FromValue a => Text -> Result String a
+decode str =
+    case decode' str of
+        Failure e -> Failure (map prettyDecodeError e)
+        Success w x -> Success (map prettyDecodeError w) x
+
+-- | Human-readable representation of a 'DecodeError'
+prettyDecodeError :: DecodeError -> String
+prettyDecodeError = \case
+    ErrSyntax e -> prettyLocated e
+    ErrSemantics e -> prettySemanticError e
+    ErrSchema e -> prettyMatchMessage e
 
 -- | Use the 'ToTable' instance to encode a value to a TOML string.
 encode :: ToTable a => a -> TomlDoc
