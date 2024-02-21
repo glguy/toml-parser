@@ -25,6 +25,10 @@ module Toml (
     Position(..),
     Table'(..),
     Value'(..),
+    valueAnn,
+    valueType,
+    forgetTableAnns,
+    forgetValueAnns,
 
     -- * Parsing
     decode',
@@ -92,16 +96,16 @@ decode str =
         Failure e -> Failure (map prettyDecodeError e)
         Success w x -> Success (map prettyDecodeError w) x
 
+-- | Use the 'ToTable' instance to encode a value to a TOML string.
+encode :: ToTable a => a -> TomlDoc
+encode = prettyToml . toTable
+
 -- | Human-readable representation of a 'DecodeError'
 prettyDecodeError :: DecodeError -> String
 prettyDecodeError = \case
     ErrSyntax e -> prettyLocated e
     ErrSemantics e -> prettySemanticError e
     ErrSchema e -> prettyMatchMessage e
-
--- | Use the 'ToTable' instance to encode a value to a TOML string.
-encode :: ToTable a => a -> TomlDoc
-encode = prettyToml . toTable
 
 -- | Render a TOML decoding error as a human-readable string.
 --

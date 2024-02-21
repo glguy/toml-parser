@@ -94,7 +94,7 @@ Parsing using this package generates the following value
 ```haskell
 parses :: Spec
 parses = it "parses" $
-    parse fruitStr
+    forgetTableAnns <$> parse fruitStr
     `shouldBe`
     Right (table [
         ("fruits", List [

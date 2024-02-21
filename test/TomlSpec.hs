@@ -17,14 +17,17 @@ import Data.Text (Text)
 import Data.Time (Day)
 import QuoteStr (quoteStr)
 import Test.Hspec (describe, it, shouldBe, shouldSatisfy, Spec)
-import Toml (Result(..), Table'(..), Value'(..), parse, decode)
+import Toml
 import Toml.Schema (table, (.=))
+
+parse_ :: Text -> Either String Table
+parse_ str = forgetTableAnns <$> parse str
 
 spec :: Spec
 spec =
  do describe "comment"
      do it "ignores comments" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             # This is a full-line comment
             key = "value"  # This is a comment at the end of a line
             another = "# This is not a comment"|]
@@ -33,21 +36,21 @@ spec =
 
     describe "key/value pair"
      do it "supports the most basic assignments" $
-          parse "key = \"value\"" `shouldBe` Right (table ["key" .= Text "value"])
+          parse_ "key = \"value\"" `shouldBe` Right (table ["key" .= Text "value"])
 
         it "requires a value after equals" $
-          parse "key = # INVALID"
+          parse_ "key = # INVALID"
           `shouldBe`
           Left "1:16: parse error: unexpected end-of-input"
 
         it "requires newlines between assignments" $
-          parse "first = \"Tom\" last = \"Preston-Werner\" # INVALID"
+          parse_ "first = \"Tom\" last = \"Preston-Werner\" # INVALID"
           `shouldBe`
           Left "1:15: parse error: unexpected bare key"
 
     describe "keys"
      do it "allows bare keys" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             key = "value"
             bare_key = "value"
             bare-key = "value"
@@ -60,7 +63,7 @@ spec =
             "key"      .= Text "value"])
 
         it "allows quoted keys" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             "127.0.0.1" = "value"
             "character encoding" = "value"
             "ʎǝʞ" = "value"
@@ -75,7 +78,7 @@ spec =
             "ʎǝʞ"                .= Text "value"])
 
         it "allows dotted keys" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             name = "Orange"
             physical.color = "orange"
             physical.shape = "round"
@@ -99,7 +102,7 @@ spec =
           `shouldBe` Left "2:1: key error: spelling is already assigned"
 
         it "allows out of order definitions" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             apple.type = "fruit"
             orange.type = "fruit"
 
@@ -120,11 +123,11 @@ spec =
                 "type"  .= Text "fruit"]])
 
         it "allows numeric bare keys" $
-          parse "3.14159 = 'pi'" `shouldBe` Right (table [
+          parse_ "3.14159 = 'pi'" `shouldBe` Right (table [
             "3" .= table ["14159" .= Text "pi"]])
 
         it "allows keys that look like other values" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             true = true
             false = false
             1900-01-01 = 1900-01-01
@@ -138,20 +141,20 @@ spec =
 
     describe "string"
      do it "parses escapes" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             str = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."|]
           `shouldBe`
           Right (table ["str" .= Text "I'm a string. \"You can quote me\". Name\tJos\xe9\nLocation\tSF."])
 
         it "strips the initial newline from multiline strings" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             str1 = """
             Roses are red
             Violets are blue"""|]
           `shouldBe` Right (table ["str1" .= Text "Roses are red\nViolets are blue"])
 
         it "strips whitespace with a trailing escape" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             # The following strings are byte-for-byte equivalent:
             str1 = "The quick brown fox jumps over the lazy dog."
 
@@ -174,7 +177,7 @@ spec =
             "str3" .= Text "The quick brown fox jumps over the lazy dog."])
 
         it "allows quotes inside multiline quoted strings" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             str4 = """Here are two quotation marks: "". Simple enough."""
             str5 = """Here are three quotation marks: ""\"."""
             str6 = """Here are fifteen quotation marks: ""\"""\"""\"""\"""\"."""
@@ -194,7 +197,7 @@ spec =
           `shouldBe` Left "1:46: parse error: unexpected '.'"
 
         it "ignores escapes in literal strings" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             # What you see is what you get.
             winpath  = 'C:\Users\nodejs\templates'
             winpath2 = '\\ServerX\admin$\system32\'
@@ -208,7 +211,7 @@ spec =
             "winpath2" .= Text "\\\\ServerX\\admin$\\system32\\"])
 
         it "handles multiline literal strings" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             regex2 = '''I [dw]on't need \d{2} apples'''
             lines  = '''
             The first newline is
@@ -222,7 +225,7 @@ spec =
             "regex2" .= Text "I [dw]on't need \\d{2} apples"])
 
         it "parses all the other escapes" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             x = "\\\b\f\r\U0010abcd"
             y = """\\\b\f\r\u7bca\U0010abcd\n\r\t"""|]
           `shouldBe`
@@ -243,7 +246,7 @@ spec =
 
     describe "integer"
      do it "parses literals correctly" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             int1 = +99
             int2 = 42
             int3 = 0
@@ -288,7 +291,7 @@ spec =
 
     describe "float"
      do it "parses floats" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             # fractional
             flt1 = +1.0
             flt2 = 3.1415
@@ -321,7 +324,7 @@ spec =
             "sf3"  .= Double (-1/0)])
 
         it "parses nan correctly" $
-          let checkNaN (Double x) = isNaN x
+          let checkNaN (Double' _ x) = isNaN x
               checkNaN _         = False
           in
           parse [quoteStr|
@@ -337,13 +340,13 @@ spec =
         -- resources. this makes sure this doesn't start happening
         -- in the future
         it "parses huge floats without great delays" $
-          parse "x = 1e1000000000000"
+          parse_ "x = 1e1000000000000"
           `shouldBe`
           Right (table ["x" .= Double (1/0)])
 
     describe "boolean"
      do it "parses boolean literals" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             bool1 = true
             bool2 = false|]
           `shouldBe`
@@ -353,7 +356,7 @@ spec =
 
     describe "offset date-time"
      do it "parses offset date times" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             odt1 = 1979-05-27T07:32:00Z
             odt2 = 1979-05-27T00:32:00-07:00
             odt3 = 1979-05-27T00:32:00.999999-07:00
@@ -367,7 +370,7 @@ spec =
 
     describe "local date-time"
      do it "parses local date-times" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             ldt1 = 1979-05-27T07:32:00
             ldt2 = 1979-05-27T00:32:00.999999
             ldt3 = 1979-05-28 00:32:00.999999|]
@@ -385,14 +388,14 @@ spec =
 
     describe "local date"
      do it "parses dates" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             ld1 = 1979-05-27|]
           `shouldBe`
           Right (table ["ld1" .= Day (read "1979-05-27")])
 
     describe "local time"
      do it "parses times" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             lt1 = 07:32:00
             lt2 = 00:32:00.999999|]
           `shouldBe`
@@ -402,7 +405,7 @@ spec =
 
     describe "array"
      do it "parses array examples" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             integers = [ 1, 2, 3 ]
             colors = [ "red", "yellow", "green" ]
             nested_arrays_of_ints = [ [ 1, 2 ], [3, 4, 5] ]
@@ -431,7 +434,7 @@ spec =
                 "string_array" .= [Text "all", Text "strings", Text "are the same", Text "type"]])
 
         it "handles newlines and comments" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             integers2 = [
             1, 2, 3
             ]
@@ -446,14 +449,14 @@ spec =
                 "integers3" .= [1, 2 :: Int]])
 
         it "disambiguates double brackets from array tables" $
-          parse "x = [[1]]" `shouldBe` Right (table ["x" .= List [List [Integer 1]]])
+          parse_ "x = [[1]]" `shouldBe` Right (table ["x" .= List [List [Integer 1]]])
 
     describe "table"
      do it "allows empty tables" $
-          parse "[table]" `shouldBe` Right (table ["table" .= table []])
+          parse_ "[table]" `shouldBe` Right (table ["table" .= table []])
 
         it "parses simple tables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [table-1]
             key1 = "some string"
             key2 = 123
@@ -471,14 +474,14 @@ spec =
                 "key2" .= Integer 456]])
 
         it "allows quoted keys" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [dog."tater.man"]
             type.name = "pug"|]
           `shouldBe`
           Right (table ["dog" .= table ["tater.man" .= table ["type" .= table ["name" .= Text "pug"]]]])
 
         it "allows whitespace around keys" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [a.b.c]            # this is best practice
             [ d.e.f ]          # same as [d.e.f]
             [ g .  h  . i ]    # same as [g.h.i]
@@ -491,7 +494,7 @@ spec =
             "j" .= table ["ʞ" .= table ["l" .= table []]]])
 
         it "allows supertables to be defined after subtables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             # [x] you
             # [x.y] don't
             # [x.y.z] need these
@@ -516,7 +519,7 @@ spec =
           `shouldBe` Left "4:8: key error: apple is a closed table"
 
         it "can add subtables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [fruit]
             apple.color = "red"
             apple.taste.sweet = true
@@ -534,7 +537,7 @@ spec =
 
     describe "inline table"
      do it "parses inline tables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             name = { first = "Tom", last = "Preston-Werner" }
             point = { x = 1, y = 2 }
             animal = { type.name = "pug" }|]
@@ -604,7 +607,7 @@ spec =
                 "sku"   .= Integer 284758393]])
 
         it "handles subtables under array of tables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [[fruits]]
             name = "apple"
 
@@ -663,12 +666,12 @@ spec =
     -- these cases are needed to complete coverage checking on Semantics module
     describe "corner cases"
      do it "stays open" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [x.y.z]
             [x]
             [x.y]|]
           `shouldBe`
-          parse "x.y.z={}"
+          parse_ "x.y.z={}"
 
         it "stays closed" $
           parse [quoteStr|
@@ -677,20 +680,20 @@ spec =
             [x.y]|] `shouldBe` Left "3:4: key error: y is a closed table"
 
         it "super tables of array tables preserve array tables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [[x.y]]
             [x]
             [[x.y]]|]
           `shouldBe`
-          parse "x.y=[{},{}]"
+          parse_ "x.y=[{},{}]"
 
         it "super tables of array tables preserve array tables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [[x.y]]
             [x]
             [x.y.z]|]
           `shouldBe`
-          parse "x.y=[{z={}}]"
+          parse_ "x.y=[{z={}}]"
 
         it "detects conflicting inline keys" $
           parse [quoteStr|
@@ -698,7 +701,7 @@ spec =
           `shouldBe` Left "1:14: key error: y is already assigned"
 
         it "handles merging dotted inline table keys" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             t = { a.x.y = 1, a.x.z = 2, a.q = 3}|]
           `shouldBe`
           Right (table [
@@ -716,20 +719,20 @@ spec =
           `shouldBe` Left "2:2: key error: x is already assigned"
 
         it "handles super super tables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [x.y.z]
             [x.y]
             [x]|]
           `shouldBe`
-          parse "x.y.z={}"
+          parse_ "x.y.z={}"
 
         it "You can dot into open supertables" $
-          parse [quoteStr|
+          parse_ [quoteStr|
             [x.y.z]
             [x]
             y.q = 1|]
           `shouldBe`
-          parse "x.y={z={},q=1}"
+          parse_ "x.y={z={},q=1}"
 
         it "dotted tables close previously open tables" $
           parse [quoteStr|

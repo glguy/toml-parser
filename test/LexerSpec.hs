@@ -1,9 +1,13 @@
 {-# Language OverloadedStrings #-}
 module LexerSpec (spec) where
 
+import Data.Text (Text)
 import Test.Hspec (it, shouldBe, Spec)
-import Toml (Value'(Integer), parse)
+import Toml
 import Toml.Schema (table, (.=))
+
+parse_ :: Text -> Either String Table
+parse_ str = forgetTableAnns <$> parse str
 
 spec :: Spec
 spec =
@@ -34,7 +38,7 @@ spec =
         Left "1:1: parse error: unexpected '{'"
 
     it "accepts tabs" $
-        parse "x\t=\t1"
+        parse_ "x\t=\t1"
         `shouldBe`
         Right (table [("x" .= Integer 1)])
 
