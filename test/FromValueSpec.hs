@@ -47,12 +47,12 @@ spec =
     it "handles one mismatched reqKey" $
         humanMatcher (parseTable (reqKey "test") () (table ["test" .= Text "val"]))
         `shouldBe`
-        (Failure ["1:1: type error. wanted: integer got: string in test"] :: Result String Integer)
+        (Failure ["1:1: expected integer but got string in test"] :: Result String Integer)
 
     it "handles one mismatched optKey" $
         humanMatcher (parseTable (optKey "test") () (table ["test" .= Text "val"]))
         `shouldBe`
-        (Failure ["1:1: type error. wanted: integer got: string in test"] :: Result String (Maybe Integer))
+        (Failure ["1:1: expected integer but got string in test"] :: Result String (Maybe Integer))
 
     it "handles concurrent errors" $
         humanMatcher (parseTable (reqKey "a" <|> empty <|> reqKey "b") () (table []))
@@ -65,8 +65,8 @@ spec =
         humanMatcher (Left <$> fromValue v <|> empty <|> Right <$> fromValue v)
         `shouldBe`
         (Failure [
-            "1:1: type error. wanted: boolean got: string in <top-level>",
-            "1:1: type error. wanted: integer got: string in <top-level>"]
+            "1:1: expected boolean but got string in <top-level>",
+            "1:1: expected integer but got string in <top-level>"]
             :: Result String (Either Bool Int))
 
     it "doesn't emit an error for empty" $
@@ -82,7 +82,7 @@ spec =
     it "rejections non-single characters" $
         humanMatcher (fromValue (Text "xy"))
         `shouldBe`
-        (Failure ["1:1: type error. wanted: character got: string in <top-level>"] :: Result String Char)
+        (Failure ["1:1: expected single character in <top-level>"] :: Result String Char)
 
     it "collects warnings in table matching" $
         let pt =

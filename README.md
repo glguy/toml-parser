@@ -204,7 +204,7 @@ errors = it "errors" $
         shape = []|]
     `shouldBe`
     (Failure
-        ["3:9: type error. wanted: string got: array in shape"]
+        ["3:9: expected string but got array in shape"]
         :: Result String Physical)
 ```
 

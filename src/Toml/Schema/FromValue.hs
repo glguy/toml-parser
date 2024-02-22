@@ -130,7 +130,7 @@ instance FromKey Data.Text.Lazy.Text where
 
 -- | Report a type error
 typeError :: String {- ^ expected type -} -> Value' l {- ^ actual value -} -> Matcher l a
-typeError wanted got = failAt (valueAnn got) ("type error. wanted: " ++ wanted ++ " got: " ++ valueType got)
+typeError wanted got = failAt (valueAnn got) ("expected " ++ wanted ++ " but got " ++ valueType got)
 
 -- | Used to derive a 'fromValue' implementation from a 'ParseTable' matcher.
 parseTableFromValue :: ParseTable l a -> Value' l -> Matcher l a
@@ -173,8 +173,12 @@ instance FromValue Word64 where fromValue = fromValueSized "Word64"
 -- | Matches single-character strings with 'fromValue' and arbitrary
 -- strings with 'listFromValue' to support 'Prelude.String'
 instance FromValue Char where
-    fromValue (Text' _ t) | Text.length t == 1 = pure (Text.head t)
-    fromValue v = typeError "character" v
+    fromValue (Text' l t) =
+        case Text.uncons t of
+            Just (c, t')
+                | Text.null t' -> pure c
+            _ -> failAt l "expected single character"
+    fromValue v = typeError "string" v
 
     listFromValue (Text' _ t) = pure (Text.unpack t)
     listFromValue v = typeError "string" v

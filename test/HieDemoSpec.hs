@@ -278,7 +278,7 @@ spec =
             component = 42
             |]
         `shouldBe`
-        (Failure ["3:13: type error. wanted: string got: integer in cradle.cabal.component"]
+        (Failure ["3:13: expected string but got integer in cradle.cabal.component"]
             :: Result String CradleConfig)
 
     it "detects unusd keys" $
