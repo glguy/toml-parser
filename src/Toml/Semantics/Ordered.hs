@@ -24,8 +24,6 @@ demo =
     'print' ('Toml.Pretty.prettyTomlOrdered' projection toml)
 @
 
-@since 1.3.1.0
-
 -}
 module Toml.Semantics.Ordered (
     TableOrder,

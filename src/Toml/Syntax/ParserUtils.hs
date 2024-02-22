@@ -9,8 +9,6 @@ This module contains all the primitives used by the Parser module.
 By extracting it from the @.y@ file we minimize the amount of code
 that has warnings disabled and get better editor support.
 
-@since 1.3.0.0
-
 -}
 module Toml.Syntax.ParserUtils (
     Parser,

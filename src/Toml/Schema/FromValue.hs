@@ -105,26 +105,18 @@ instance FromValue Table where
     fromValue v = typeError "table" v
 
 -- | Convert from a table key
---
--- @since 1.3.0.0
 class FromKey a where
     fromKey :: l -> Text -> Matcher l a
 
 -- | Matches all strings
---
--- @since 1.3.0.0
 instance a ~ Char => FromKey [a] where
     fromKey _ = pure . Text.unpack
 
 -- | Matches all strings
---
--- @since 1.3.0.0
 instance FromKey Text where
     fromKey _ = pure
 
 -- | Matches all strings
---
--- @since 1.3.0.0
 instance FromKey Data.Text.Lazy.Text where
     fromKey _ = pure . Data.Text.Lazy.fromStrict
 
@@ -184,15 +176,11 @@ instance FromValue Char where
     listFromValue v = typeError "string" v
 
 -- | Matches string literals
---
--- @since 1.2.1.0
 instance FromValue Text where
     fromValue (Text' _ t) = pure t
     fromValue v = typeError "string" v
 
 -- | Matches string literals
---
--- @since 1.2.1.0
 instance FromValue Data.Text.Lazy.Text where
     fromValue v = Data.Text.Lazy.fromStrict <$> fromValue v
 
@@ -214,8 +202,6 @@ instance FromValue Float where
 -- so note that the given 'Rational' will be converted from a double
 -- representation and will often be an approximation rather than the exact
 -- value.
---
--- @since 1.3.0.0
 instance Integral a => FromValue (Ratio a) where
     fromValue (Double' a x)
         | isNaN x || isInfinite x = failAt a "finite float required"
@@ -224,8 +210,6 @@ instance Integral a => FromValue (Ratio a) where
     fromValue v = typeError "float" v
 
 -- | Matches non-empty arrays or reports an error.
---
--- @since 1.3.0.0
 instance FromValue a => FromValue (NonEmpty a) where
     fromValue v =
      do xs <- fromValue v
@@ -234,8 +218,6 @@ instance FromValue a => FromValue (NonEmpty a) where
             Just ne -> pure ne
 
 -- | Matches arrays
---
--- @since 1.3.0.0
 instance FromValue a => FromValue (Seq a) where
     fromValue v = Seq.fromList <$> fromValue v
 

@@ -69,8 +69,6 @@ data SemanticErrorKind
 
 -- | Extracts a semantic value from a sequence of raw TOML expressions,
 -- or reports a semantic error if one occurs.
---
--- @since 1.3.0.0
 semantics :: [Expr a] -> Either (SemanticError a) (Table' a)
 semantics exprs =
  do f <- foldM processExpr (flip assignKeyVals Map.empty) exprs

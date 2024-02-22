@@ -85,8 +85,6 @@ pattern Day x <- Day' _ x
 {-# Complete List, Table, Text, Bool, Integer, Double, Day, LocalTime, ZonedTime, TimeOfDay #-}
 
 -- | Semantic TOML value with all table assignments resolved.
---
--- @since 2.0.0.0
 data Value' a
     = Integer'   a Integer
     | Double'    a Double
@@ -106,8 +104,6 @@ data Value' a
         Traversable {- ^ Derived          -})
 
 -- | Extract the top-level annotation from a value.
---
--- @since 2.0.0.0
 valueAnn :: Value' a -> a
 valueAnn = \case
     Integer'   a _ -> a
@@ -122,8 +118,6 @@ valueAnn = \case
     Day'       a _ -> a
 
 -- | String representation of the kind of value using TOML vocabulary
---
--- @since 2.0.0.0
 valueType :: Value' l -> String
 valueType = \case
     Integer'   {} -> "integer"
@@ -138,8 +132,6 @@ valueType = \case
     ZonedTime' {} -> "offset date-time"
 
 -- | A table with annotated keys and values.
---
--- @since 2.0.0.0
 newtype Table' a = MkTable (Map Text (a, Value' a))
     deriving (
         Show        {- ^ Default instance -},
@@ -156,14 +148,10 @@ type Table = Table' ()
 type Value = Value' ()
 
 -- | Replaces annotations with a unit.
---
--- @since 2.0.0.0
 forgetTableAnns :: Table' a -> Table
 forgetTableAnns (MkTable t) = MkTable (fmap (\(_, v) -> ((), forgetValueAnns v)) t)
 
 -- | Replaces annotations with a unit.
---
--- @since 2.0.0.0
 forgetValueAnns :: Value' a -> Value
 forgetValueAnns =
     \case
@@ -203,7 +191,5 @@ projectZT x = (zonedTimeToLocalTime x, timeZoneMinutes (zonedTimeZone x))
 -- @
 -- fromString = String
 -- @
---
--- @since 1.3.3.0
 instance () ~ a => IsString (Value' a) where
     fromString = Text . fromString

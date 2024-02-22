@@ -286,8 +286,6 @@ prettyToml = prettyToml_ NoProjection TableKind []
 -- reverseOrderProj :: [String] -> String -> Down String
 -- reverseOrderProj _ = Down
 -- @
---
--- @since 1.2.1.0
 prettyTomlOrdered ::
   Ord a =>
   ([Text] -> Text -> a) {- ^ table path -> key -> projection -} ->
@@ -335,12 +333,10 @@ prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
             vcat [prettyToml_ mbKeyProj ArrayTableKind key tab | Table' _ tab <- a]
         prettySection _ _ = error "prettySection applied to simple value"
 
--- |
--- @since 2.0.0.0
+-- | Pretty-print as @line:col: message@
 prettyLocated :: Located String -> String
 prettyLocated (Located p s) = printf "%s: %s" (prettyPosition p) s
 
--- |
--- @since 2.0.0.0
+-- | Pretty-print as @line:col@
 prettyPosition :: Position -> String
 prettyPosition p = printf "%d:%d" (posLine p) (posColumn p)

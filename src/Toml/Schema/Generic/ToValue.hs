@@ -30,23 +30,17 @@ import Toml.Semantics
 import Toml.Schema.ToValue (ToValue(..), table)
 
 -- | Use a record's field names to generate a 'Table'
---
--- @since 1.0.2.0
 genericToTable :: (Generic a, GToTable (Rep a)) => a -> Table
 genericToTable x = table (gToTable (from x) [])
 {-# INLINE genericToTable #-}
 
 -- | Use a record's field names to generate a 'Table'
---
--- @since 1.3.2.0
 genericToArray :: (Generic a, GToArray (Rep a)) => a -> Value
 genericToArray a = List (gToArray (from a) [])
 {-# INLINE genericToArray #-}
 
 -- | Supports conversion of product types with field selector names
 -- to TOML values.
---
--- @since 1.0.2.0
 class GToTable f where
     gToTable :: f a -> [(Text, Value)] -> [(Text, Value)]
 
@@ -85,8 +79,6 @@ instance GToTable V1 where
     {-# INLINE gToTable #-}
 
 -- | Convert product types to arrays positionally.
---
--- @since 1.3.2.0
 class GToArray f where
     gToArray :: f a -> [Value] -> [Value]
 

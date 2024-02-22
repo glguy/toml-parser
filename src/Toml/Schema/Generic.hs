@@ -61,8 +61,6 @@ import Toml.Semantics (Value, Value', Table)
 
 -- | Helper type to use GHC's DerivingVia extension to derive
 -- 'ToValue', 'ToTable', 'FromValue' for records.
---
--- @since 1.3.2.0
 newtype GenericTomlTable a = GenericTomlTable a
 
 -- | Instance derived from 'ToTable' instance using 'defaultTableToValue'
@@ -83,8 +81,6 @@ instance (Generic a, GParseTable (Rep a)) => FromValue (GenericTomlTable a) wher
 
 -- | Helper type to use GHC's DerivingVia extension to derive
 -- 'ToValue', 'ToTable', 'FromValue' for any product type.
---
--- @since 1.3.2.0
 newtype GenericTomlArray a = GenericTomlArray a
 
 -- | Instance derived using 'genericToArray'

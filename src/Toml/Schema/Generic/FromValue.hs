@@ -30,8 +30,6 @@ import Toml.Schema.ParseTable (ParseTable)
 import Toml.Semantics (Value'(List'))
 
 -- | Match a 'Toml.Semantics.Table'' using the field names in a record.
---
--- @since 1.2.0.0
 genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable l a
 genericParseTable = to <$> gParseTable
 {-# INLINE genericParseTable #-}
@@ -44,8 +42,6 @@ genericFromTable = parseTableFromValue genericParseTable
 
 -- | Match a 'Toml.Semantics.Value'' as an array positionally matching field fields
 -- of a constructor to the elements of the array.
---
--- @since 1.3.2.0
 genericFromArray :: (Generic a, GFromArray (Rep a)) => Value' l -> Matcher l a
 genericFromArray (List' a xs) =
  do (gen, xs') <- runStateT gFromArray xs
@@ -64,8 +60,6 @@ genericFromArray v = typeError "array" v
 
 -- | Supports conversion of TOML tables into record values using
 -- field selector names as TOML keys.
---
--- @since 1.0.2.0
 class GParseTable f where
     -- | Convert a value and apply the continuation to the result.
     gParseTable :: ParseTable l (f a)
@@ -108,8 +102,6 @@ instance GParseTable U1 where
     {-# INLINE gParseTable #-}
 
 -- | Supports conversion of TOML arrays into product-type values.
---
--- @since 1.3.2.0
 class GFromArray f where
     gFromArray :: StateT [Value' l] (Matcher l) (f a)
 

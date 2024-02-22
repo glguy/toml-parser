@@ -125,8 +125,6 @@ prettyDecodeError = \case
     ErrSchema e -> prettyMatchMessage e
 
 -- | Render a TOML decoding error as a human-readable string.
---
--- @since 1.3.0.0
 prettyMatchMessage :: MatchMessage Position -> String
 prettyMatchMessage (MatchMessage loc scope msg) = prefix ++ msg ++ " in " ++ path
     where
@@ -144,8 +142,6 @@ prettyMatchMessage (MatchMessage loc scope msg) = prefix ++ msg ++ " in " ++ pat
         f (ScopeKey key) = showChar '.' . shows (prettySimpleKey key)
 
 -- | Render a semantic TOML error in a human-readable string.
---
--- @since 1.3.0.0
 prettySemanticError :: SemanticError Position -> String
 prettySemanticError (SemanticError a key kind) =
     printf "%s: key error: %s %s" (prettyPosition a) (show (prettySimpleKey key))

@@ -92,8 +92,6 @@ failTableAt :: l -> String -> ParseTable l a
 failTableAt l = liftMatcher . failAt l
 
 -- | Key and value matching function
---
--- @since 1.2.0.0
 data KeyAlt l a
     = Key Text (Value' l -> Matcher l a) -- ^ pick alternative based on key match
     | Else (Matcher l a) -- ^ default case when no previous cases matched
@@ -109,8 +107,6 @@ data KeyAlt l a
 -- This is provided as an alternative to chaining multiple
 -- 'Toml.Schema.reqKey' cases together with 'Control.Applicative.Alternative'
 -- which will fall-through as a result of any failure to the next case.
---
--- @since 1.2.0.0
 pickKey :: [KeyAlt l a] -> ParseTable l a
 pickKey xs =
  do MkTable t <- getTable

@@ -81,8 +81,6 @@ instance Alternative (Matcher a) where
 instance MonadPlus (Matcher a)
 
 -- | Scopes for TOML message.
---
--- @since 1.3.0.0
 data Scope
     = ScopeIndex Int -- ^ zero-based array index
     | ScopeKey Text -- ^ key in a table
@@ -97,8 +95,6 @@ data Scope
 -- generated. These message get used for both warnings and errors.
 --
 -- For a convenient way to render these to a string, see 'Toml.Pretty.prettyMatchMessage'.
---
--- @since 1.3.0.0
 data MatchMessage a = MatchMessage {
     matchAnn :: Maybe a,
     matchPath :: [Scope], -- ^ path to message location
@@ -125,8 +121,6 @@ runDList (DList x) = x `appEndo` []
 -- | Computation outcome with error and warning messages. Multiple error
 -- messages can occur when multiple alternatives all fail. Resolving any
 -- one of the error messages could allow the computation to succeed.
---
--- @since 1.3.0.0
 data Result e a
     = Failure [e]   -- ^ error messages
     | Success [e] a -- ^ warning messages and result
@@ -137,14 +131,10 @@ data Result e a
         Ord  {- ^ Default instance -})
 
 -- | Run a 'Matcher' with an empty scope.
---
--- @since 1.3.0.0
 runMatcher :: Matcher l a -> Result (MatchMessage l) a
 runMatcher (Matcher m) = m [] mempty (Failure . runDList) (Success . runDList)
 
 -- | Run 'Matcher' and ignore warnings.
---
--- @since 1.3.3.0
 runMatcherIgnoreWarn :: Matcher l a -> Either [MatchMessage l] a
 runMatcherIgnoreWarn m =
     case runMatcher m of
@@ -152,8 +142,6 @@ runMatcherIgnoreWarn m =
         Success _ x -> Right x
 
 -- | Run 'Matcher' and treat warnings as errors.
---
--- @since 1.3.3.0
 runMatcherFatalWarn :: Matcher l a -> Either [MatchMessage l] a
 runMatcherFatalWarn m =
     case runMatcher m of
@@ -162,14 +150,10 @@ runMatcherFatalWarn m =
         Failure err    -> Left err
 
 -- | Run a 'Matcher' with a locally extended scope.
---
--- @since 1.3.0.0
 withScope :: Scope -> Matcher l a -> Matcher l a
 withScope scope (Matcher m) = Matcher (\scopes -> m (scope : scopes))
 
 -- | Get the current list of scopes.
---
--- @since 1.3.0.0
 getScope :: Matcher a [Scope]
 getScope = Matcher (\env ws _err ok -> ok ws (reverse env))
 
@@ -194,13 +178,9 @@ failAt l e =
     Matcher (\scopes _warn err _ok -> err (one (MatchMessage (Just l) (reverse scopes) e)))
 
 -- | Update the scope with the message corresponding to a table key
---
--- @since 1.3.0.0
 inKey :: Text -> Matcher l a -> Matcher l a
 inKey = withScope . ScopeKey
 
 -- | Update the scope with the message corresponding to an array index
---
--- @since 1.3.0.0
 inIndex :: Int -> Matcher l a -> Matcher l a
 inIndex = withScope . ScopeIndex

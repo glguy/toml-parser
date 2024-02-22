@@ -9,8 +9,6 @@ These are the low-level processing functions for transforming
 concrete TOML syntax into abstract TOML syntax. This module
 does not do any semantic validation of the parsed TOML.
 
-@since 2.0.0.0
-
 -}
 module Toml.Syntax (
     -- * Parsing

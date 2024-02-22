@@ -47,8 +47,6 @@ import Toml.Semantics
 -- | Build a 'Table' from a list of key-value pairs.
 --
 -- Use '.=' for a convenient way to build the pairs.
---
--- @since 1.3.0.0
 table :: [(Text, Value)] -> Table
 table kvs = MkTable (Map.fromList [(k, ((), v)) | (k, v) <- kvs])
 {-# INLINE table #-}
@@ -94,11 +92,9 @@ class ToValue a => ToTable a where
     -- | Convert a single value into a table
     toTable :: a -> Table
 
--- | @since 1.0.1.0
 instance (ToKey k, ToValue v) => ToTable (Map k v) where
     toTable m = table [(toKey k, toValue v) | (k,v) <- Map.assocs m]
 
--- | @since 1.0.1.0
 instance (ToKey k, ToValue v) => ToValue (Map k v) where
     toValue = defaultTableToValue
 
@@ -110,26 +106,15 @@ instance ToValue (Table' a) where
 
 -- | Convert to a table key. This class enables various string types to be
 -- used as the keys of a 'Map' when converting into TOML tables.
---
--- @since 1.3.0.0
 class ToKey a where
     toKey :: a -> Text
 
--- | toKey = id
---
--- @since 1.3.0.0
 instance Char ~ a => ToKey [a] where
     toKey = Text.pack
 
--- | toKey = unpack
---
--- @since 1.3.0.0
 instance ToKey Text.Text where
     toKey = id
 
--- | toKey = unpack
---
--- @since 1.3.0.0
 instance ToKey Data.Text.Lazy.Text where
     toKey = Data.Text.Lazy.toStrict
 
@@ -148,14 +133,10 @@ instance ToValue Char where
     toValueList = Text . Text.pack
 
 -- | Encodes as string literal
---
--- @since 1.2.1.0
 instance ToValue Text.Text where
     toValue = Text
 
 -- | Encodes as string literal
---
--- @since 1.2.1.0
 instance ToValue Data.Text.Lazy.Text where
     toValue = Text . Data.Text.Lazy.toStrict
 
@@ -164,21 +145,15 @@ instance ToValue a => ToValue [a] where
     toValue = toValueList
 
 -- | Converts to list and encodes that to value
---
--- @since 1.3.0.0
 instance ToValue a => ToValue (NonEmpty a) where
     toValue = toValue . NonEmpty.toList
 
 -- | Converts to list and encodes that to value
---
--- @since 1.3.0.0
 instance ToValue a => ToValue (Seq a) where
     toValue = toValue . toList
 
 -- | TOML represents floating point numbers with 'Prelude.Double'.
 -- This operation lose precision and can overflow to infinity.
---
--- @since 1.3.0.0
 instance Integral a => ToValue (Ratio a) where
     toValue = Double . realToFrac
 
