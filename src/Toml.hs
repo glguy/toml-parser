@@ -13,6 +13,23 @@ application-specific representations.
 This parser implements TOML 1.0.0 <https://toml.io/en/v1.0.0>
 as carefully as possible.
 
+Use "Toml.Schema" to implement functions mapping between TOML
+values and your application types.
+
+Use "Toml.Syntax" and "Toml.Semantics" for low-level TOML syntax
+processing and semantic validation. Most applications will not
+need to use these modules directly unless the application is
+about TOML itself.
+
+The types and functions of this package are parameterized over
+an annotation type in order to allow applications to provide
+detailed feedback messages tracked back to specific source
+locations in an original TOML file. While the default annotation
+is a simple file position, some applications might upgrade this
+annotation to track multiple file names or synthetically generated
+sources. Other applications won't need source location and can
+replace annotations with a simple unit type.
+
 -}
 module Toml (
 
@@ -46,7 +63,7 @@ module Toml (
     prettyDecodeError,
     prettyLocated,
     prettyMatchMessage,
-    prettySemanticError
+    prettySemanticError,
     ) where
 
 import Data.Text (Text)

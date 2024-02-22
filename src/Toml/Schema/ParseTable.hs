@@ -12,10 +12,6 @@ It will help generate warnings for unused keys, help select
 between multiple possible keys, and emit location-specific
 error messages when keys are unavailable.
 
-This module provides the 'ParseTable' implementation, but
-most of the basic functionality is exported directly from
-"Toml.FromValue".
-
 -}
 module Toml.Schema.ParseTable (
     -- * Base interface
@@ -49,7 +45,7 @@ import Toml.Pretty
 -- | Parser that tracks a current set of unmatched key-value
 -- pairs from a table.
 --
--- Use 'Toml.Schema.FromValue.optKey' and 'Toml.Schema.FromValue.reqKey' to extract keys.
+-- Use 'Toml.Schema.optKey' and 'Toml.Schema.reqKey' to extract keys.
 --
 -- Use 'getTable' and 'setTable' to override the table and implement
 -- other primitives.
@@ -64,7 +60,7 @@ instance MonadFail (ParseTable l) where
 liftMatcher :: Matcher l a -> ParseTable l a
 liftMatcher = ParseTable . lift . lift
 
--- | Run a 'ParseTable' computation with a given starting 'Table'.
+-- | Run a 'ParseTable' computation with a given starting 'Table''.
 -- Unused tables will generate a warning. To change this behavior
 -- 'getTable' and 'setTable' can be used to discard or generate
 -- error messages.
@@ -83,13 +79,15 @@ getTable = ParseTable (lift get)
 setTable :: Table' l -> ParseTable l ()
 setTable = ParseTable . lift . put
 
--- | Emit a warning at the current location.
+-- | Emit a warning without an annotation.
 warnTable :: String -> ParseTable l ()
 warnTable = liftMatcher . warn
 
+-- | Emit a warning with the given annotation.
 warnTableAt :: l -> String -> ParseTable l ()
 warnTableAt l = liftMatcher . warnAt l
 
+-- | Abort the current table matching with an error message at the given annotation.
 failTableAt :: l -> String -> ParseTable l a
 failTableAt l = liftMatcher . failAt l
 
@@ -109,9 +107,8 @@ data KeyAlt l a
 -- would have been accepted.
 --
 -- This is provided as an alternative to chaining multiple
--- 'Toml.FromValue.reqKey' cases together with @('<|>')@ because that will
--- generate one error message for each unmatched alternative as well as
--- the error associate with the matched alternative.
+-- 'Toml.Schema.reqKey' cases together with 'Control.Applicative.Alternative'
+-- which will fall-through as a result of any failure to the next case.
 --
 -- @since 1.2.0.0
 pickKey :: [KeyAlt l a] -> ParseTable l a

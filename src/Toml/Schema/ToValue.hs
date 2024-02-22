@@ -175,7 +175,8 @@ instance ToValue a => ToValue (NonEmpty a) where
 instance ToValue a => ToValue (Seq a) where
     toValue = toValue . toList
 
--- | Converts to a 'Double'. This can overflow to infinity.
+-- | TOML represents floating point numbers with 'Prelude.Double'.
+-- This operation lose precision and can overflow to infinity.
 --
 -- @since 1.3.0.0
 instance Integral a => ToValue (Ratio a) where

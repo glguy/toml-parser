@@ -173,20 +173,22 @@ withScope scope (Matcher m) = Matcher (\scopes -> m (scope : scopes))
 getScope :: Matcher a [Scope]
 getScope = Matcher (\env ws _err ok -> ok ws (reverse env))
 
--- | Emit a warning mentioning the current scope.
+-- | Emit a warning without an annotation.
 warn :: String -> Matcher a ()
 warn w =
     Matcher (\scopes ws _err ok -> ok (ws <> one (MatchMessage Nothing (reverse scopes) w)) ())
 
+-- | Emit a warning mentioning the given annotation.
 warnAt :: l -> String -> Matcher l ()
 warnAt loc w =
     Matcher (\scopes ws _err ok -> ok (ws <> one (MatchMessage (Just loc) (reverse scopes) w)) ())
 
--- | Fail with an error message annotated to the current location.
+-- | Fail with an error message without an annotation.
 instance MonadFail (Matcher a) where
     fail e =
         Matcher (\scopes _warn err _ok -> err (one (MatchMessage Nothing (reverse scopes) e)))
 
+-- | Terminate the match with an error mentioning the given annotation.
 failAt :: l -> String -> Matcher l a
 failAt l e =
     Matcher (\scopes _warn err _ok -> err (one (MatchMessage (Just l) (reverse scopes) e)))

@@ -6,9 +6,7 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
-Use 'genericParseTable' to derive a 'ParseTable' using the field names
-of a record. This can be combined with 'Toml.FromValue.parseTableFromValue'
-to derive a 'Toml.FromValue.FromValue' instance.
+Generic implementations of matching tables and arrays.
 
 -}
 module Toml.Schema.Generic.FromValue (
@@ -31,18 +29,20 @@ import Toml.Schema.Matcher (Matcher, failAt)
 import Toml.Schema.ParseTable (ParseTable)
 import Toml.Semantics (valueAnn, valueType, Value'(List'))
 
--- | Match a 'Table' using the field names in a record.
+-- | Match a 'Toml.Semantics.Table'' using the field names in a record.
 --
 -- @since 1.2.0.0
 genericParseTable :: (Generic a, GParseTable (Rep a)) => ParseTable l a
 genericParseTable = to <$> gParseTable
 {-# INLINE genericParseTable #-}
 
+-- | Implementation of 'fromValue' using 'genericParseTable' to derive
+-- a match from the record field names of the target type.
 genericFromTable :: (Generic a, GParseTable (Rep a)) => Value' l -> Matcher l a
 genericFromTable = parseTableFromValue genericParseTable
 {-# INLINE genericFromTable #-}
 
--- | Match a 'Value' as an array positionally matching field fields
+-- | Match a 'Toml.Semantics.Value'' as an array positionally matching field fields
 -- of a constructor to the elements of the array.
 --
 -- @since 1.3.2.0
