@@ -24,10 +24,10 @@ import Control.Monad.Trans.State (StateT(..))
 import Data.Coerce (coerce)
 import Data.Text qualified as Text
 import GHC.Generics
-import Toml.Schema.FromValue (FromValue, fromValue, optKey, reqKey, parseTableFromValue)
+import Toml.Schema.FromValue (FromValue, fromValue, optKey, reqKey, parseTableFromValue, typeError)
 import Toml.Schema.Matcher (Matcher, failAt)
 import Toml.Schema.ParseTable (ParseTable)
-import Toml.Semantics (valueAnn, valueType, Value'(List'))
+import Toml.Semantics (Value'(List'))
 
 -- | Match a 'Toml.Semantics.Table'' using the field names in a record.
 --
@@ -53,7 +53,7 @@ genericFromArray (List' a xs) =
         pure (to gen)
     else
         failAt a ("array " ++ show (length xs') ++ " elements too long")
-genericFromArray v = failAt (valueAnn v) ("type error. wanted: array got: " ++ valueType v)
+genericFromArray v = typeError "array" v
 
 {-# INLINE genericFromArray #-}
 

@@ -38,6 +38,9 @@ module Toml.Schema.FromValue (
     optKey,
     optKeyOf,
 
+    -- * Errors
+    typeError,
+
     ) where
 
 import Control.Monad (zipWithM, liftM2)
