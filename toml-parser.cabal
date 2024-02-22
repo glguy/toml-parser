@@ -137,5 +137,5 @@ executable toml-benchmarker
     buildable: False
     main-is: benchmarker.hs
     default-language: Haskell2010
-    build-depends: base, toml-parser, time
+    build-depends: base, toml-parser, time, text
     hs-source-dirs: benchmarker
