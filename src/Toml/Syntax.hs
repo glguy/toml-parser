@@ -18,7 +18,7 @@ module Toml.Syntax (
     Key,
     Expr(..),
     Val(..),
-    
+
     -- * Lexing
     scanToken,
     Context(..),

@@ -51,7 +51,7 @@ import Toml
 import Toml.Schema
 
 main :: IO ()
-main = hspec (parses >> decodes >> encodes)
+main = hspec (parses >> decodes >> encodes >> warns >> errors)
 ```
 
 ### Using the raw parser
@@ -89,7 +89,7 @@ name = "plantain"
 |]
 ```
 
-Parsing using this package generates the following value
+Parsing using this package generates the following unstructured value
 
 ```haskell
 parses :: Spec
@@ -112,12 +112,12 @@ parses = it "parses" $
                     Table (table [("name", Text "plantain")])])])])])
 ```
 
-### Using decoding classes
+### Defining a schema
 
-Here's an example of defining datatypes and deserializers for the TOML above.
-The `FromValue` typeclass is used to encode each datatype into a TOML value.
-Instances can be derived for simple record types. More complex examples can
-be manually derived.
+We can define a schema for our TOML format in the form of instances of
+`FromValue`, `ToValue`, and `ToTable` in order to read TOML directly
+into structured data form. This example manually derives some of the
+instances as a demonstration.
 
 ```haskell
 newtype Fruits = Fruits { fruits :: [Fruit] }
@@ -129,16 +129,19 @@ data Fruit = Fruit { name :: String, physical :: Maybe Physical, varieties :: [V
     deriving (ToTable, ToValue, FromValue) via GenericTomlTable Fruit
 
 data Physical = Physical { color :: String, shape :: String }
-    deriving (Eq, Show)
+    deriving (Eq, Show, Generic)
+    deriving (ToTable, ToValue, FromValue) via GenericTomlTable Physical
 
 newtype Variety = Variety String
     deriving (Eq, Show)
 
-instance FromValue Physical where
-    fromValue = parseTableFromValue (Physical <$> reqKey "color" <*> reqKey "shape")
-
 instance FromValue Variety where
     fromValue = parseTableFromValue (Variety <$> reqKey "name")
+instance ToValue Variety where
+    toValue = defaultTableToValue
+instance ToTable Variety where
+    toTable (Variety x) = table ["name" .= x]
+
 ```
 
 We can run this example on the original value to deserialize it into domain-specific datatypes.
@@ -154,23 +157,6 @@ decodes = it "decodes" $
             (Just (Physical "red" "round"))
             [Variety "red delicious", Variety "granny smith"],
         Fruit "banana" Nothing [Variety "plantain"]])
-```
-
-### Using encoding classes
-
-The `ToValue` class is for all datatypes that can be encoded into TOML.
-The more specialized `ToTable` class is for datatypes that encode into
-tables and are thus eligible to be top-level types (all TOML documents
-are tables at the top-level).
-
-Generics can be used to derive `ToTable` for simple record types.
-Manually defined instances are available for the more complex cases.
-
-```haskell
-instance ToValue Physical where toValue = defaultTableToValue
-instance ToTable Physical where toTable x = table ["color" .= color x, "shape" .= shape x]
-instance ToValue Variety  where toValue = defaultTableToValue
-instance ToTable Variety  where toTable (Variety x) = table ["name" .= x]
 
 encodes :: Spec
 encodes = it "encodes" $
@@ -191,6 +177,35 @@ encodes = it "encodes" $
 
         [[fruits.varieties]]
         name = "granny smith"|]
+```
+
+### Useful errors and warnings
+
+This package takes care to preserve source information as much as possible
+in order to provide useful feedback to users. These examples show a couple
+of the message that can be generated when things don't go perfectly.
+
+```haskell
+warns :: Spec
+warns = it "warns" $
+    decode [quoteStr|
+        name = "simulated"
+        typo = 10|]
+    `shouldBe`
+    Success
+        ["2:1: unexpected key: typo in <top-level>"] -- warnings
+        (Variety "simulated")
+
+errors :: Spec
+errors = it "errors" $
+    decode [quoteStr|
+        # Physical characteristics table
+        color = "blue"
+        shape = []|]
+    `shouldBe`
+    (Failure
+        ["3:9: type error. wanted: string got: array in shape"]
+        :: Result String Physical)
 ```
 
 ## More Examples

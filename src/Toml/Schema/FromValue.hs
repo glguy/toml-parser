@@ -30,7 +30,7 @@ module Toml.Schema.FromValue (
     -- * Containers
     mapOf,
     listOf,
-    
+
     -- * Tables
     parseTableFromValue,
     reqKey,
@@ -86,7 +86,7 @@ listOf ::
 listOf matchElt =
     \case
         List' _ xs -> zipWithM (\i -> inIndex i . matchElt i) [0..] xs
-        v -> typeError "array" v 
+        v -> typeError "array" v
 
 -- | Class for types that can be decoded from a TOML value.
 class FromValue a where
