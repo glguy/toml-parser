@@ -13,8 +13,8 @@ Because the top-level TOML document is always a table,
 the 'ToTable' class is for types that specifically support
 conversion to a 'Table'.
 
-"Toml.ToValue.Generic" can be used to derive instances of 'ToTable'
-automatically for record types.
+"Toml.Schema.Generic" can be used to derive instances of 'ToTable'
+automatically for record types and 'ToValue' for array types.
 
 -}
 module Toml.Schema.ToValue (

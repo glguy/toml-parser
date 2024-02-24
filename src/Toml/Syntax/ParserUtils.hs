@@ -37,6 +37,8 @@ module Toml.Syntax.ParserUtils (
 
 import Data.Text (Text)
 import Data.Time
+import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NonEmpty
 import Toml.Pretty (prettyToken)
 import Toml.Syntax.Lexer (scanToken, Context(..))
 import Toml.Syntax.Position (Located(..), Position)
@@ -45,14 +47,14 @@ import Toml.Syntax.Token (Token(..))
 -- continuation passing implementation of a state monad with errors
 newtype Parser r a = P {
     getP ::
-        [Context] -> Located Text ->
-        ([Context] -> Located Text -> a -> Either (Located String) r) ->
+        NonEmpty Context -> Located Text ->
+        (NonEmpty Context -> Located Text -> a -> Either (Located String) r) ->
         Either (Located String) r
     }
 
 -- | Run the top-level parser
 runParser :: Parser r r -> Context -> Located Text -> Either (Located String) r
-runParser (P k) ctx str = k [ctx] str \_ _ r -> Right r
+runParser (P k) ctx str = k (ctx :| []) str \_ _ r -> Right r
 
 -- | Bind implementation used in the happy-generated parser
 thenP :: Parser r a -> (a -> Parser r b) -> Parser r b
@@ -66,16 +68,16 @@ pureP x = P \ctx str k -> k ctx str x
 
 -- | Add a new context to the lexer context stack
 push :: Context -> Parser r ()
-push x = P \st str k -> k (x : st) str ()
+push x = P \st str k -> k (NonEmpty.cons x st) str ()
 {-# Inline push #-}
 
 -- | Pop the top context off the lexer context stack. It is a program
 -- error to pop without first pushing.
 pop :: Parser r ()
 pop = P \ctx str k ->
-    case ctx of
-        []       -> error "Toml.Parser.Utils.pop: PANIC! malformed production in parser"
-        _ : ctx' -> k ctx' str ()
+    case snd (NonEmpty.uncons ctx) of
+        Nothing -> error "toml-parser: PANIC! malformed production in parser"
+        Just ctx' -> k ctx' str ()
 {-# Inline pop #-}
 
 -- | Operation the parser generator uses when it reaches an unexpected token.
@@ -85,7 +87,7 @@ errorP e = P \_ _ _ -> Left (fmap (\t -> "parse error: unexpected " ++ prettyTok
 -- | Operation the parser generator uses to request the next token.
 lexerP :: (Located Token -> Parser r a) -> Parser r a
 lexerP f = P \st str k ->
-    case scanToken (head st) str of
+    case scanToken (NonEmpty.head st) str of
         Left le -> Left (("lexical error: " ++) <$> le)
         Right (t, str') -> getP (f t) st str' k
 {-# Inline lexerP #-}

@@ -6,7 +6,7 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
-This module demonstrates how "Toml.FromValue" can handle a real-world
+This module demonstrates how "Toml.Schema" can handle a real-world
 format as used in hie-bios. These types are copied from
 <https://github.com/haskell/hie-bios/blob/master/src/HIE/Bios/Config/YAML.hs>
 with slight alterations because the Other case is for YAML-specific extensibility.
