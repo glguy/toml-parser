@@ -96,7 +96,7 @@ test-suite unittests
         base,
         containers,
         hspec           ^>= {2.10, 2.11},
-        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21},
+        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22},
         text,
         time,
         toml-parser,
@@ -128,7 +128,7 @@ test-suite readme
         base,
         toml-parser,
         hspec           ^>= {2.10, 2.11},
-        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21},
+        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22},
         text,
     build-tool-depends:
         markdown-unlit:markdown-unlit ^>= {0.5.1, 0.6.0},

@@ -48,7 +48,7 @@ executable TomlEncoder
     build-depends:
         aeson           ^>= {2.1, 2.2},
         bytestring      ^>= {0.10, 0.11, 0.12},
-        containers      ^>= {0.5, 0.6},
+        containers      ^>= {0.5, 0.6, 0.7},
         text,
 
 executable TomlHighlighter
