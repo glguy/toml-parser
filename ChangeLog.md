@@ -1,5 +1,10 @@
 # Revision history for toml-parser
 
+## 2.0.1.0
+
+* Added `ToValue UTCTime` and `FromValue UTCTime`. These correspond
+  to offset data-times with the timezone translated to UTC.
+
 ## 2.0.0.0
 
 * Pervasive annotations on the values added to allow for detailed
