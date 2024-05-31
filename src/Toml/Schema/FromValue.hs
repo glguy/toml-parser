@@ -55,7 +55,7 @@ import Data.Sequence qualified as Seq
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified
-import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay)
+import Data.Time (ZonedTime, LocalTime, Day, TimeOfDay, UTCTime, zonedTimeToUTC)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Schema.Matcher
@@ -243,6 +243,11 @@ instance FromValue TimeOfDay where
 -- | Matches offset date-time literals
 instance FromValue ZonedTime where
     fromValue (ZonedTime' _ x) = pure x
+    fromValue v = typeError "offset date-time" v
+
+-- | Matches offset date-time literals and converts to UTC
+instance FromValue UTCTime where
+    fromValue (ZonedTime' _ x) = pure (zonedTimeToUTC x)
     fromValue v = typeError "offset date-time" v
 
 -- | Matches local date-time literals

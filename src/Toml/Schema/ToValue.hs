@@ -39,7 +39,7 @@ import Data.Sequence (Seq)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified
-import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime)
+import Data.Time (Day, TimeOfDay, LocalTime, ZonedTime, UTCTime, utcToZonedTime, utc)
 import Data.Word (Word8, Word16, Word32, Word64)
 import Numeric.Natural (Natural)
 import Toml.Semantics
@@ -163,6 +163,7 @@ instance ToValue Bool      where toValue = Bool
 instance ToValue TimeOfDay where toValue = TimeOfDay
 instance ToValue LocalTime where toValue = LocalTime
 instance ToValue ZonedTime where toValue = ZonedTime
+instance ToValue UTCTime   where toValue = ZonedTime . utcToZonedTime utc
 instance ToValue Day       where toValue = Day
 instance ToValue Integer   where toValue = Integer
 instance ToValue Natural   where toValue = Integer . fromIntegral
