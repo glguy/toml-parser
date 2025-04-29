@@ -63,7 +63,7 @@ $non_eol = [\x09 \x20-\x7E $non_ascii]
 
 $literal_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
 
-$mll_char = [\x09 \x20-\x26 \x28-\x7E]
+$mll_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
 @mll_content = $mll_char | @newline
 
 @mlb_escaped_nl = \\ @ws @newline ($wschar | @newline)*

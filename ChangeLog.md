@@ -1,5 +1,9 @@
 # Revision history for toml-parser
 
+## 2.0.1.1
+
+* Fixes bug that prohibited non-ASCII characters in `'''` strings.
+
 ## 2.0.1.0
 
 * Added `ToValue UTCTime` and `FromValue UTCTime`. These correspond

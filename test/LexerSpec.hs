@@ -40,7 +40,7 @@ spec =
     it "accepts tabs" $
         parse_ "x\t=\t1"
         `shouldBe`
-        Right (table [("x" .= Integer 1)])
+        Right (table ["x" .= Integer 1])
 
     it "computes columns correctly with tabs" $
         parse "x\t=\t="
@@ -96,3 +96,8 @@ spec =
         parse "x = \"\\p\""
         `shouldBe`
         Left "1:6: lexical error: unknown escape sequence"
+
+    it "allows multi-byte characters in ''' strings" $
+        parse_ "x = '''§'''"
+        `shouldBe`
+        Right (table ["x" .= Text "§"])
