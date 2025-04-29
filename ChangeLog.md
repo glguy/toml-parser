@@ -1,5 +1,10 @@
 # Revision history for toml-parser
 
+## 2.0.1.2
+
+* Reject inputs with out-of-bounds time zone offsets in accordance
+  with the toml-tests test suite.
+
 ## 2.0.1.1
 
 * Fixes bug that prohibited non-ASCII characters in `'''` strings.

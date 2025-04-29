@@ -76,8 +76,10 @@ $time_delim     = [Tt\ ]
 @time_hour      = $digit {2}
 @time_minute    = $digit {2}
 @time_second    = $digit {2}
+@offset_hour    = [01] $digit | 2 [0-3]
+@offset_minute  = [0-5] $digit
 @time_secfrac   = "." $digit+
-@time_numoffset = [\+\-] @time_hour ":" @time_minute
+@time_numoffset = [\+\-] @offset_hour ":" @offset_minute
 @time_offset    = [Zz] | @time_numoffset
 
 @partial_time = @time_hour ":" @time_minute ":" @time_second @time_secfrac?
