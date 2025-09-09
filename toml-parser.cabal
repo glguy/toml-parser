@@ -75,7 +75,7 @@ library
         containers      ^>= {0.5, 0.6, 0.7, 0.8},
         prettyprinter   ^>= 1.7,
         text            >= 0.2 && < 3,
-        time            ^>= {1.9, 1.10, 1.11, 1.12, 1.14},
+        time            ^>= {1.9, 1.10, 1.11, 1.12, 1.14, 1.15},
         transformers    ^>= {0.5, 0.6},
     build-tool-depends:
         alex:alex       >= 3.2,
