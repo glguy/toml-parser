@@ -35,14 +35,14 @@ module Toml.Semantics.Ordered (
 
 import Data.Foldable (foldl', toList)
 import Data.List (sortOn)
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Toml.Syntax.Types (Expr(..), Key, Val(ValTable, ValArray))
 
 -- | Summary of the order of the keys in a TOML document.
-newtype TableOrder = TO (Map Text KeyOrder)
+newtype TableOrder = TO (OMap Text KeyOrder)
 
 -- | Internal type used by 'TableOrder'
 --
@@ -61,16 +61,16 @@ projectKey ::
     Text         {- ^ key                                   -} ->
     ProjectedKey {- ^ type suitable for ordering table keys -}
 projectKey (TO to) [] = \k ->
-    case Map.lookup k to of
+    case OMap.lookup k to of
         Just (KeyOrder i _)     -> PK (Left i)
         Nothing                 -> PK (Right k)
 projectKey (TO to) (p:ps) =
-    case Map.lookup p to of
+    case OMap.lookup p to of
         Just (KeyOrder _ to')   -> projectKey to' ps
         Nothing                 -> PK . Right
 
 emptyOrder :: TableOrder
-emptyOrder = TO Map.empty
+emptyOrder = TO OMap.empty
 
 -- | Extract a 'TableOrder' from the output of 'Toml.Parser.parseRawToml'
 -- to be later used with 'projectKey'.
@@ -95,9 +95,9 @@ addVal prefix to lval =
 
 addKey :: TableOrder -> [Text] -> TableOrder
 addKey to [] = to
-addKey (TO to) (x:xs) = TO (Map.alter f x to)
+addKey (TO to) (x:xs) = TO (OMap.alter f x to)
     where
-        f Nothing = Just (KeyOrder (Map.size to) (addKey emptyOrder xs))
+        f Nothing = Just (KeyOrder (OMap.size to) (addKey emptyOrder xs))
         f (Just (KeyOrder i m)) = Just (KeyOrder i (addKey m xs))
 
 keyPath :: Key a -> [Text]
@@ -110,7 +110,7 @@ debugTableOrder to = unlines (go 0 to [])
     where
         go i (TO m) z =
             foldr (go1 i) z
-                (sortOn p (Map.assocs m))
+                (sortOn p (OMap.assocs m))
 
         go1 i (k, KeyOrder _ v) z =
             (replicate (4*i) ' ' ++ Text.unpack k) :

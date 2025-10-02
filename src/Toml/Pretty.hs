@@ -39,11 +39,11 @@ module Toml.Pretty (
     ) where
 
 import Data.Char (ord, isAsciiLower, isAsciiUpper, isDigit, isPrint)
-import Data.Foldable (fold)
+import Data.Foldable (fold, toList)
 import Data.List (partition, sortOn)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map qualified as Map
+import Data.Map.Ordered qualified as OMap
 import Data.String (fromString)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -158,7 +158,7 @@ prettyToken = \case
 prettyAssignment :: Text -> Value' l -> TomlDoc
 prettyAssignment = go . pure
     where
-        go ks (Table' _ (MkTable (Map.assocs -> [(k,(_, v))]))) = go (NonEmpty.cons k ks) v
+        go ks (Table' _ (MkTable (OMap.assocs -> [(k,(_, v))]))) = go (NonEmpty.cons k ks) v
         go ks v = prettyKey (NonEmpty.reverse ks) <+> equals <+> prettyValue v
 
 -- | Render a value suitable for assignment on the right-hand side
@@ -172,7 +172,7 @@ prettyValue = \case
         | isInfinite f  -> annotate NumberClass (if f > 0 then "inf" else "-inf")
         | otherwise     -> annotate NumberClass (pretty f)
     List' _ a           -> align (list [prettyValue v | v <- a])
-    Table' _ (MkTable t) -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,(_, v)) <- Map.assocs t] <> rbrace
+    Table' _ (MkTable t) -> lbrace <> concatWith (surround ", ") [prettyAssignment k v | (k,(_, v)) <- OMap.assocs t] <> rbrace
     Bool' _ True        -> annotate BoolClass "true"
     Bool' _ False       -> annotate BoolClass "false"
     Text' _ str         -> prettySmartString str
@@ -239,7 +239,7 @@ isTable _        = False
 -- These can be collapsed using dotted-key notation on the left-hand side
 -- of a @=@.
 isSingularTable :: Table' l -> Bool
-isSingularTable (MkTable (Map.elems -> [(_, v)])) = isSimple v
+isSingularTable (MkTable (toList -> [(_, v)])) = isSimple v
 isSingularTable _ = False
 
 -- | Render a complete TOML document using top-level table and array of
@@ -308,7 +308,7 @@ prettyToml_ mbKeyProj kind prefix (MkTable t) = vcat (topLines ++ subtables)
                 NoProjection    -> id
                 KeyProjection f -> sortOn (f prefix . fst)
 
-        kvs = order (Map.assocs t)
+        kvs = order (OMap.assocs t)
 
         -- this table will require no subsequent tables to be defined
         simpleToml = all (isSimple . snd) t

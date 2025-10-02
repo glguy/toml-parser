@@ -33,8 +33,8 @@ module Toml.Semantics (
 import Control.Monad (foldM)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NonEmpty
-import Data.Map (Map)
-import Data.Map qualified as Map
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap
 import Data.Text (Text)
 import Toml.Syntax.Types (SectionKind(..), Key, Val(..), Expr(..))
 import Toml.Semantics.Types
@@ -71,7 +71,7 @@ data SemanticErrorKind
 -- or reports a semantic error if one occurs.
 semantics :: [Expr a] -> Either (SemanticError a) (Table' a)
 semantics exprs =
- do f <- foldM processExpr (flip assignKeyVals Map.empty) exprs
+ do f <- foldM processExpr (flip assignKeyVals OMap.empty) exprs
     framesToTable <$> f []
     where
         processExpr f = \case
@@ -83,7 +83,7 @@ semantics exprs =
 
 -- | A top-level table used to distinguish top-level defined arrays
 -- and tables from inline values.
-type FrameTable a = Map Text (a, Frame a)
+type FrameTable a = OMap Text (a, Frame a)
 
 -- | M is the error-handling monad used through this module for
 -- propagating semantic errors through the 'semantics' function.
@@ -134,8 +134,8 @@ addSection kind (k :| []) kvs =
     alterFrame k
         -- defining a new table
         (case kind of
-                TableKind      -> FrameTable (fst k) Closed <$> go mempty
-                ArrayTableKind -> FrameArray . (:| []) . (,) (fst k) <$> go mempty)
+                TableKind      -> FrameTable (fst k) Closed <$> go OMap.empty
+                ArrayTableKind -> FrameArray . (:| []) . (,) (fst k) <$> go OMap.empty)
 
         \case
         -- defining a super table of a previously defined sub-table
@@ -149,7 +149,7 @@ addSection kind (k :| []) kvs =
         FrameArray (t :| ts) ->
             case kind of
                 TableKind      -> invalidKey k ClosedTable
-                ArrayTableKind -> FrameArray . (:| t : ts) . (,) (fst k) <$> go mempty
+                ArrayTableKind -> FrameArray . (:| t : ts) . (,) (fst k) <$> go OMap.empty
 
         -- failure cases
         FrameTable _ Closed _ -> invalidKey k ClosedTable
@@ -160,7 +160,7 @@ addSection kind (k :| []) kvs =
 
 addSection kind (k1 :| k2 : ks) kvs =
     alterFrame k1
-        (FrameTable (fst k1) Open      <$> go mempty)
+        (FrameTable (fst k1) Open      <$> go OMap.empty)
         \case
         FrameTable a tk t    -> FrameTable a tk      <$> go t
         FrameArray (t :| ts) -> FrameArray . (:| ts) <$> traverse go t
@@ -196,7 +196,7 @@ assign (key :| []) val =
         (\_ -> invalidKey key AlreadyAssigned)
 
 assign (key :| k1 : keys) val =
-    alterFrame key (go (fst key) mempty)
+    alterFrame key (go (fst key) OMap.empty)
         \case
         FrameTable a Open   t -> go a t
         FrameTable a Dotted t -> go a t
@@ -220,7 +220,7 @@ valToValue =
         ValLocalTime a x    -> Right (LocalTime' a x)
         ValDay       a x    -> Right (Day'       a x)
         ValArray     a xs   -> List' a <$> traverse valToValue xs
-        ValTable     a kvs  -> Table' a . framesToTable <$> assignKeyVals kvs mempty
+        ValTable     a kvs  -> Table' a . framesToTable <$> assignKeyVals kvs OMap.empty
 
 -- | Abort validation by reporting an error about the given key.
 invalidKey ::
@@ -235,14 +235,14 @@ alterFrame ::
     M a (Frame a)              {- ^ new value case    -} ->
     (Frame a -> M a (Frame a)) {- ^ update value case -} ->
     FrameTable a -> M a (FrameTable a)
-alterFrame (a, k) create update = Map.alterF g k
-    where
+alterFrame (a, k) create update t =
+    case OMap.lookup k t of
         -- insert a new value
-        g Nothing =
+        Nothing ->
             do lf <- create
-               pure (Just (a, lf))
+               pure (OMap.alter (const (Just (a, lf))) k t)
 
         -- update an existing value and preserve its annotation
-        g (Just (op, ov)) =
+        Just (op, ov) ->
             do lf <- update ov
-               pure (Just (op, lf))
+               pure (OMap.alter (const (Just (op, lf))) k t)

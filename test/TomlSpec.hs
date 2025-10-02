@@ -32,7 +32,7 @@ spec =
             key = "value"  # This is a comment at the end of a line
             another = "# This is not a comment"|]
           `shouldBe`
-          Right (table [("another", Text "# This is not a comment"), ("key", Text "value")])
+          Right (table [("key", Text "value"), ("another", Text "# This is not a comment")])
 
     describe "key/value pair"
      do it "supports the most basic assignments" $
@@ -57,10 +57,10 @@ spec =
             1234 = "value"|]
           `shouldBe`
           Right (table [
-            "1234"     .= Text "value",
-            "bare-key" .= Text "value",
+            "key"      .= Text "value",
             "bare_key" .= Text "value",
-            "key"      .= Text "value"])
+            "bare-key" .= Text "value",
+            "1234"     .= Text "value"])
 
         it "allows quoted keys" $
           parse_ [quoteStr|
@@ -73,9 +73,9 @@ spec =
           Right (table [
             "127.0.0.1"          .= Text "value",
             "character encoding" .= Text "value",
+            "ʎǝʞ"                .= Text "value",
             "key2"               .= Text "value",
-            "quoted \"value\""   .= Text "value",
-            "ʎǝʞ"                .= Text "value"])
+            "quoted \"value\""   .= Text "value"])
 
         it "allows dotted keys" $
           parse_ [quoteStr|
@@ -114,13 +114,13 @@ spec =
           `shouldBe`
           Right (table [
             "apple" .= table [
-                "color" .= Text "red",
+                "type"  .= Text "fruit",
                 "skin"  .= Text "thin",
-                "type"  .= Text "fruit"],
+                "color" .= Text "red"],
             "orange" .= table [
-                "color" .= Text "orange",
+                "type"  .= Text "fruit",
                 "skin"  .= Text "thick",
-                "type"  .= Text "fruit"]])
+                "color" .= Text "orange"]])
 
         it "allows numeric bare keys" $
           parse_ "3.14159 = 'pi'" `shouldBe` Right (table [
@@ -134,10 +134,10 @@ spec =
             1_2 = 2_3|]
           `shouldBe`
           Right (table [
-            "1900-01-01" .= (read "1900-01-01" :: Day),
-            "1_2"        .= (23::Int),
+            "true"       .= True,
             "false"      .= False,
-            "true"       .= True])
+            "1900-01-01" .= (read "1900-01-01" :: Day),
+            "1_2"        .= (23::Int)])
 
     describe "string"
      do it "parses escapes" $
@@ -205,10 +205,10 @@ spec =
             regex    = '<\i\c*\s*>'|]
           `shouldBe`
           Right (table [
-            "quoted"   .= Text "Tom \"Dubs\" Preston-Werner",
-            "regex"    .= Text "<\\i\\c*\\s*>",
             "winpath"  .= Text "C:\\Users\\nodejs\\templates",
-            "winpath2" .= Text "\\\\ServerX\\admin$\\system32\\"])
+            "winpath2" .= Text "\\\\ServerX\\admin$\\system32\\",
+            "quoted"   .= Text "Tom \"Dubs\" Preston-Werner",
+            "regex"    .= Text "<\\i\\c*\\s*>"])
 
         it "handles multiline literal strings" $
           parse_ [quoteStr|
@@ -221,8 +221,8 @@ spec =
             '''|]
           `shouldBe`
           Right (table [
-            "lines"  .= Text "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n",
-            "regex2" .= Text "I [dw]on't need \\d{2} apples"])
+            "regex2" .= Text "I [dw]on't need \\d{2} apples",
+            "lines"  .= Text "The first newline is\ntrimmed in raw strings.\nAll other whitespace\nis preserved.\n"])
 
         it "parses all the other escapes" $
           parse_ [quoteStr|
@@ -268,10 +268,6 @@ spec =
             bin1 = 0b11010110|]
           `shouldBe` Right
           (table [
-              "bin1" .= Integer 214,
-              "hex1" .= Integer 0xDEADBEEF,
-              "hex2" .= Integer 0xDEADBEEF,
-              "hex3" .= Integer 0xDEADBEEF,
               "int1" .= Integer 99,
               "int2" .= Integer 42,
               "int3" .= Integer 0,
@@ -280,8 +276,12 @@ spec =
               "int6" .= Integer 5349221,
               "int7" .= Integer 5349221,
               "int8" .= Integer 12345,
+              "hex1" .= Integer 0xDEADBEEF,
+              "hex2" .= Integer 0xDEADBEEF,
+              "hex3" .= Integer 0xDEADBEEF,
               "oct1" .= Integer 0o01234567,
-              "oct2" .= Integer 0o755])
+              "oct2" .= Integer 0o755,
+              "bin1" .= Integer 214])
 
     it "handles leading zeros gracefully" $
       parse "x = 01"
@@ -420,18 +420,18 @@ spec =
             ]|]
             `shouldBe`
             Right (table [
+                "integers" .= [1, 2, 3 :: Integer],
                 "colors" .= [Text "red", Text "yellow", Text "green"],
+                "nested_arrays_of_ints" .= [[1, 2], [3, 4, 5 :: Integer]],
+                "nested_mixed_array" .= [[Integer 1, Integer 2], [Text "a", Text "b", Text "c"]],
+                "string_array" .= [Text "all", Text "strings", Text "are the same", Text "type"],
+                "numbers" .= [Double 0.1, Double 0.2, Double 0.5, Integer 1, Integer 2, Integer 5],
                 "contributors" .= [
                     "Foo Bar <foo@example.com>",
                     Table (table [
-                        "email" .= Text "bazqux@example.com",
                         "name" .= Text "Baz Qux",
-                        "url" .= Text "https://example.com/bazqux"])],
-                "integers" .= [1, 2, 3 :: Integer],
-                "nested_arrays_of_ints" .= [[1, 2], [3, 4, 5 :: Integer]],
-                "nested_mixed_array" .= [[Integer 1, Integer 2], [Text "a", Text "b", Text "c"]],
-                "numbers" .= [Double 0.1, Double 0.2, Double 0.5, Integer 1, Integer 2, Integer 5],
-                "string_array" .= [Text "all", Text "strings", Text "are the same", Text "type"]])
+                        "email" .= Text "bazqux@example.com",
+                        "url" .= Text "https://example.com/bazqux"])]] )
 
         it "handles newlines and comments" $
           parse_ [quoteStr|
@@ -505,10 +505,10 @@ spec =
           `shouldBe`
           Right (table [
             "x" .= table [
-                "q" .= Integer 1,
                 "y" .= table [
                     "z" .= table [
-                        "w" .= table []]]]])
+                        "w" .= table []]],
+                "q" .= Integer 1]])
 
         it "prevents using a [table] to open a table defined with dotted keys" $
           parse [quoteStr|
@@ -543,9 +543,9 @@ spec =
             animal = { type.name = "pug" }|]
           `shouldBe`
           Right (table [
-            "animal" .= table ["type" .= table ["name" .= Text "pug"]],
             "name"   .= table ["first" .= Text "Tom", "last" .= Text "Preston-Werner"],
-            "point"  .= table ["x" .= Integer 1, "y" .= Integer 2]])
+            "point"  .= table ["x" .= Integer 1, "y" .= Integer 2],
+            "animal" .= table ["type" .= table ["name" .= Text "pug"]]])
 
         it "prevents altering inline tables with dotted keys" $
           parse [quoteStr|
@@ -602,9 +602,9 @@ spec =
               "sku"  .= Integer 738594937],
             table [],
             table [
-                "color" .= Text "gray",
                 "name"  .= Text "Nail",
-                "sku"   .= Integer 284758393]])
+                "sku"   .= Integer 284758393,
+                "color" .= Text "gray"]])
 
         it "handles subtables under array of tables" $
           parse_ [quoteStr|
@@ -707,10 +707,10 @@ spec =
           Right (table [
             "t" .= table [
                 "a" .= table [
-                    "q" .= Integer 3,
                     "x" .= table [
                         "y" .= Integer 1,
-                        "z" .= Integer 2]]]])
+                        "z" .= Integer 2],
+                    "q" .= Integer 3]]])
 
         it "disallows overwriting assignments with tables" $
           parse [quoteStr|

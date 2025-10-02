@@ -29,6 +29,7 @@ module Toml.Schema.FromValue (
 
     -- * Containers
     mapOf,
+    omapOf,
     listOf,
 
     -- * Tables
@@ -49,6 +50,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Sequence qualified as Seq
@@ -70,11 +73,28 @@ mapOf ::
     (l -> Text -> Matcher l k)         {- ^ key matcher   -} ->
     (Text -> Value' l -> Matcher l v)  {- ^ value matcher -} ->
     Value' l -> Matcher l (Map k v)
-mapOf matchKey matchVal =
+mapOf matchKey matchVal = fmap Map.fromList . pairsOf matchKey matchVal
+
+omapOf ::
+    Ord k =>
+    (l -> Text -> Matcher l k)         {- ^ key matcher   -} ->
+    (Text -> Value' l -> Matcher l v)  {- ^ value matcher -} ->
+    Value' l -> Matcher l (OMap k v)
+omapOf matchKey matchVal = fmap OMap.fromList . pairsOf matchKey matchVal
+
+-- | Shared helper to extract key/value pairs from a table using
+-- a key matcher and a value matcher.
+pairsOf ::
+    Ord k =>
+    (l -> Text -> Matcher l k)         {- ^ key matcher   -} ->
+    (Text -> Value' l -> Matcher l v)  {- ^ value matcher -} ->
+    Value' l -> Matcher l [(k, v)]
+pairsOf matchKey matchVal =
     \case
-        Table' _ (MkTable t) -> Map.fromList <$> sequence kvs
-            where
-                kvs = [liftM2 (,) (matchKey l k) (inKey k (matchVal k v)) | (k, (l, v)) <- Map.assocs t]
+        Table' _ (MkTable t) -> sequence
+            [ liftM2 (,) (matchKey l k) (inKey k (matchVal k v))
+            | (k, (l, v)) <- OMap.assocs t
+            ]
         v -> typeError "table" v
 
 -- | List matching function used to help implemented 'fromValue' for arrays.
@@ -99,6 +119,9 @@ class FromValue a where
 
 instance (Ord k, FromKey k, FromValue v) => FromValue (Map k v) where
     fromValue = mapOf fromKey (const fromValue)
+
+instance (Ord k, FromKey k, FromValue v) => FromValue (OMap k v) where
+    fromValue = omapOf fromKey (const fromValue)
 
 instance FromValue Table where
     fromValue (Table' _ t) = pure (forgetTableAnns t)

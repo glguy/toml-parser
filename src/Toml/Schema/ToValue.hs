@@ -34,6 +34,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Map.Ordered (OMap)
+import Data.Map.Ordered qualified as OMap
 import Data.Ratio (Ratio)
 import Data.Sequence (Seq)
 import Data.Text (Text)
@@ -48,7 +50,7 @@ import Toml.Semantics
 --
 -- Use '.=' for a convenient way to build the pairs.
 table :: [(Text, Value)] -> Table
-table kvs = MkTable (Map.fromList [(k, ((), v)) | (k, v) <- kvs])
+table kvs = MkTable (OMap.fromList [(k, ((), v)) | (k, v) <- kvs])
 {-# INLINE table #-}
 
 -- | Convenience function for building key-value pairs while
@@ -96,6 +98,12 @@ instance (ToKey k, ToValue v) => ToTable (Map k v) where
     toTable m = table [(toKey k, toValue v) | (k,v) <- Map.assocs m]
 
 instance (ToKey k, ToValue v) => ToValue (Map k v) where
+    toValue = defaultTableToValue
+
+instance (ToKey k, ToValue v) => ToTable (OMap k v) where
+    toTable m = table [(toKey k, toValue v) | (k,v) <- OMap.assocs m]
+
+instance (ToKey k, ToValue v) => ToValue (OMap k v) where
     toValue = defaultTableToValue
 
 instance ToTable (Table' a) where

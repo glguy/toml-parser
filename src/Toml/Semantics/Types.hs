@@ -37,7 +37,7 @@ module Toml.Semantics.Types (
     valueType,
     ) where
 
-import Data.Map (Map)
+import Data.Map.Ordered (OMap)
 import Data.String (IsString(fromString))
 import Data.Text (Text)
 import Data.Time (Day, LocalTime, TimeOfDay, ZonedTime(zonedTimeToLocalTime, zonedTimeZone), timeZoneMinutes)
@@ -132,7 +132,7 @@ valueType = \case
     ZonedTime' {} -> "offset date-time"
 
 -- | A table with annotated keys and values.
-newtype Table' a = MkTable (Map Text (a, Value' a))
+newtype Table' a = MkTable (OMap Text (a, Value' a))
     deriving (
         Show        {- ^ Default instance -},
         Read        {- ^ Default instance -},

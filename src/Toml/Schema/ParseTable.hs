@@ -36,7 +36,7 @@ import Control.Monad.Trans.Reader (ReaderT(..), ask)
 import Control.Monad.Trans.State.Strict (StateT(..), get, put)
 import Data.Foldable (for_)
 import Data.List (intercalate)
-import Data.Map qualified as Map
+import Data.Map.Ordered qualified as OMap
 import Data.Text (Text)
 import Toml.Schema.Matcher (Matcher, inKey, failAt, warn, warnAt)
 import Toml.Semantics (Table'(..), Value')
@@ -67,7 +67,7 @@ liftMatcher = ParseTable . lift . lift
 parseTable :: ParseTable l a -> l -> Table' l -> Matcher l a
 parseTable (ParseTable p) l t =
  do (x, MkTable t') <- runStateT (runReaderT p l) t
-    for_ (Map.assocs t') \(k, (a, _)) ->
+    for_ (OMap.assocs t') \(k, (a, _)) ->
         warnAt a ("unexpected key: " ++ show (prettySimpleKey k))
     pure x
 
@@ -114,10 +114,10 @@ pickKey xs =
     where
         f _ (Else m) _ = liftMatcher m
         f t (Key k c) continue =
-            case Map.lookup k t of
+            case OMap.lookup k t of
                 Nothing -> continue
                 Just (_, v) ->
-                 do setTable $! MkTable (Map.delete k t)
+                 do setTable $! MkTable (OMap.delete k t)
                     liftMatcher (inKey k (c v))
 
         errCase =

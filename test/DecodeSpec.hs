@@ -95,15 +95,15 @@ spec =
             [[fruits]]
             name = "apple"
 
-            [fruits.physical]
-            color = "red"
-            shape = "round"
-
             [[fruits.varieties]]
             name = "red delicious"
 
             [[fruits.varieties]]
             name = "granny smith"
+
+            [fruits.physical]
+            color = "red"
+            shape = "round"
 
             [[fruits]]
             name = "banana"
@@ -122,8 +122,8 @@ spec =
             color = "yellow"|]
         `shouldBe`
         Success [
-            "4:1: unexpected key: count in fruits[0]",
             "3:1: unexpected key: taste in fruits[0]",
+            "4:1: unexpected key: count in fruits[0]",
             "7:1: unexpected key: color in fruits[1]"]
             (Fruits [Fruit "peach" Nothing [], Fruit "pineapple" Nothing []])
 
