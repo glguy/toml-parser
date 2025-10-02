@@ -112,8 +112,7 @@ instance ToTable (Table' a) where
 instance ToValue (Table' a) where
     toValue = defaultTableToValue
 
--- | Convert to a table key. This class enables various string types to be
--- used as the keys of a 'Map' when converting into TOML tables.
+-- | Convert to a table key. Enables various string types for table keys.
 class ToKey a where
     toKey :: a -> Text
 

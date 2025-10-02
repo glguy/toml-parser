@@ -8,7 +8,7 @@ Maintainer  : emertens@gmail.com
 
 This module provides the type for the semantics of a TOML file.
 All dotted keys are resolved in this representation. Each table
-is a Map with a single level of keys.
+is an ordered map with a single level of keys.
 
 Values are parameterized over an annotation type to allow values
 to be attributed to a file location. When values are constructed

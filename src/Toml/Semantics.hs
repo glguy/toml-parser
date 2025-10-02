@@ -7,7 +7,7 @@ Copyright   : (c) Eric Mertens, 2023
 License     : ISC
 Maintainer  : emertens@gmail.com
 
-This module extracts a nested Map representation of a TOML
+This module extracts a nested ordered map representation of a TOML
 file. It detects invalid key assignments and resolves dotted
 key assignments.
 
@@ -229,7 +229,7 @@ invalidKey ::
     M a b
 invalidKey (a, key) kind = Left (SemanticError a key kind)
 
--- | Specialization of 'Map.alterF' used to adjust a location in a 'FrameTable'
+-- | Adjust a key in a 'FrameTable' preserving insertion order and annotations.
 alterFrame ::
     (a, Text)                  {- ^ annotated key     -} ->
     M a (Frame a)              {- ^ new value case    -} ->

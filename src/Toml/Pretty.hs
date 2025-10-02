@@ -245,7 +245,7 @@ isSingularTable _ = False
 -- | Render a complete TOML document using top-level table and array of
 -- table sections where possible.
 --
--- Keys are sorted alphabetically. To provide a custom ordering, see
+-- Keys preserve table order. To provide a custom ordering, see
 -- 'prettyTomlOrdered'.
 prettyToml ::
     Table' a {- ^ table to print -} ->
@@ -295,7 +295,7 @@ prettyTomlOrdered proj = prettyToml_ (KeyProjection proj) TableKind []
 
 -- | Optional projection used to order rendered tables
 data KeyProjection where
-    -- | No projection provided; alphabetical order used
+    -- | No projection provided; preserve existing table order
     NoProjection :: KeyProjection
     -- | Projection provided: table name and current key are available
     KeyProjection :: Ord a => ([Text] -> Text -> a) -> KeyProjection

@@ -75,6 +75,7 @@ mapOf ::
     Value' l -> Matcher l (Map k v)
 mapOf matchKey matchVal = fmap Map.fromList . pairsOf matchKey matchVal
 
+-- | Like 'mapOf' but producing an 'OMap' preserving table key order.
 omapOf ::
     Ord k =>
     (l -> Text -> Matcher l k)         {- ^ key matcher   -} ->
