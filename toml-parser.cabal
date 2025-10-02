@@ -70,13 +70,14 @@ library
         Toml.Syntax.LexerUtils
         Toml.Syntax.ParserUtils
     build-depends:
-        array           ^>= 0.5,
-        base            ^>= {4.14, 4.15, 4.16, 4.17, 4.18, 4.19, 4.20, 4.21},
-        containers      ^>= {0.5, 0.6, 0.7, 0.8},
-        prettyprinter   ^>= 1.7,
-        text            >= 0.2 && < 3,
-        time            ^>= {1.9, 1.10, 1.11, 1.12, 1.14, 1.15},
-        transformers    ^>= {0.5, 0.6},
+        array              ^>= 0.5,
+        base               ^>= {4.14, 4.15, 4.16, 4.17, 4.18, 4.19, 4.20, 4.21},
+        containers         ^>= {0.5, 0.6, 0.7, 0.8},
+        ordered-containers ^>= {0.2.4},
+        prettyprinter      ^>= 1.7,
+        text               >= 0.2 && < 3,
+        time               ^>= {1.9, 1.10, 1.11, 1.12, 1.14, 1.15},
+        transformers       ^>= {0.5, 0.6},
     build-tool-depends:
         alex:alex       >= 3.2,
         happy:happy     >= 1.19,
