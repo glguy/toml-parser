@@ -30,7 +30,7 @@ main =
  do txt <- BS.getContents
     case Aeson.decode txt of
         Just (Toml.Table t) -> putStr (show (prettyToml t))
-        Nothing -> exitFailure
+        _ -> exitFailure
 
 instance a ~ () => Aeson.FromJSON (Toml.Value' a) where
     parseJSON =
