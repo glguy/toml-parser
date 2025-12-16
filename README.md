@@ -1,6 +1,6 @@
 # TOML Parser
 
-This package implements a validating parser for [TOML 1.0.0](https://toml.io/en/v1.0.0).
+This package implements a validating parser for [TOML 1.1.0](https://toml.io/en/v1.1.0).
 
 This package uses an [alex](https://haskell-alex.readthedocs.io/en/latest/)-generated
 lexer and [happy](https://haskell-happy.readthedocs.io/en/latest/)-generated parser.

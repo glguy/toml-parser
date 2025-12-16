@@ -108,16 +108,26 @@ localDatePatterns = ["%Y-%m-%d"]
 
 -- | Format strings for local time lexemes.
 localTimePatterns :: [String]
-localTimePatterns = ["%H:%M:%S%Q"]
+localTimePatterns =
+    ["%H:%M:%S%Q",
+     "%H:%M"]
 
 -- | Format strings for local datetime lexemes.
 localDateTimePatterns :: [String]
 localDateTimePatterns =
     ["%Y-%m-%dT%H:%M:%S%Q",
-    "%Y-%m-%d %H:%M:%S%Q"]
+     "%Y-%m-%d %H:%M:%S%Q",
+     "%Y-%m-%dT%H:%M",
+     "%Y-%m-%d %H:%M"]
 
 -- | Format strings for offset datetime lexemes.
 offsetDateTimePatterns :: [String]
 offsetDateTimePatterns =
-    ["%Y-%m-%dT%H:%M:%S%Q%Ez","%Y-%m-%dT%H:%M:%S%QZ",
-    "%Y-%m-%d %H:%M:%S%Q%Ez","%Y-%m-%d %H:%M:%S%QZ"]
+    ["%Y-%m-%dT%H:%M:%S%Q%Ez",
+     "%Y-%m-%dT%H:%M:%S%QZ",
+     "%Y-%m-%d %H:%M:%S%Q%Ez",
+     "%Y-%m-%d %H:%M:%S%QZ",
+     "%Y-%m-%dT%H:%M%Ez",
+     "%Y-%m-%dT%H:%MZ",
+     "%Y-%m-%d %H:%M%Ez",
+     "%Y-%m-%d %H:%MZ"]

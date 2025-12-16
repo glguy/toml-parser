@@ -94,12 +94,14 @@ quoteString = ('"':) . go
             '"'  : xs -> '\\' : '"'  : go xs
             '\\' : xs -> '\\' : '\\' : go xs
             '\b' : xs -> '\\' : 'b'  : go xs
+            '\ESC':xs -> '\\' : 'e'  : go xs
             '\f' : xs -> '\\' : 'f'  : go xs
             '\n' : xs -> '\\' : 'n'  : go xs
             '\r' : xs -> '\\' : 'r'  : go xs
             '\t' : xs -> '\\' : 't'  : go xs
             x    : xs
                 | isPrint x     -> x : go xs
+                | x <= '\xff'   -> printf "\\x%02X%s" (ord x) (go xs)
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 
@@ -112,6 +114,7 @@ quoteMlString = ("\"\"\"\n"++) . go
             '"' : '"' : '"' : xs -> "\"\"\\\"" ++ go xs
             '\\' : xs -> '\\' : '\\' : go xs
             '\b' : xs -> '\\' : 'b' : go xs
+            '\ESC':xs -> '\\' : 'e'  : go xs
             '\f' : xs -> '\\' : 'f' : go xs
             '\t' : xs -> '\\' : 't' : go xs
             '\n' : xs -> '\n' : go xs
@@ -119,6 +122,7 @@ quoteMlString = ("\"\"\"\n"++) . go
             '\r' : xs -> '\\' : 'r' : go xs
             x    : xs
                 | isPrint x     -> x : go xs
+                | x <= '\xff'   -> printf "\\x%02X%s" (ord x) (go xs)
                 | x <= '\xffff' -> printf "\\u%04X%s" (ord x) (go xs)
                 | otherwise     -> printf "\\U%08X%s" (ord x) (go xs)
 

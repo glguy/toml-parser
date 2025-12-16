@@ -99,8 +99,17 @@ val ::                { Val Position                                }
   | inlinetable       { locVal ValTable      $1                     }
 
 inlinetable ::        { Located [(Key Position, Val Position)]      }
-  : lhs '{' sepBy(keyval, ',')                pop '}'
-                      { Located $2 $3                               }
+  : lhs '{' inlinetablekeyvals              newlines pop '}'
+                      { Located $2 (reverse $3)                     }
+  | lhs '{' inlinetablekeyvals newlines ',' newlines pop '}'
+                      { Located $2 (reverse $3)                     }
+  | lhs '{'                                 newlines pop '}'
+                      { Located $2 []                               }
+
+inlinetablekeyvals :: { [(Key Position, Val Position)]              }
+  : newlines keyval   { [$2]                                        }
+  | inlinetablekeyvals newlines ',' newlines keyval
+                      { $5 : $1                                     }
 
 array ::              { Located [Val Position]                      }
   : rhs '[' newlines                          pop ']'

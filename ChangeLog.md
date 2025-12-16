@@ -1,5 +1,12 @@
 # Revision history for toml-parser
 
+## 2.0.2.0
+
+* Update for TOML 1.1.0
+  - Add \e and \x escapes
+  - Allow omitting seconds in times
+  - Allow newlines and trailing commas in inline tables
+
 ## 2.0.1.2
 
 * Reject inputs with out-of-bounds time zone offsets in accordance

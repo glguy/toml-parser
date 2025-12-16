@@ -63,8 +63,7 @@ $non_eol = [\x09 \x20-\x7E $non_ascii]
 
 $literal_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
 
-$mll_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
-@mll_content = $mll_char | @newline
+@mll_content = $literal_char | @newline
 
 @mlb_escaped_nl = \\ @ws @newline ($wschar | @newline)*
 $unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
@@ -82,7 +81,7 @@ $time_delim     = [Tt\ ]
 @time_numoffset = [\+\-] @offset_hour ":" @offset_minute
 @time_offset    = [Zz] | @time_numoffset
 
-@partial_time = @time_hour ":" @time_minute ":" @time_second @time_secfrac?
+@partial_time = @time_hour ":" @time_minute (":" @time_second @time_secfrac?)?
 @full_date = @date_fullyear "-" @date_month "-" @date_mday
 @full_time = @partial_time @time_offset
 
@@ -164,15 +163,18 @@ $wschar+;
 }
 
 <mlbstr, bstr> {
-  \\ U $hexdig{8}   { unicodeEscape                     }
-  \\ U              { failure "\\U requires exactly 8 hex digits"}
+  \\ x $hexdig{2}   { unicodeEscape                     }
+  \\ x              { failure "\\x requires exactly 2 hex digits"}
   \\ u $hexdig{4}   { unicodeEscape                     }
   \\ u              { failure "\\u requires exactly 4 hex digits"}
+  \\ U $hexdig{8}   { unicodeEscape                     }
+  \\ U              { failure "\\U requires exactly 8 hex digits"}
   \\ n              { strFrag . (Text.singleton '\n' <$) }
   \\ t              { strFrag . (Text.singleton '\t' <$) }
   \\ r              { strFrag . (Text.singleton '\r' <$) }
   \\ f              { strFrag . (Text.singleton '\f' <$) }
   \\ b              { strFrag . (Text.singleton '\b' <$) }
+  \\ e              { strFrag . (Text.singleton '\ESC' <$) }
   \\ \\             { strFrag . (Text.singleton '\\' <$) }
   \\ \"             { strFrag . (Text.singleton '\"' <$) }
   \\ .              { failure "unknown escape sequence" }
