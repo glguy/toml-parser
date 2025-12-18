@@ -19,12 +19,12 @@ spec =
     it "recommends escapes for control characters (1)" $
         parse "x = \"\SOH\""
         `shouldBe`
-        Left "1:6: lexical error: control characters must be escaped, use: \\u0001"
+        Left "1:6: lexical error: control characters must be escaped, use: \\x01"
 
     it "recommends escapes for control characters (2)" $
         parse "x = \"\DEL\""
         `shouldBe`
-        Left "1:6: lexical error: control characters must be escaped, use: \\u007F"
+        Left "1:6: lexical error: control characters must be escaped, use: \\x7F"
 
     -- These seem boring, but they provide test coverage of an error case in the state machine
     it "handles unexpected '}'" $
