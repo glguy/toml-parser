@@ -120,7 +120,7 @@ unicodeEscape (Located p lexeme) ctx =
 
 recommendEscape :: Action
 recommendEscape (Located p x) _ =
-  LexerError (Located p (printf "control characters must be escaped, use: \\u%04X" (ord (Text.head x))))
+  LexerError (Located p (printf "control characters must be escaped, use: \\x%02X" (ord (Text.head x))))
 
 -- | Emit a token ignoring the current lexeme
 token_ :: Token -> Action

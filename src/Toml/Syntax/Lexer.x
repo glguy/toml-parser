@@ -66,7 +66,6 @@ $literal_char = [\x09 \x20-\x26 \x28-\x7E $non_ascii]
 @mll_content = $literal_char | @newline
 
 @mlb_escaped_nl = \\ @ws @newline ($wschar | @newline)*
-$unescaped = [$wschar \x21 \x23-\x5B \x5D-\x7E $non_ascii]
 
 @date_fullyear  = $digit {4}
 @date_month     = $digit {2}
@@ -145,7 +144,7 @@ $wschar+;
 }
 
 <bstr> {
-  $unescaped+       { strFrag                           }
+  $basic_unescaped+ { strFrag                           }
   \"                { endStr . fmap (Text.drop 1)       }
 }
 
@@ -157,7 +156,7 @@ $wschar+;
 
 <mlbstr> {
   @mlb_escaped_nl;
-  ($unescaped | @newline)+ { strFrag                    }
+  ($basic_unescaped | @newline)+ { strFrag              }
   \" {1,2}          { strFrag                           }
   \" {3,5}          { endStr . fmap (Text.drop 3)       }
 }
@@ -179,7 +178,7 @@ $wschar+;
   \\ \"             { strFrag . (Text.singleton '\"' <$) }
   \\ .              { failure "unknown escape sequence" }
   \\                { failure "incomplete escape sequence" }
-  $control # [\t\r\n] { recommendEscape                 }
+  $control # [\t\n] { recommendEscape                   }
 }
 
 {
