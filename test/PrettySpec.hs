@@ -61,9 +61,9 @@ spec =
             y = 4|]
 
     it "renders escapes in strings" $
-        fmap tomlString (parse_ "a=\"\\\\\\b\\t\\r\\n\\f\\\"\\u007f\\U0001000c\"")
+        fmap tomlString (parse_ "a=\"\\\\\\b\\t\\r\\n\\f\\e\\\"\\u007f\\U0001000c\"")
         `shouldBe` Right [quoteStr|
-            a = "\\\b\t\r\n\f\"\u007F\U0001000C"|]
+            a = "\\\b\t\r\n\f\e\"\x7F\U0001000C"|]
 
     it "renders multiline strings" $
         fmap tomlString (parse_ [quoteStr|

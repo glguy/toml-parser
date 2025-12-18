@@ -1,10 +1,10 @@
 cabal-version:      3.0
 name:               toml-parser
-version:            2.0.1.2
-synopsis:           TOML 1.0.0 parser
+version:            2.0.2.0
+synopsis:           TOML 1.1.0 parser
 description:
     TOML parser using generated lexers and parsers with
-    careful attention to the TOML 1.0.0 semantics for
+    careful attention to the TOML 1.1.0 semantics for
     defining tables.
 license:            ISC
 license-file:       LICENSE
