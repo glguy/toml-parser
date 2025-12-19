@@ -99,31 +99,30 @@ val ::                { Val Position                                }
   | inlinetable       { locVal ValTable      $1                     }
 
 inlinetable ::        { Located [(Key Position, Val Position)]      }
-  : lhs '{' inlinetablekeyvals              newlines pop '}'
-                      { Located $2 (reverse $3)                     }
-  | lhs '{' inlinetablekeyvals newlines ',' newlines pop '}'
-                      { Located $2 (reverse $3)                     }
-  | lhs '{'                                 newlines pop '}'
+  : lhs '{' newlines                                          pop '}'
                       { Located $2 []                               }
+  | lhs '{' newlines inlinetablekeyvals              newlines pop '}'
+                      { Located $2 (reverse $4)                     }
+  | lhs '{' newlines inlinetablekeyvals newlines ',' newlines pop '}'
+                      { Located $2 (reverse $4)                     }
 
 inlinetablekeyvals :: { [(Key Position, Val Position)]              }
-  : newlines keyval   { [$2]                                        }
+  : keyval            { [$1]                                        }
   | inlinetablekeyvals newlines ',' newlines keyval
                       { $5 : $1                                     }
 
 array ::              { Located [Val Position]                      }
-  : rhs '[' newlines                          pop ']'
+  : rhs '[' newlines                                   pop ']'
                       { Located $2 []                               }
-  | rhs '[' newlines arrayvalues              pop ']'
+  | rhs '[' newlines arrayvalues              newlines pop ']'
                       { Located $2 (reverse $4)                     }
-  | rhs '[' newlines arrayvalues ',' newlines pop ']'
+  | rhs '[' newlines arrayvalues newlines ',' newlines pop ']'
                       { Located $2 (reverse $4)                     }
 
 arrayvalues ::        { [Val Position]                              }
-  :                          val newlines
-                      { [$1]                                        }
-  | arrayvalues ',' newlines val newlines
-                      { $4 : $1                                     }
+  : val               { [$1]                                        }
+  | arrayvalues newlines ',' newlines val
+                      { $5 : $1                                     }
 
 newlines ::           { ()                                          }
   :                   { ()                                          }

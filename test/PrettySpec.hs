@@ -61,9 +61,24 @@ spec =
             y = 4|]
 
     it "renders escapes in strings" $
-        fmap tomlString (parse_ "a=\"\\\\\\b\\t\\r\\n\\f\\e\\\"\\u007f\\U0001000c\"")
+        fmap tomlString (parse_ "a=\"\\\\\\b\\t\\r\\n\\f\\e\\\"\\x7f\\u200f\\U0001000c\"")
         `shouldBe` Right [quoteStr|
-            a = "\\\b\t\r\n\f\e\"\x7F\U0001000C"|]
+            a = "\\\b\t\r\n\f\e\"\x7F\u200F\U0001000C"|]
+
+    it "renders escapes in multi-line strings" $
+        fmap tomlString (parse_ [quoteStr|
+          long = """A sufficiently long string will cause the pretty printer to
+                    generate a multi-line string in its output. Next we'll ensure
+                    that escape sequences are rendered correctly.
+                    " "" "\"" \\ \b \r\t\n \f \e \x7f \u200f \U0001000c"""
+          |])
+        `shouldBe` Right [quoteStr|
+          long = """
+          A sufficiently long string will cause the pretty printer to
+                    generate a multi-line string in its output. Next we'll ensure
+                    that escape sequences are rendered correctly.
+                    " "" ""\" \\ \b \r\t
+           \f \e \x7F \u200F \U0001000C"""|]
 
     it "renders multiline strings" $
         fmap tomlString (parse_ [quoteStr|

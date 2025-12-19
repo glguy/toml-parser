@@ -448,6 +448,23 @@ spec =
                 "integers2" .= [1, 2, 3 :: Int],
                 "integers3" .= [1, 2 :: Int]])
 
+        it "allows leading and trailing commas" $
+          parse_ [quoteStr|
+            integers4 = [ 1
+                        , 2
+                        , 3
+                        ]
+
+            integers5 = [
+              1,
+              2,
+              3,
+              ]
+            |] `shouldBe`
+            Right (table [
+                "integers4" .= [1, 2, 3 :: Int],
+                "integers5" .= [1, 2, 3 :: Int]])
+
         it "disambiguates double brackets from array tables" $
           parse_ "x = [[1]]" `shouldBe` Right (table ["x" .= List [List [Integer 1]]])
 
@@ -580,6 +597,30 @@ spec =
           parse [quoteStr|
             tbl = { fruit = { apple.color = "red" }, fruit.apple.texture = { smooth = true } }|]
           `shouldBe` Left "1:42: key error: fruit is already assigned"
+
+        it "allows newlines and trailing commas as of TOML 1.1.0" $
+          parse_ [quoteStr|
+            name = { first = "Tom", last = "Preston-Werner" }
+            point = {x=1, y=2}
+            animal = { type.name = "pug" }
+            contact = {
+                personal = {
+                    name = "Donald Duck",
+                    email = "donald@duckburg.com",
+                },
+                work = {
+                    name = "Coin cleaner",
+                    email = "donald@ScroogeCorp.com",
+                },
+            }
+            |] `shouldBe` Right (table [
+              "name" .= table ["first" .= Text "Tom", "last" .= Text "Preston-Werner"],
+              "point" .= table ["x" .= Integer 1, "y" .= Integer 2],
+              "animal" .= table ["type" .= table ["name" .= Text "pug"]],
+              "contact" .= table [
+                  "personal" .= table ["name" .= Text "Donald Duck", "email" .= Text "donald@duckburg.com"],
+                  "work" .= table ["name" .= Text "Coin cleaner", "email" .= Text "donald@ScroogeCorp.com"]]
+            ])
 
     describe "array of tables"
      do it "supports array of tables syntax" $

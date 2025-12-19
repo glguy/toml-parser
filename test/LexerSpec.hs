@@ -26,6 +26,21 @@ spec =
         `shouldBe`
         Left "1:6: lexical error: control characters must be escaped, use: \\x7F"
 
+    it "reports incomplete escapes (2)" $
+        parse "x = \"\\x1\""
+        `shouldBe`
+        Left "1:6: lexical error: \\x requires exactly 2 hex digits"
+
+    it "reports incomplete escapes (4)" $
+        parse "x = \"\\u1\""
+        `shouldBe`
+        Left "1:6: lexical error: \\u requires exactly 4 hex digits"
+
+    it "reports incomplete escapes (8)" $
+        parse "x = \"\\U1\""
+        `shouldBe`
+        Left "1:6: lexical error: \\U requires exactly 8 hex digits"
+
     -- These seem boring, but they provide test coverage of an error case in the state machine
     it "handles unexpected '}'" $
         parse "}"
