@@ -71,7 +71,7 @@ library
         Toml.Syntax.ParserUtils
     build-depends:
         array           ^>= 0.5,
-        base            ^>= {4.14, 4.15, 4.16, 4.17, 4.18, 4.19, 4.20, 4.21},
+        base            ^>= {4.14, 4.15, 4.16, 4.17, 4.18, 4.19, 4.20, 4.21, 4.22},
         containers      ^>= {0.5, 0.6, 0.7, 0.8},
         prettyprinter   ^>= 1.7,
         text            >= 0.2 && < 3,
@@ -96,7 +96,7 @@ test-suite unittests
         base,
         containers,
         hspec           ^>= {2.10, 2.11},
-        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23},
+        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24},
         text,
         time,
         toml-parser,
@@ -128,7 +128,7 @@ test-suite readme
         base,
         toml-parser,
         hspec           ^>= {2.10, 2.11},
-        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23},
+        template-haskell ^>= {2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24},
         text,
     build-tool-depends:
         markdown-unlit:markdown-unlit ^>= {0.5.1, 0.6.0},
