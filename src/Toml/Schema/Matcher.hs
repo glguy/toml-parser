@@ -47,6 +47,7 @@ import Control.Applicative (Alternative(..))
 import Control.Monad (MonadPlus, ap, liftM)
 import Data.Monoid (Endo(..))
 import Data.Text (Text)
+import Data.Bifunctor (Bifunctor (..))
 
 -- | Computations that result in a 'Result' and which track a list
 -- of nested contexts to assist in generating warnings and error
@@ -129,6 +130,14 @@ data Result e a
         Show {- ^ Default instance -},
         Eq   {- ^ Default instance -},
         Ord  {- ^ Default instance -})
+
+instance Functor (Result e) where
+  fmap _ (Failure e) = Failure e
+  fmap f (Success e a) = Success e (f a)
+
+instance Bifunctor Result where
+  bimap f _ (Failure e) = Failure (fmap f e)
+  bimap f g (Success e a) = Success (fmap f e) (g a)
 
 -- | Run a 'Matcher' with an empty scope.
 runMatcher :: Matcher l a -> Result (MatchMessage l) a
